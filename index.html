@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>OneSyntax Pattern</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 16 16%27%3E%3Crect x=%273%27 y=%276%27 width=%272%27 height=%278%27 fill=%27%23F76E43%27/%3E%3Crect x=%277%27 y=%273%27 width=%272%27 height=%2711%27 fill=%27%23151515%27/%3E%3Crect x=%2711%27 y=%278%27 width=%272%27 height=%276%27 fill=%27%235F6470%27/%3E%3C/svg%3E" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    />
+  </head>
+  <body>
+    <div id="app">
+      <main id="stage">
+        <canvas id="view" aria-label="Pattern preview"></canvas>
+        <div id="stage-msg" hidden></div>
+      </main>
+      <aside id="panel">
+        <header id="panel-head">
+          <span class="brand">OneSyntax</span><span class="dot">·</span><span class="sub">Pattern</span>
+        </header>
+        <div id="pane"></div>
+        <footer id="status">
+          <div class="status-msg" hidden></div>
+          <div class="status-main">loading…</div>
+        </footer>
+      </aside>
+    </div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
