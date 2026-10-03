@@ -38,8 +38,8 @@ seamless video loops.
 index.html          The app: UI, controls, presets, remix, exports.
 engine.js           Pattern engine: fields, layouts, marks, SVG export, WebGL renderer.
 serve.ps1           Local preview server (Windows PowerShell, no Node needed).
+publish.sh          Hosting build step: copies only the app into dist/.
 brand/              Official OneSyntax logo files (from the Rebranding Figma file).
-references/         Inspiration screenshots. Not loaded by the app.
 .claude/            Preview configuration for Claude Code.
 ```
 

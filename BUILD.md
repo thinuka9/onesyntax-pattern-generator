@@ -62,13 +62,19 @@ There is no automated test runner (the project has no Node toolchain). Before sh
 
 ## Deploy
 
-The project root is the site root: `index.html` is the entry page.
+Only the app is published: `publish.sh` copies `index.html`, `engine.js` and `brand/` into `dist/`, so the docs
+and the preview server never go live.
 
-- **Quickest:** drag the project folder onto https://app.netlify.com/drop for an instant URL.
-- **With GitHub (recommended):** connect
-  [thinuka9/onesyntax-pattern-generator](https://github.com/thinuka9/onesyntax-pattern-generator) to Vercel,
-  Netlify or Cloudflare Pages (framework: none, build command: none, output directory: `/`). Each push to `main`
-  then deploys. GitHub Pages also works: Settings → Pages → deploy from the `main` branch, root folder.
+**Cloudflare Pages (recommended):** free for commercial use, and Cloudflare Access can limit the site to the
+team's email addresses.
+
+1. dash.cloudflare.com → **Workers & Pages → Create → Pages → Connect to Git**, and pick the repository.
+2. Framework preset **None**, build command **`sh publish.sh`**, build output directory **`dist`**.
+3. Deploy. Every push to `main` then redeploys.
+4. Optional: **Zero Trust → Access → Applications** → add the site and allow only the team's emails.
+
+Netlify and Vercel take the same build command and output directory. Vercel's free plan is for
+non-commercial use only.
 
 ### Saving changes to GitHub
 

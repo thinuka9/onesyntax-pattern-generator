@@ -6,5 +6,8 @@ Thumbs.db
 # Exports made while testing (PNG / SVG / video / preset JSON)
 exports/
 
+# The hosting build output (see publish.sh)
+dist/
+
 # Personal Claude Code permissions (launch.json is shared)
 .claude/settings.local.json
