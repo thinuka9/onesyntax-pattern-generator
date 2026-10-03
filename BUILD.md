@@ -1,0 +1,96 @@
+# Build, run and deploy
+
+There is **no build step**. The app is three kinds of static file: `index.html`, `engine.js` and the SVGs in
+`brand/`. Anything that serves static files can host it.
+
+## Run locally
+
+The page must be served over HTTP, not opened as a `file://` path: the Logo Field reads the brand SVGs back
+from a canvas, which browsers block for local files.
+
+```bash
+powershell -ExecutionPolicy Bypass -File serve.ps1
+```
+
+Then open http://127.0.0.1:4174/. Use `-Port 8080` for another port. Any other static server works too
+(for example `npx serve .` or `python -m http.server`).
+
+In Claude Code, the `app` entry in `.claude/launch.json` starts the same server.
+
+## Requirements
+
+- A current Chromium-based browser (Chrome, Edge, Arc) for everything, including WebGL 2 and video export.
+  Firefox and Safari run the tool; video export depends on their MediaRecorder support.
+- An internet connection for Geist, Lucide and Motion (see [README.md](README.md#dependencies)).
+
+## Exports
+
+| Export | Notes |
+|---|---|
+| PNG 1× / 2× / 4× / 6× | Optional transparent background. Sizes below. |
+| SVG | Vector; the editable layers are `background`, `track`, `fill`, `cap`, `accent`. |
+| Animated SVG | SMIL; loops seamlessly in browsers. Design tools import the first frame. Up to about 20 MB for the densest patterns. |
+| Video | MP4 (H.264) where the browser can record it, otherwise WebM. 30 fps, seamless 5 or 10 s loop, longest side up to 1920 px. Recording runs in real time; keep the tab visible. |
+| Looks (JSON) | From the look picker: Export / Import. Also imports preset JSON from the original studio. |
+| Copy link | A URL holding the exact look. Works wherever the page is hosted. |
+
+### PNG sizes
+
+| Format | 1× | 2× | 4× | 6× |
+|---|---|---|---|---|
+| 1:1 | 1200 × 1200 | 2400 × 2400 | 4800 × 4800 | 7200 × 7200 |
+| 4:5 | 1200 × 1500 | 2400 × 3000 | 4800 × 6000 | 7200 × 9000 |
+| 9:16 | 1080 × 1920 | 2160 × 3840 | 4320 × 7680 | 6480 × 11520 |
+| 16:9 | 1920 × 1080 | 3840 × 2160 | 7680 × 4320 | 11520 × 6480 |
+| A4 portrait | 2480 × 3508 | 4960 × 7016 | 9920 × 14032 | 11583 × 16384 \* |
+| LinkedIn banner | 1584 × 396 | 3168 × 792 | 6336 × 1584 | 9504 × 2376 |
+
+\* Browsers refuse bitmaps beyond about 16,384 px a side or 250 megapixels, so oversized exports step down to the
+largest size that fits, and the tool says so.
+
+## Checks to run before a release
+
+There is no automated test runner (the project has no Node toolchain). Before shipping, in the browser:
+
+1. The page loads with no console errors, with the Lucide icons and Geist type showing.
+2. Step through every pattern with ← →. Each draws, and the panel shows its controls.
+3. Drag a few sliders on each pattern; nothing blanks or errors.
+4. Press shuffle a few times on Wave Rows and on a studio pattern; results stay uniform.
+5. Export a PNG at each scale, an SVG, an animated SVG and a video; each opens.
+6. Save a look, export the looks JSON, delete the look, import the JSON back.
+7. Copy link, open it in a new tab: the same look appears.
+
+## Deploy
+
+The project root is the site root: `index.html` is the entry page.
+
+- **Quickest:** drag the project folder onto https://app.netlify.com/drop for an instant URL.
+- **With GitHub (recommended):** push the folder to a GitHub repository and connect it to Vercel, Netlify or
+  Cloudflare Pages (framework: none, build command: none, output directory: `/`). Each push to `main` then
+  deploys. GitHub Pages also works: Settings → Pages → deploy from the `main` branch, root folder.
+
+### Replacing the old GitHub repository's contents
+
+The plan is to keep the existing "OneSyntax Pattern Generator" repository and make this the new version, so the
+old code stays in its history. With Git installed:
+
+```bash
+git clone https://github.com/<owner>/<repo>.git old-repo
+```
+
+Then, inside `old-repo`: delete everything except the `.git` folder, copy in this project's files, and run:
+
+```bash
+git add -A
+```
+
+```bash
+git commit -m "Replace the studio with the OneSyntax Pattern Generator"
+```
+
+```bash
+git push origin main
+```
+
+Saved looks live in each browser's storage for the address the page is served from, so a new URL starts with
+none. Export them as JSON before moving, and import them on the new site.

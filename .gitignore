@@ -1,3 +1,10 @@
-node_modules
-dist
-out
+# OS and editor clutter
+.DS_Store
+Thumbs.db
+*.log
+
+# Exports made while testing (PNG / SVG / video / preset JSON)
+exports/
+
+# Personal Claude Code permissions (launch.json is shared)
+.claude/settings.local.json
