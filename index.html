@@ -190,10 +190,12 @@
   .segmented .indicator { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; background: var(--chip); box-shadow: 0 1px 3px rgba(0,0,0,.2); pointer-events: none; }
   .segmented .indicator, .view .indicator { transition: transform .42s var(--spring), width .42s var(--spring); }
   .indicator.instant { transition: none; }
-  .segmented button { position: relative; z-index: 1; flex: 1; min-width: 0; height: calc(var(--control) - 4px); padding: 0 6px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .25s var(--ease); }
+  /* Each choice starts at its label's width and shares out the rest, so longer labels never clip. */
+  .segmented button { position: relative; z-index: 1; flex: 1 1 auto; min-width: 0; height: calc(var(--control) - 4px); padding: 0 6px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .25s var(--ease); }
   .segmented button:hover { color: var(--text); }
   .segmented button[aria-checked="true"] { color: var(--chip-text); }
   .segmented .glyph { display: block; width: 26px; height: 13px; margin: 0 auto; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
+  .segmented .glyph.solid { fill: currentColor; stroke: none; }
 
   /* Toggle switch: square track, square knob. */
   .switch { -webkit-appearance: none; appearance: none; position: relative; width: 38px; height: 22px; margin: 0; flex: none; background: var(--track-hover); cursor: pointer; transition: background .25s var(--ease); }
@@ -208,7 +210,15 @@
   .select .icon { position: absolute; right: 9px; top: 50%; width: 15px; height: 15px; transform: translateY(-50%); color: var(--muted); pointer-events: none; }
   .select select { -webkit-appearance: none; appearance: none; width: 100%; height: var(--control); padding: 0 32px 0 11px; background: var(--track); color: var(--text); font: inherit; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .2s var(--ease); }
   .select select:hover { background: var(--track-hover); }
-  .select select option { color: var(--black); background: var(--white); }
+  .select select option, .select select optgroup { color: var(--black); background: var(--white); }
+  /* Dropdowns open this list (the export menu's look) instead of the system one. */
+  .listbox { position: fixed; z-index: 9; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 6px; background: var(--menu); color: var(--text); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+  .listbox .group { padding: 10px 10px 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
+  .listbox .group ~ .group { margin-top: 6px; padding-top: 14px; box-shadow: inset 0 1px 0 var(--line); }
+  .listbox button { display: grid; grid-template-columns: 1fr 15px; align-items: center; gap: 12px; width: 100%; height: 34px; padding: 0 10px; text-align: left; font-size: 14px; font-weight: 500; white-space: nowrap; transition: background .15s var(--ease); }
+  .listbox button:hover, .listbox button:focus { background: var(--button); box-shadow: none; outline: none; }
+  .listbox button:disabled { color: var(--faint); cursor: default; }
+  .listbox .icon { width: 15px; height: 15px; }
   .text-field { width: 100%; height: var(--control); padding: 0 11px; background: var(--track); color: var(--text); font: inherit; font-size: 14px; font-weight: 500; transition: background .2s var(--ease); }
   .text-field:hover { background: var(--track-hover); }
 
@@ -249,7 +259,7 @@
   .note.invalid { color: #FF8A65; }
   body[data-tone="light"] .note.invalid { color: var(--error); }
 
-  .look-button { transition: background .2s var(--ease); display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 10px; align-items: center; width: 100%; height: var(--control); padding: 3px 8px 3px 3px; background: var(--track); text-align: left; }
+  .look-button { transition: background .2s var(--ease); display: grid; grid-template-columns: 28px minmax(0, 1fr) auto; gap: 8px; align-items: center; width: 100%; height: var(--control); padding: 3px 8px 3px 3px; background: var(--track); text-align: left; }
   .look-button:hover { background: var(--track-hover); }
   .look-button canvas { width: 28px; height: 28px; display: block; }
   .look-button .name { font-size: 14px; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -289,9 +299,10 @@
   .menu button:hover:not(:disabled), .menu label:hover { background: var(--button); }
   .menu .icon { width: 17px; height: 17px; color: var(--muted); }
   .menu-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; height: 40px; padding: 0 6px 0 12px; }
-  .menu-label { display: flex; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; }
+  /* Same icon column and gap as the menu buttons, so the PNG label lines up with the rows below it. */
+  .menu-label { display: grid; grid-template-columns: 18px 1fr; align-items: center; gap: 12px; font-size: 14px; font-weight: 500; }
   .menu .scales { display: flex; gap: 2px; }
-  .menu .scales button { display: grid; place-items: center; width: 38px; height: 30px; padding: 0; background: var(--button); font: 600 12.5px var(--sans); font-variant-numeric: tabular-nums; }
+  .menu .scales button { display: flex; align-items: center; justify-content: center; width: 38px; height: 30px; padding: 0; text-align: center; background: var(--button); font: 600 12.5px var(--sans); font-variant-numeric: tabular-nums; }
   .menu .scales button:hover { background: var(--cta); color: var(--cta-text); }
   .menu small { color: var(--muted); font-size: 11.5px; font-weight: 400; }
   .menu hr { border: 0; height: 1px; background: var(--line); margin: 5px 6px; }
@@ -407,7 +418,7 @@
           <hr>
           <button role="menuitem" data-action="link" data-icon="link"><span>Copy link</span><small>this exact look</small></button>
           <hr>
-          <label><span>Transparent background</span><input type="checkbox" class="switch" id="transparent"></label>
+          <label data-icon="transparent"><span>Transparent background</span><input type="checkbox" class="switch" id="transparent"></label>
         </div>
       </div>
       <button class="square" id="variation" aria-label="Remix" title="Remix: new colours and settings within this pattern" data-icon="shuffle"></button>
@@ -444,7 +455,7 @@ const LUCIDE = {
   undo: 'Undo2', redo: 'Redo2', export: 'Download', shuffle: 'Shuffle', reset: 'RotateCcw',
   pause: 'Pause', play: 'Play', close: 'X', plus: 'Plus', minus: 'Minus', dice: 'Dice5', check: 'Check',
   fill: 'Maximize2', fit: 'Scan', image: 'Image', vector: 'FileCode2', sparkles: 'Sparkles', film: 'Film',
-  link: 'Link', upload: 'Upload', trash: 'Trash2', bookmark: 'Bookmark',
+  link: 'Link', upload: 'Upload', transparent: 'SquareDashed',
 };
 const icon = (name) => {
   const node = window.lucide && window.lucide.icons[LUCIDE[name]];
@@ -519,6 +530,7 @@ const f2 = (v) => v.toFixed(2);
 const signed = (v, digits = 1) => (v > 0 ? '+' : '') + v.toFixed(digits);
 const offOr = (v) => v === 0 ? 'off' : (Math.round(v * 100) / 100).toString();
 const stepsFmt = (v) => v ? String(Math.round(v)) : 'smooth';
+const cellCount = (v) => Math.round(v) === 1 ? '1 cell' : `${Math.round(v)} cells`;
 
 // ---------- Control builders ----------
 // `key` is a dotted path into the pattern's values; an array of paths moves them together.
@@ -583,33 +595,45 @@ const ROW_DEFAULTS = {
   ...rowsPalette('Mono Light'), format: '1:1', seed: 1,
 };
 
+// Built-in looks are named in code vocabulary, after the OneSyntax brand.
 const ROW_PRESETS = [
-  { name: 'Soft Wave', params: {} },
-  { name: 'Meter Rows', params: {
+  { name: 'Hello World', params: {} },
+  { name: 'Throughput', params: {
     rows: 16, items: 48, margin: 120, gapX: 0.55, gapY: 0.15, opacityMin: 0.12,
     frequency: 1, rowShift: 0, frequencyStep: 0.08, sharpness: 1.6, ...rowsPalette('Ember') } },
-  { name: 'Barcode Rows', params: {
+  { name: 'Checksum', params: {
     rows: 8, items: 88, margin: 85, gapX: 0.35, gapY: 0.12, opacityMin: 0,
     frequency: 4.6, phase: 30, rowShift: 40, sharpness: 3 } },
-  { name: 'Threshold Rows', params: {
+  { name: 'Pipeline', params: {
     rows: 44, items: 3, margin: 80, gapX: 0.02, gapY: 0.45, opacityMin: 0.08,
     frequency: 1.2, rowShift: 18, sharpness: 1.4, ...rowsPalette('Midnight') } },
-  { name: 'Halftone Dots', params: {
+  { name: 'Dot Notation', params: {
     rows: 33, items: 33, margin: 80, gapX: 0.3, gapY: 0.3, radius: 1, opacityMin: 0,
     frequency: 1.5, rowShift: 20, sharpness: 1, ...rowsPalette('Blue on White') } },
-  { name: 'Azure Drift', params: {
+  { name: 'Async', params: {
     rows: 25, items: 20, itemStep: 0.6, margin: 65, gapX: 0.3, gapY: 0.55, radius: 1, opacityMin: 0.1,
     frequency: 2.5, rowShift: -20, frequencyStep: 0.04, sharpness: 1.2, ...rowsPalette('Ice') } },
-  { name: 'Night Tide', params: {
+  { name: 'Night Build', params: {
     rows: 40, items: 12, itemStep: 1.5, radius: 1, opacityMin: 0,
     frequency: 3.5, rowShift: -25, sharpness: 2.4, speed: 0.5, ...rowsPalette('Midnight') } },
-  { name: 'Pulse Dots', params: {
+  { name: 'Heartbeat', params: {
     rows: 28, items: 28, margin: 90, gapX: 0.1, gapY: 0.1, radius: 1, opacityMin: 0.35,
     sizeMin: 0.15, sizeMax: 1, frequency: 1.5, rowShift: 24, sharpness: 1.3, speed: 1, ...rowsPalette('Ember') } },
-  { name: 'RFD Rows', params: {
+  { name: 'Stdout', params: {
     rows: 31, items: 4, margin: 95, gapX: 0.15, gapY: 0.35, opacityMin: 0.15,
     frequency: 0.8, rowShift: 35, sharpness: 1, ...rowsPalette('Midnight') } },
 ];
+// Each studio pattern's built-in look, by pattern name.
+const STUDIO_LOOKS = {
+  'Sinky Meter': 'Telemetry', 'Amaya Flow': 'Data Flow', Barcode: 'Bitstream', 'Threshold Stripes': 'Stack Trace',
+  'Halftone Diagonal': 'Gradient Descent', 'Contour Field': 'Vector Field', Strands: 'Threads', 'Kaleido Pixels': 'Recursion', 'RFD Stack': 'Call Stack',
+};
+// Looks renamed in the brand vocabulary; a session left on an old name follows it to the new one.
+const RENAMED_LOOKS = {
+  'Soft Wave': 'Hello World', 'Meter Rows': 'Throughput', 'Barcode Rows': 'Checksum', 'Threshold Rows': 'Pipeline', 'Halftone Dots': 'Dot Notation',
+  'Azure Drift': 'Async', 'Night Tide': 'Night Build', 'Pulse Dots': 'Heartbeat', 'RFD Rows': 'Stdout',
+  ...STUDIO_LOOKS, Cymatics: 'Resonance', Interference: 'Concurrency', 'Logo Field': 'Source',
+};
 // The studio patterns keep their geometry and move onto the closest brand palette.
 const STUDIO_PALETTES = {
   'Sinky Meter': 'Ember', 'Amaya Flow': 'Ice', Barcode: 'Mono Light', 'Threshold Stripes': 'Midnight', 'Halftone Diagonal': 'Blue on White',
@@ -625,6 +649,13 @@ function rowWave(v, u, r, time, wave) {
 
 // Wave Rows draws with flat colour; these keep the shared renderer's gradient inputs defined.
 const flatColour = (background) => ({ continuous: false, background, stops: 2, stop1: '#000000', stop2: '#000000', stop3: '#000000', source: 'constant', gradientAngle: 0 });
+
+/** Writes mark `n` straight into the shared instance layout (no skew), without a throwaway array per mark. */
+function putMark(I, n, x, y, w, h, angle, radius, shape, red, green, blue, opacity, layer, id) {
+  const o = n * STRIDE;
+  I[o] = x; I[o + 1] = y; I[o + 2] = w; I[o + 3] = h; I[o + 4] = angle; I[o + 5] = radius; I[o + 7] = shape;
+  I[o + 8] = red; I[o + 9] = green; I[o + 10] = blue; I[o + 11] = opacity; I[o + 12] = layer; I[o + 13] = id;
+}
 
 /** Wave Rows emits the same instance layout as the studio engine, so one renderer draws both. */
 function rowsGeometry(v, time) {
@@ -644,7 +675,7 @@ function rowsGeometry(v, time) {
       const opacity = Math.min(1, v.opacityMin + (v.opacityMax - v.opacityMin) * k);
       const size = Math.max(0, v.sizeMin + (v.sizeMax - v.sizeMin) * k);
       if (opacity <= 0.002 || size <= 0.001) continue;
-      instances.set([m + (i + 0.5) * cellW, m + (r + 0.5) * rowH, w * size, h * size, 0, v.radius * Math.min(w, h) * size / 2, 0, 0, red, green, blue, opacity, 1, id], count++ * STRIDE);
+      putMark(instances, count++, m + (i + 0.5) * cellW, m + (r + 0.5) * rowH, w * size, h * size, 0, v.radius * Math.min(w, h) * size / 2, 0, red, green, blue, opacity, 1, id);
     }
   }
   const params = { name: 'Wave Rows', seed: 0, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
@@ -698,6 +729,179 @@ const pulseControls = [
 ];
 const PULSE_HINT = 'Fades and scales marks along a sine wave, like Wave Rows.';
 
+// ---------- Bracket: the OneSyntax brace, cell by cell ----------
+// The brace from the OneSyntax Rebranding file, set in Geist Pixel: 9 × 23 cells, read off the Figma vectors.
+// The closing brace mirrors the opening one. The brand's pixel and line versions share these cells and differ
+// only in how a cell is drawn (a square, or a bar half a cell tall) and in the space between the two braces.
+const BRACE_ROWS = [
+  '.....####', '....#####', '....##...',
+  '...##....', '...##....', '...##....', '...##....', '...##....', '...##....',
+  '..##.....', '####.....', '##.......', '####.....', '..##.....',
+  '...##....', '...##....', '...##....', '...##....', '...##....', '...##....',
+  '....##...', '....#####', '.....####',
+];
+const BRACE_W = 9, BRACE_H = BRACE_ROWS.length;
+
+/** The chosen mark's cells as [column, row], with `spacing` empty columns between the two braces. */
+function braceCells(mark, spacing) {
+  const cells = [], gap = Math.max(0, Math.round(spacing));
+  const open = mark !== 'close', close = mark !== 'open';
+  BRACE_ROWS.forEach((line, row) => [...line].forEach((cell, column) => {
+    if (cell !== '#') return;
+    if (open) cells.push([column, row]);
+    if (close) cells.push([(open ? BRACE_W + gap : 0) + BRACE_W - 1 - column, row]);
+  }));
+  return { cells, width: open && close ? 2 * BRACE_W + gap : BRACE_W, height: BRACE_H };
+}
+
+// One layout covers everything: a single mark is a 1 × 1 grid, a pattern is more columns and rows.
+const MARK_DEFAULTS = {
+  mark: 'pair', spacing: 3, columns: 1, rows: 1, gap: 3, margin: 230,
+  texture: 'pixel', detail: 1, weight: 1, opacity: 1,
+  effect: 'wave', speed: 1, depth: 0.5, frequency: 1, direction: 90, affects: 'opacity',
+  palette: 'Ice', background: '#BDDFFF', ink: '#0082FD', ink2: '#0A89FF', highlight: '#151515', format: '1:1', seed: 1,
+};
+// The marks run from the palette's first colour at the top to its second at the bottom; the accent highlights.
+const markPalette = (name) => { const p = paletteNamed(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2, highlight: p.accent }; };
+
+const solidGlyph = (inner) => `<svg class="glyph solid" viewBox="0 0 24 12" aria-hidden="true">${inner}</svg>`;
+const TEXTURE_OPTIONS = [
+  ['Pixel', 'pixel', solidGlyph('<path d="M5 1.5h4v4H5zM10 1.5h4v4h-4zM15 1.5h4v4h-4zM5 6.5h4v4H5zM10 6.5h4v4h-4zM15 6.5h4v4h-4z"/>')],
+  ['Line', 'line', solidGlyph('<path d="M8 1.5h11v2H8zM4 5h15v2H4zM8 8.5h11v2H8z"/>')],
+  ['Dot', 'dot', solidGlyph([7, 12, 17].map((x) => `<circle cx="${x}" cy="3.5" r="2"/><circle cx="${x}" cy="8.5" r="2"/>`).join(''))],
+  ['Slash', 'slash', glyph('M5 10.5 9 1.5M10 10.5l4-9M15 10.5l4-9')],
+];
+const MARK_EFFECTS = [['None', 'none'], ['Wave', 'wave'], ['Scan', 'scan'], ['Build', 'build'], ['Glitch', 'glitch'], ['Ripple', 'ripple'], ['Sparkle', 'sparkle']];
+const hasEffect = (v) => v.effect !== 'none';
+const waveEffect = (v) => v.effect === 'wave' || v.effect === 'ripple';
+
+function hash2(a, b) {
+  let n = Math.imul((a | 0) ^ 0x9E3779B9, 0x85EBCA6B) ^ Math.imul((b | 0) + 0x632BE5AB, 0xC2B2AE35);
+  n ^= n >>> 15; n = Math.imul(n, 0x2C1B3C6D); n ^= n >>> 12; n = Math.imul(n, 0x297A2D39); n ^= n >>> 15;
+  return (n >>> 0) / 4294967296;
+}
+
+/**
+ * The bracket as a grid of marks (1 × 1 for a single one), centred, with whole-cell gaps so every mark shares
+ * one cell lattice. Each cell can split into finer cells (`detail`). Effects turn whole cycles per loop and
+ * start with the mark fully shown, so stills and thumbnails read.
+ */
+const SCAN_BAND = 0.25, BUILD_SHUFFLE = 0.3, BUILD_EDGE = 0.12, MAX_MARK_PARTS = 80000;
+function markGeometry(v, time) {
+  const [width, height] = FORMATS[v.format] || FORMATS['1:1'];
+  const { cells, width: markW, height: markH } = braceCells(v.mark, v.spacing);
+  const columns = Math.max(1, Math.round(v.columns)), rows = Math.max(1, Math.round(v.rows)), gap = Math.max(0, Math.round(v.gap));
+  const margin = E.clamp(v.margin, 0, Math.min(width, height) / 2 - 1);
+  const stepX = markW + gap, stepY = markH + gap;
+  const blockCols = columns * stepX - gap, blockRows = rows * stepY - gap;
+  const pitch = Math.min((width - 2 * margin) / blockCols, (height - 2 * margin) / blockRows);
+  const ox = (width - blockCols * pitch) / 2, oy = (height - blockRows * pitch) / 2;
+  // Lines split a cell into thinner scanlines; the other textures into a finer grid. On big grids detail steps
+  // down to stay within MAX_MARK_PARTS, where the finer split could not be seen anyway and frames would slow.
+  let n = Math.max(1, Math.min(4, Math.round(v.detail)));
+  const parts = (k) => columns * rows * cells.length * (v.texture === 'line' ? k : k * k);
+  while (n > 1 && parts(n) > MAX_MARK_PARTS) n--;
+  const nx = v.texture === 'line' ? 1 : n, ny = n;
+  const subCount = nx * ny, sw = pitch / nx, sh = pitch / ny, weight = E.clamp(v.weight, 0.05, 1), base = E.clamp(v.opacity);
+
+  const effect = hasEffect(v) ? v.effect : 'none', depth = E.clamp(v.depth);
+  const tau = v.speed * time / 5, cycle = tau - Math.floor(tau), TURN = 2 * Math.PI;
+  const theta = v.direction * Math.PI / 180, cos = Math.cos(theta), sin = Math.sin(theta);
+  const centreX = width / 2, centreY = height / 2, blockW = blockCols * pitch, blockH = blockRows * pitch;
+  const extent = Math.max(1e-6, Math.abs(cos) * blockW + Math.abs(sin) * blockH), radiusUnit = Math.max(blockW, blockH) / 2;
+  const opacityToo = v.affects !== 'size', sizeToo = v.affects !== 'opacity';
+  const scanAt = -SCAN_BAND + ((cycle + 0.5) % 1) * (1 + 2 * SCAN_BAND);
+  const build = (cycle + 0.5) % 1;
+  const grow = (progress, order) => E.clamp((progress * (1 + BUILD_EDGE) - order) / BUILD_EDGE);
+  // Glitch: six moments per cycle; in most, a few bands of rows jump sideways by whole cells.
+  const glitchKey = (v.seed * 7919 + Math.floor(cycle * 6) * 104729) | 0;
+  const calm = hash2(glitchKey, 3) > 0.8, chunkRows = 1 + Math.floor(hash2(glitchKey, 1) * 3);
+  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.ink2), hi = E.colourRGB(v.highlight);
+
+  const instances = new Float32Array(columns * rows * cells.length * subCount * STRIDE);
+  let count = 0;
+  for (let ty = 0; ty < rows; ty++) for (let tx = 0; tx < columns; tx++) for (const [c, r] of cells) {
+    const i = tx * stepX + c, j = ty * stepY + r, cellId = j * blockCols + i;  // ids hold steady from frame to frame
+    let dx = 0, glitched = false;
+    if (effect === 'glitch' && !calm) {
+      const chunk = Math.floor(j / chunkRows);
+      if (hash2(glitchKey, chunk + 11) < depth * 0.5) {
+        glitched = true;
+        dx = (hash2(glitchKey, chunk + 97) < 0.5 ? -1 : 1) * (1 + Math.floor(hash2(glitchKey, chunk + 53) * 3)) * pitch;
+      }
+    }
+    for (let sy = 0; sy < ny; sy++) for (let sx = 0; sx < nx; sx++) {
+      const id = cellId * subCount + sy * nx + sx;
+      const cx = ox + i * pitch + (sx + 0.5) * sw, cy = oy + j * pitch + (sy + 0.5) * sh;
+      const p = ((cx - centreX) * cos + (cy - centreY) * sin) / extent + 0.5;  // 0..1 across the mark, along Direction
+      let a = 1, s = 1, h = 0;
+      switch (effect) {
+        case 'wave': case 'ripple': {
+          const x = effect === 'wave' ? p : Math.hypot(cx - centreX, cy - centreY) / radiusUnit;
+          const m = 1 - depth * (1 - (Math.sin(TURN * (v.frequency * x - tau)) + 1) / 2);
+          if (opacityToo) a = m;
+          if (sizeToo) s = m;
+          break;
+        }
+        case 'scan': {
+          let q = Math.max(0, 1 - Math.abs(p - scanAt) / SCAN_BAND);
+          q = q * q * (3 - 2 * q);
+          if (opacityToo) a = 1 - depth * (1 - q);
+          if (sizeToo) s = 1 + 0.6 * q;
+          h = q;
+          break;
+        }
+        case 'build': {
+          // Cells arrive along Direction (with a little seeded shuffle), hold, then leave in the same order.
+          const order = E.clamp(p) * (1 - BUILD_SHUFFLE) + hash2(v.seed, id) * BUILD_SHUFFLE;
+          const shown = build < 0.4 ? grow(build / 0.4, order) : build < 0.6 ? 1 : 1 - grow((build - 0.6) / 0.4, order);
+          a = opacityToo ? shown : shown > 0 ? 1 : 0;
+          if (sizeToo) s = shown;
+          h = depth * 4 * shown * (1 - shown);
+          break;
+        }
+        case 'glitch':
+          if (glitched) h = depth;
+          if (!calm && hash2(glitchKey ^ id, 5) < depth * 0.06) a = 0.15;
+          break;
+        case 'sparkle': {
+          // Each cell blinks on its own seeded beat, once or twice a cycle.
+          const blink = Math.pow(0.5 + 0.5 * Math.cos(TURN * (tau * (1 + Math.floor(hash2(v.seed + 1, id) * 2)) + hash2(v.seed, id))), 4);
+          if (opacityToo) a = 1 - depth * blink;
+          if (sizeToo) s = 1 - depth * blink;
+          break;
+        }
+        default: break;
+      }
+      const opacity = base * a;
+      if (opacity <= 0.002 || s <= 0.001) continue;
+      const t = (r + (sy + 0.5) / ny) / markH;  // the ink's place on its top-to-bottom gradient
+      let red = ink[0] + (ink2[0] - ink[0]) * t, green = ink[1] + (ink2[1] - ink[1]) * t, blue = ink[2] + (ink2[2] - ink[2]) * t;
+      if (h > 0) { red += (hi[0] - red) * h; green += (hi[1] - green) * h; blue += (hi[2] - blue) * h; }
+      let w = sw * weight * s, tall = sh * weight * s, angle = 0, shape = 0;
+      if (v.texture === 'line') w = sw;  // bars run the full cell, so neighbouring cells join into one line
+      else if (v.texture === 'dot') shape = 4;
+      else if (v.texture === 'slash') { w = sw * Math.SQRT2 * Math.min(1, s); tall = sw * weight * 0.5 * s; angle = -Math.PI / 4; }
+      putMark(instances, count++, cx + dx, cy, w, tall, angle, 0, shape, red, green, blue, Math.min(1, opacity), 1, id);
+    }
+  }
+  const params = { name: 'Bracket', seed: 0, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
+  return { instances, count, markCount: count, width, height, params };
+}
+
+// Four starting points: the brand's pixel and line marks, a build-in, and the mark repeated as a pattern.
+const MARK_PRESETS = [
+  { name: 'Scope', params: { texture: 'pixel', weight: 1, effect: 'wave', depth: 0.3, frequency: 1, direction: 90, affects: 'size',
+    palette: 'Custom', background: '#67B6FF', ink: '#0082FD', ink2: '#BDDFFF', highlight: '#FCFCFC' } },
+  { name: 'Render', params: { texture: 'line', weight: 0.5, spacing: 4, effect: 'scan', depth: 0.75, direction: 90, affects: 'both',
+    ...markPalette('Mono Light'), highlight: '#0A89FF' } },
+  { name: 'Compile', params: { texture: 'pixel', weight: 0.84, effect: 'build', direction: 0, depth: 1, affects: 'both', ...markPalette('Mono Dark') } },
+  { name: 'Loop', params: { columns: 4, rows: 4, gap: 4, margin: 100, texture: 'pixel', weight: 0.82, effect: 'wave', frequency: 1.5, direction: 45,
+    depth: 0.55, affects: 'size', ...markPalette('Blue on White') } },
+];
+const MARK_HINT = 'Pixel and Line are the brand\'s two versions of the mark. Detail splits each cell into finer pixels or scanlines.';
+const EFFECT_HINT = 'Every effect loops: whole speeds repeat in 5 s, half speeds in 10 s.';
+
 // ---------- Studio patterns, tailored to a short list of controls ----------
 const waveFrequency = range('field.waveA.frequency', 'Frequency', 0, 12, 0.05, times);
 const waveDirection = range('field.waveA.direction', 'Direction', -180, 180, 1, deg);
@@ -709,7 +913,9 @@ const animate = range('motion.speed', 'Speed', -3, 3, 0.5, offOr);
 const margin = range('layout.margin', 'Margin', 0, 400, 1, px);
 const columns = (label = 'Columns', max = 100) => range('layout.columns', label, 1, max, 1, int);
 const rowsCount = (label = 'Rows', max = 100) => range('layout.rows', label, 1, max, 1, int);
-const studioLook = (...extra) => [PALETTE, colour('colour.background', 'Background'), gradient('Colours'), ...extra, FORMAT];
+// Opacity for every pattern whose marks share one opacity (Cymatics maps it to the field, under Resting dots).
+const markOpacity = { ...range(both('mappings.opacity'), 'Opacity', 0, 1, 0.01, pct), when: (v) => v.mappings.opacity.source === 'constant' };
+const studioLook = (...extra) => [PALETTE, colour('colour.background', 'Background'), gradient('Colours'), ...extra, markOpacity, FORMAT];
 
 const PATTERNS = [
   { name: 'Wave Rows', kind: 'rows', description: 'Rows of items, each one\'s opacity and size set by a sine wave.',
@@ -811,14 +1017,39 @@ const PATTERNS = [
   { name: 'Logo Field', group: 'Wave studies',
     description: 'The OneSyntax mark as a field: contours ripple out from its exact outline.',
     sections: [
-      ['Logo', [{ ...choice('field.logo.shape', 'Shape', [['Symbol', 'symbol'], ['{OS}', 'monogram'], ['Text', 'text']]), rebuild: true },
+      ['Logo', [{ ...choice('field.logo.shape', 'Shape', [['Symbol', 'symbol'], ['{OS}', 'monogram'], ['{ }', 'brace'], ['Text', 'text']]), rebuild: true },
         { ...textInput('field.logo.text', 'Text'), when: (v) => v.field.logo.shape === 'text' },
-        range('field.logo.size', 'Size', 0.1, 0.95, 0.01, pct), range('field.logo.frequency', 'Contours', 0, 30, 0.5, f1),
-        choice('field.logo.fill', 'Inside', [['Solid', 'on'], ['Contours', 'off']]), animate],
-        'Distance from the outline, measured on the real logo files (text is set in Geist). Speed sends the contours outward.'],
-      ['Grid', [range(['layout.columns', 'layout.rows'], 'Pixels across', 8, 140, 1, int),
+        range('field.logo.size', 'Size', 0.1, 0.95, 0.01, pct),
+        choice('field.logo.fill', 'Inside', [['Solid', 'on'], ['Empty', 'empty'], ['Contours', 'off']])],
+        'Distance from the outline, measured on the real logo files: text is set in Geist, the bracket on its Geist Pixel cells.'],
+      ['Contours', [range('field.logo.frequency', 'Contours', 0, 30, 0.5, f1), range('field.logo.line', 'Sharpness', 1, 8, 0.05, f2),
+        range('field.logo.fade', 'Fade', 0, 3, 0.01, f2), animate],
+        'Sharpness thins the bands into fine lines; Fade lets them die away from the mark. Speed sends them outward.'],
+      ['Grid', [range(['layout.columns', 'layout.rows'], 'Pixels across', 8, 160, 1, int),
         range(['mappings.thickness.max', 'mappings.length.max'], 'Pixel size', 1, 30, 0.5, px), margin]],
     ], look: studioLook() },
+
+  // ---------- Bracket ----------
+  { name: 'Bracket', kind: 'mark', group: 'Bracket',
+    description: 'The OneSyntax bracket on its own pixel grid, drawn as pixels, lines, dots or slashes and set in motion.',
+    sections: [
+      ['Mark', [{ ...choice('mark', 'Mark', [['{ }', 'pair'], ['{', 'open'], ['}', 'close']]), rebuild: true },
+        { ...range('spacing', 'Spacing', 0, 9, 1, cellCount), when: (v) => v.mark === 'pair' },
+        { ...range('columns', 'Columns', 1, 12, 1, int), rebuild: true }, { ...range('rows', 'Rows', 1, 12, 1, int), rebuild: true },
+        { ...range('gap', 'Gap', 0, 12, 1, cellCount), when: (v) => Math.round(v.columns) > 1 || Math.round(v.rows) > 1 },
+        range('margin', 'Margin', 0, 500, 1, px)],
+        'One mark, or Columns and Rows of them. Size follows the margin; gaps are whole cells, so every mark sits on one grid.'],
+      ['Style', [choice('texture', 'Draw as', TEXTURE_OPTIONS), range('detail', 'Detail', 1, 4, 1, (x) => int(x) + '×'),
+        range('weight', 'Weight', 0.05, 1, 0.01, pct), range('opacity', 'Opacity', 0, 1, 0.01, pct)], MARK_HINT],
+      ['Effect', [{ ...choice('effect', 'Effect', MARK_EFFECTS), rebuild: true },
+        { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: hasEffect },
+        { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: hasEffect },
+        { ...choice('affects', 'Changes', [['Opacity', 'opacity'], ['Size', 'size'], ['Both', 'both']]), when: (v) => hasEffect(v) && v.effect !== 'glitch' },
+        { ...range('frequency', 'Frequency', 0.5, 8, 0.5, times), when: waveEffect },
+        { ...range('direction', 'Direction', -180, 180, 15, deg), when: (v) => ['wave', 'scan', 'build'].includes(v.effect) }], EFFECT_HINT],
+    ],
+    look: [PALETTE, colour('background', 'Background'), colour('ink', 'Top colour'), colour('ink2', 'Bottom colour'),
+      colour('highlight', 'Highlight', (v) => ['scan', 'build', 'glitch'].includes(v.effect)), FORMAT] },
 ];
 for (const p of PATTERNS) {
   p.kind = p.kind || 'studio';
@@ -828,12 +1059,19 @@ for (const p of PATTERNS) {
   if (!p.noShape) p.sections.push(['Wave shape', shapeControls('field.'), SHAPE_HINT]);
   p.sections.push(['Pulse', pulseControls, PULSE_HINT]);
 }
-const PATTERN_GROUPS = ['Wave Rows', 'Studio patterns', 'Wave studies'].map((g) => [g, PATTERNS.filter((p) => p.group === g).map((p) => p.name)]);
+const GROUPS = ['Wave Rows', 'Studio patterns', 'Wave studies', 'Bracket'];
+const PATTERN_GROUPS = GROUPS.map((g) => [g, PATTERNS.filter((p) => p.group === g).map((p) => p.name)]);
 
 // ---------- Values ----------
 const patternOf = (name) => PATTERNS.find((p) => p.name === name) || PATTERNS[0];
-const isRows = (st) => patternOf(st.pattern).kind === 'rows';
+const kindOf = (st) => patternOf(st.pattern).kind;
+const isRows = (st) => kindOf(st) === 'rows';
+const isMark = (st) => kindOf(st) === 'mark';
+// Wave Rows and Bracket keep flat values: their palette, format and speed sit at the top level.
+const isFlat = (st) => kindOf(st) !== 'studio';
 const keysOf = (c) => Array.isArray(c.key) ? c.key : [c.key];
+const PAIRS = { '.min': '.max', '.max': '.min', Min: 'Max', Max: 'Min' };
+const partnerKey = (key) => { const m = key.match(/^(.*)(\.min|\.max|Min|Max)$/); return m ? m[1] + PAIRS[m[2]] : null; };
 const getPath = (o, path) => path.split('.').reduce((v, k) => (v == null ? v : v[k]), o);
 function setPath(o, path, value) {
   const parts = path.split('.'), last = parts.pop();
@@ -872,22 +1110,24 @@ function deepMerge(target, source) {
   return target;
 }
 
-function sanitizeRows(params) {
-  const out = deepMerge({ ...ROW_DEFAULTS }, params);
-  if (!FORMATS[out.format]) out.format = ROW_DEFAULTS.format;
+function sanitizeFlat(defaults, params) {
+  const out = deepMerge({ ...defaults }, params);
+  if (!FORMATS[out.format]) out.format = defaults.format;
   return out;
 }
+const sanitizeRows = (params) => sanitizeFlat(ROW_DEFAULTS, params);
+const sanitizeMark = (params) => sanitizeFlat(MARK_DEFAULTS, params);
 
 // Wave studies start from the studio's base preset with wave A off and one new field source on.
 const mappingOf = (source, min, max) => ({ source, min, max });
-function study(name, paletteName, tune) {
+function study(name, look, paletteName, tune) {
   const p = E.basePreset(name, 'Signal');
   p.field.waveA.enabled = false;
   tune(p);
-  return { name, paletteName, params: p };
+  return { name, look, paletteName, params: p };
 }
 const STUDY_PRESETS = [
-  study('Cymatics', 'Mono Dark', (p) => {
+  study('Cymatics', 'Resonance', 'Mono Dark', (p) => {
     Object.assign(p.layout, { columns: 76, rows: 76, margin: 70 });
     Object.assign(p.field.chladni, { enabled: true, weight: 1, n: 3, m: 7, mix: -45 });
     p.shaping.gamma = 4.5;
@@ -896,31 +1136,46 @@ const STUDY_PRESETS = [
     p.mappings.opacity = mappingOf('field', 0.18, 1);
     p.colour.source = 'constant';
   }),
-  study('Interference', 'Midnight', (p) => {
+  study('Interference', 'Concurrency', 'Midnight', (p) => {
     Object.assign(p.layout, { columns: 84, rows: 84, margin: 60 });
     Object.assign(p.field.ripples, { enabled: true, weight: 1, sources: 3, spread: 0.2, frequency: 10, decay: 0, rotation: 90 });
     p.shaping.contrast = 1.35;
     p.marks.shape = 'Dot';
     p.mappings.thickness = mappingOf('field', 0.6, 10); p.mappings.length = mappingOf('field', 0.6, 10);
   }),
-  study('Logo Field', 'Blueprint', (p) => {
-    Object.assign(p.layout, { columns: 64, rows: 64, margin: 70 });
-    Object.assign(p.field.logo, { enabled: true, weight: 1, shape: 'symbol', size: 0.46, frequency: 9, fill: 'on' });
-    p.mappings.thickness = mappingOf('field', 1, 14); p.mappings.length = mappingOf('field', 1, 14);
+  // The logo stays the hero: fine contour lines that fade out with distance from it.
+  study('Logo Field', 'Source', 'Blueprint', (p) => {
+    Object.assign(p.layout, { columns: 96, rows: 96, margin: 60 });
+    Object.assign(p.field.logo, { enabled: true, weight: 1, shape: 'symbol', size: 0.46, frequency: 11, fill: 'on', line: 2.2, fade: 0.7 });
+    p.mappings.thickness = mappingOf('field', 0.6, 10); p.mappings.length = mappingOf('field', 0.6, 10);
+  }),
+  study('Logo Field', 'Open Source', 'Primary', (p) => {
+    Object.assign(p.layout, { columns: 92, rows: 92, margin: 60 });
+    Object.assign(p.field.logo, { enabled: true, weight: 1, shape: 'brace', size: 0.5, frequency: 12, fill: 'on', line: 2.6, fade: 0.5 });
+    p.marks.shape = 'Dot';
+    p.mappings.thickness = mappingOf('field', 0.6, 11); p.mappings.length = mappingOf('field', 0.6, 11);
   }),
 ];
 
 const BUILT_INS = [
   ...ROW_PRESETS.map((p) => ({ name: p.name, group: 'Wave Rows', pattern: 'Wave Rows', values: sanitizeRows(p.params) })),
-  ...E.PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: p.name, values: studioPalette(normaliseStudio(structuredClone(p)), STUDIO_PALETTES[p.name]) })),
-  ...STUDY_PRESETS.map((p) => ({ name: p.name, group: 'Wave studies', pattern: p.name, values: studioPalette(normaliseStudio(p.params), p.paletteName) })),
+  ...E.PRESETS.map((p) => {
+    const values = studioPalette(normaliseStudio(structuredClone(p)), STUDIO_PALETTES[p.name]);
+    // A light ripple over the gradient, so Speed and the ripple controls do something from the start.
+    if (p.name === 'Halftone Diagonal') values.field.waveA.weight = 0.15;
+    return { name: STUDIO_LOOKS[p.name] || p.name, group: 'Studio patterns', pattern: p.name, values };
+  }),
+  ...STUDY_PRESETS.map((p) => ({ name: p.look, group: 'Wave studies', pattern: p.name, values: studioPalette(normaliseStudio(p.params), p.paletteName) })),
+  ...MARK_PRESETS.map((p) => ({ name: p.name, group: 'Bracket', pattern: 'Bracket', values: sanitizeMark(p.params) })),
 ];
 const firstPreset = (pattern) => BUILT_INS.find((b) => b.pattern === pattern);
-const defaultsFor = (pattern) => patternOf(pattern).kind === 'rows' ? ROW_DEFAULTS : firstPreset(pattern).values;
+const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS };
+const defaultsFor = (pattern) => FLAT_DEFAULTS[patternOf(pattern).kind] || firstPreset(pattern).values;
 
 function sanitizeState(st) {
   const pattern = patternOf(st && st.pattern);
   if (pattern.kind === 'rows') return { pattern: pattern.name, values: sanitizeRows(st && st.values) };
+  if (pattern.kind === 'mark') return { pattern: pattern.name, values: sanitizeMark(st && st.values) };
   const source = st && st.values;
   const values = normaliseStudio(deepMerge(structuredClone(firstPreset(pattern.name).values), source));
   // Pulses saved before the on/off switch existed were on whenever they were set.
@@ -958,14 +1213,14 @@ function migrate(st, version) {
       const values = st.values;
       values.background = rebrandHex(values.background); values.ink = rebrandHex(values.ink);
       values.palette = OLD_PALETTES[values.palette] || values.palette;
-    } else {
+    } else if (kindOf(st) === 'studio') {
       const colour = st.values.colour;
       for (const key of ['background', 'stop1', 'stop2', 'stop3', 'accent']) colour[key] = rebrandHex(colour[key]);
       colour.palette = OLD_PALETTES[colour.palette] || colour.palette;
     }
   }
   // Version 5: studio motion moves one way in half-cycle steps instead of swaying.
-  if (v < 5 && st.pattern !== 'Wave Rows') st.values.motion.speed = Math.round(st.values.motion.speed * 2) / 2;
+  if (v < 5 && kindOf(st) === 'studio') st.values.motion.speed = Math.round(st.values.motion.speed * 2) / 2;
   return st;
 }
 
@@ -989,13 +1244,19 @@ const session = read('wave-rows-session', {});
 let state = session.state && session.state.pattern
   ? migrate(sanitizeState(session.state), session.v)
   : migrate({ pattern: 'Wave Rows', values: sanitizeRows(session.state ?? read('wave-rows', null)) }, 1);
-let current = typeof session.current === 'string' ? session.current : 'builtin:Soft Wave';
+let current = typeof session.current === 'string' ? session.current : 'builtin:Hello World';
+if (current.startsWith('builtin:') && RENAMED_LOOKS[current.slice(8)]) current = 'builtin:' + RENAMED_LOOKS[current.slice(8)];
 let baseline = presetState(current) || structuredClone(state);
 let exportOptions = { transparent: false, ...read('wave-rows-export', {}) };
 let viewMode = read('wave-rows-view', 'fill') === 'fit' ? 'fit' : 'fill';
 let time = 0, paused = false;
 
-function save() { write('wave-rows-session', { v: STORAGE_VERSION, state, current }); }
+// The session is written once editing pauses (a slider drag would otherwise write on every step), and at once on leaving.
+let saveTimer = 0;
+function save() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 300); }
+function saveNow() { clearTimeout(saveTimer); write('wave-rows-session', { v: STORAGE_VERSION, state, current }); }
+window.addEventListener('pagehide', saveNow);
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
 function storePresets() { return write('wave-rows-presets', saved); }
 
 // Preset ids: "builtin:<name>" or "saved:<name>".
@@ -1010,6 +1271,7 @@ const label = (id) => id.split(':').slice(1).join(':');
 // ---------- Geometry & drawing ----------
 function geometryFor(st, t) {
   if (isRows(st)) return rowsGeometry(st.values, t);
+  if (isMark(st)) return markGeometry(st.values, t);
   const p = st.values;
   const geo = { ...E.buildGeometry(p, t, { directional: true, loopSeconds: loopSeconds(st), sdf: logoSdf(p) }), width: p.canvas.width, height: p.canvas.height, params: p };
   applyPulse(geo, p.pulse, t, patternOf(st.pattern).sizeMode);
@@ -1033,7 +1295,7 @@ function logoSdf(v) {
   if (!sdfPending.has(key)) {
     sdfPending.add(key);
     buildLogoSdf(v.field.logo, v.canvas.width, v.canvas.height)
-      .then((sdf) => { rememberSdf(key, sdf); render(); })
+      .then((sdf) => { rememberSdf(key, sdf); requestRender(); })
       .finally(() => sdfPending.delete(key));
   }
   return null;
@@ -1066,6 +1328,13 @@ async function buildLogoSdf(logo, width, height) {
     if ('letterSpacing' in g) g.letterSpacing = `${-0.04 * size}px`;  // the brand's tight setting
     g.fillStyle = '#fff'; g.textAlign = 'center'; g.textBaseline = 'middle';
     g.fillText(text, cols / 2, rows / 2);
+  } else if (logo.shape === 'brace') {
+    // The bracket's own cells, snapped to whole pixels so neighbouring cells meet without a seam.
+    const { cells, width: markW, height: markH } = braceCells('pair', MARK_DEFAULTS.spacing);
+    const pitch = box / Math.max(markW, markH), x0 = (cols - markW * pitch) / 2, y0 = (rows - markH * pitch) / 2;
+    const at = (start, k) => Math.round(start + k * pitch);
+    g.fillStyle = '#fff';
+    for (const [c, r] of cells) g.fillRect(at(x0, c), at(y0, r), at(x0, c + 1) - at(x0, c), at(y0, r + 1) - at(y0, r));
   } else {
     // The white symbol paints its inner cut-outs black, so only light pixels count as inside.
     const img = await loadImage(logo.shape === 'monogram' ? './brand/onesyntax-os-monogram.svg' : './brand/onesyntax-symbol-white.svg');
@@ -1129,6 +1398,9 @@ function draw(target, geo, scale, { ox = 0, oy = 0, background = true } = {}) {
   target.setTransform(...base);
   target.globalAlpha = 1;
   if (background) { target.fillStyle = css(E.colourRGB(params.colour.background)); target.fillRect(0, 0, width, height); }
+  // Marks pushed past the artwork's edge are cut at the frame, the same as in the GPU view and every export.
+  target.save();
+  target.beginPath(); target.rect(0, 0, width, height); target.clip();
   let fill = null, fillTransform = base;
   if (params.colour.continuous) {
     const spec = E.screenGradient(params);
@@ -1159,6 +1431,7 @@ function draw(target, geo, scale, { ox = 0, oy = 0, background = true } = {}) {
       target.fill();
     }
   }
+  target.restore();
   target.setTransform(1, 0, 0, 1, 0, 0);
   target.globalAlpha = 1;
 }
@@ -1196,8 +1469,9 @@ function artPlacement(geo, vw, vh) {
 
 // The panel's ink follows what is actually behind it (marks included), not just the background colour:
 // the rendered pixels under the panel are averaged on a 12 × 12 probe. Thresholds overlap so an
-// animation hovering near the middle doesn't flicker between tones.
-let tone = '', toneCheckedAt = 0;
+// animation hovering near the middle doesn't flicker between tones. Reading pixels back makes the GPU
+// finish its frame, so it runs at most five times a second, with one last check once edits pause.
+let tone = '', toneCheckedAt = 0, toneTimer = 0, artBackground = '', metaText = '';
 const probe = document.createElement('canvas');
 probe.width = probe.height = 12;
 const probeContext = probe.getContext('2d', { willReadFrequently: true });
@@ -1212,6 +1486,10 @@ function sampleTone(background) {
   const light = sum / (data.length / 4);
   return tone === 'light' ? (light > 0.5 ? 'light' : 'dark') : (light > 0.6 ? 'light' : 'dark');
 }
+// Edits ask for a frame; the next animation frame draws once, however many edits arrived in between.
+let renderQueued = false;
+const requestRender = () => { renderQueued = true; };
+
 function render() {
   const geo = geometryFor(state, time);
   const vw = window.innerWidth, vh = window.innerHeight;
@@ -1229,16 +1507,20 @@ function render() {
     ctx.fillRect(0, 0, pw, ph);
     draw(ctx, geo, place.s * dpr, { ox: place.x * dpr, oy: place.y * dpr, background: false });
   }
-  document.body.style.setProperty('--art-bg', background);
+  // Style writes restyle the page, so they happen only when something changed.
+  if (background !== artBackground) { artBackground = background; document.body.style.setProperty('--art-bg', background); }
   const now = performance.now();
-  if (!animated() || now - toneCheckedAt > 250) {
+  if (now - toneCheckedAt >= 200) {
     toneCheckedAt = now;
     const nextTone = sampleTone(background);
     if (nextTone !== tone) { tone = nextTone; document.body.dataset.tone = tone; }
+  } else if (!animated() && !toneTimer) {
+    toneTimer = setTimeout(() => { toneTimer = 0; toneCheckedAt = 0; requestRender(); }, 220);
   }
   frameEl.hidden = viewMode !== 'fit';
   if (viewMode === 'fit') Object.assign(frameEl.style, { left: place.x + 'px', top: place.y + 'px', width: geo.width * place.s + 'px', height: geo.height * place.s + 'px' });
-  document.getElementById('meta').textContent = `${geo.width} × ${geo.height} · ${geo.markCount.toLocaleString()} marks${viewMode === 'fill' ? ' · filled to screen' : ''}`;
+  const meta = `${geo.width} × ${geo.height} · ${geo.markCount.toLocaleString()} marks${viewMode === 'fill' ? ' · filled to screen' : ''}`;
+  if (meta !== metaText) { metaText = meta; document.getElementById('meta').textContent = meta; }
 }
 
 // ---------- Toast ----------
@@ -1257,7 +1539,12 @@ function notify(text, { error = false, stay = false } = {}) {
 
 // ---------- Controls ----------
 const openSections = new Map();
-let uid = 0, revealNext = null;
+let uid = 0, revealNext = null, panelControls = '';
+/** Which of the pattern's controls currently show, as one string to compare. */
+const visibleControls = () => {
+  const p = patternOf(state.pattern);
+  return [...p.sections.flatMap((s) => s[1]), ...p.look].map((c) => !c.when || c.when(state.values) ? 1 : 0).join('');
+};
 
 /** Rebuilds the controls. `enter` staggers the new contents in (a new look); `reveal` springs one section open. */
 function buildPanel({ enter = false } = {}) {
@@ -1265,6 +1552,7 @@ function buildPanel({ enter = false } = {}) {
   const top = scroll.scrollTop;
   scroll.innerHTML = '';
   scroll.appendChild(buildPicker());
+  panelControls = visibleControls();
   const pattern = patternOf(state.pattern);
   for (const [title, controls, hint] of pattern.sections) scroll.appendChild(section(title, controls, hint));
   scroll.appendChild(section('Look', pattern.look));
@@ -1313,7 +1601,7 @@ function buildPicker() {
       <span class="select"><select id="patternSelect">${PATTERN_GROUPS.map(([group, names]) => `<optgroup label="${group}">${names.map((n) => `<option>${n}</option>`).join('')}</optgroup>`).join('')}</select>${icon('chevron-down')}</span></div>
     <div class="ctl"><span class="label">Look</span>
       <button class="look-button" id="presetButton" aria-haspopup="dialog">
-        <canvas width="68" height="68" aria-hidden="true"></canvas><span class="name">${escapeHtml(name)}</span><span class="browse" aria-label="Browse looks">All${icon('chevron-right')}</span>
+        <canvas width="68" height="68" aria-hidden="true"></canvas><span class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="browse" aria-label="Browse looks">All${icon('chevron-right')}</span>
       </button></div>
     <div class="ctl"><label for="seedInput">Seed</label>
       <span class="seed-row"><span class="stepper">
@@ -1321,7 +1609,8 @@ function buildPicker() {
         <input id="seedInput" type="number" min="0" max="${MAX_SEED}" step="1" inputmode="numeric" title="Same preset + same seed = same look">
         <button class="step" data-step="1" aria-label="Next seed" title="Next seed">${icon('plus')}</button></span>
       <button class="dice" id="seedDice" aria-label="Remix with a random seed" title="Remix: new colours and settings within this pattern">${icon('dice')}</button></span></div>`;
-  drawThumb(wrap.querySelector('canvas'), preset && preset.pattern === state.pattern ? preset : state);
+  if (preset && preset.pattern === state.pattern) paintThumb(wrap.querySelector('canvas'), current, preset);
+  else drawThumb(wrap.querySelector('canvas'), state);
   const select = wrap.querySelector('#patternSelect');
   select.value = state.pattern;
   select.addEventListener('change', () => applyPreset('builtin:' + firstPreset(select.value).name));
@@ -1383,12 +1672,27 @@ function control(c) {
 
   if (c.type === 'range') {
     const keys = keysOf(c);
-    row.innerHTML = `<label for="${id}">${c.label}</label><div class="slider"><input type="range" id="${id}" min="${c.min}" max="${c.max}" step="${c.step}"><span class="chip"></span></div>`;
+    row.innerHTML = `<label for="${id}">${c.label}</label><div class="slider"><input type="range" id="${id}" data-key="${keys[0]}" min="${c.min}" max="${c.max}" step="${c.step}"><span class="chip"></span></div>`;
     const slider = row.querySelector('.slider'), input = slider.querySelector('input'), chip = slider.querySelector('.chip');
+    // A slider that shows or hides other controls (Columns reveals Gap) rebuilds the panel once it is let go.
+    if (c.rebuild) input.addEventListener('change', () => {
+      if (visibleControls() === panelControls) return;
+      buildPanel();
+      document.querySelector(`#panelScroll input[data-key="${keys[0]}"]`)?.focus();
+    });
     const value = () => getPath(state.values, keys[0]);
     const paint = (x) => { chip.textContent = c.fmt(x); slider.style.setProperty('--p', E.clamp((x - c.min) / (c.max - c.min))); };
     const show = () => { input.value = value(); paint(value()); };
-    const set = (next) => { for (const k of keys) setPath(state.values, k, next); };
+    input.refresh = show;
+    // Paired limits (Thinnest and Thickest, Min and Max opacity…) never cross: dragging one past the other carries it along.
+    const partner = keys.length === 1 && partnerKey(keys[0]), low = /(\.min|Min)$/.test(keys[0]);
+    const set = (next) => {
+      for (const k of keys) setPath(state.values, k, next);
+      const other = partner && getPath(state.values, partner);
+      if (typeof other !== 'number' || (low ? next <= other : next >= other)) return;
+      setPath(state.values, partner, next);
+      document.querySelector(`#panelScroll input[data-key="${partner}"]`)?.refresh();
+    };
     show();
     input.addEventListener('input', () => { const x = parseFloat(input.value); set(x); paint(x); edit(); });
     input.addEventListener('pointerdown', (e) => {
@@ -1428,6 +1732,12 @@ function control(c) {
       // Controls that only apply to some choices appear or disappear once the block has slid across.
       if (c.rebuild) setTimeout(() => buildPanel(), moving() ? 170 : 0);
     }));
+  } else if (c.type === 'select') {
+    // Longer lists drop down instead.
+    row.innerHTML = `<label for="${id}">${c.label}</label><span class="select"><select id="${id}">${c.options.map(([text, value]) => `<option value="${value}">${text}</option>`).join('')}</select>${icon('chevron-down')}</span>`;
+    const select = row.querySelector('select');
+    select.value = getPath(v, c.key);
+    select.addEventListener('change', () => { setPath(state.values, c.key, select.value); edit(); if (c.rebuild) buildPanel(); });
   } else if (c.type === 'text') {
     row.innerHTML = `<label for="${id}">${c.label}</label><input class="text-field" id="${id}" type="text" maxlength="24" spellcheck="false" autocomplete="off">`;
     const input = row.querySelector('input');
@@ -1464,7 +1774,7 @@ function control(c) {
     holder.appendChild(bar);
     paint();
   } else if (c.type === 'palette') {
-    const name = isRows(state) ? v.palette : v.colour.palette;
+    const name = isFlat(state) ? v.palette : v.colour.palette;
     const tiles = BRAND_PALETTES.map((p) => `<button title="${p.name}" aria-label="${p.name} palette" aria-pressed="${p.name === name}" data-name="${p.name}" style="--a:${p.background};--b:${p.stop1}"></button>`).join('');
     row.innerHTML = `<span class="label">Palette</span><div><div class="palettes">${tiles}</div><p class="palette-name">${paletteNamed(name) ? escapeHtml(name) : 'Custom colours'}</p></div>`;
     row.style.alignItems = 'start';
@@ -1475,7 +1785,7 @@ function control(c) {
       move(document.querySelectorAll('.colour-row .tile, .gradient-row .tile'), { scale: [0.6, 1] }, { ...SPRING, delay: stagger(0.04) });
     }));
   } else if (c.type === 'format') {
-    const format = isRows(state) ? v.format : v.canvas.format;
+    const format = isFlat(state) ? v.format : v.canvas.format;
     const custom = FORMATS[format] ? '' : `<option value="${format}" disabled>Custom ${v.canvas.width} × ${v.canvas.height}</option>`;
     row.innerHTML = `<label for="${id}">Format</label><span class="select"><select id="${id}">${custom}${Object.keys(FORMATS).map((f) => `<option>${f}</option>`).join('')}</select>${icon('chevron-down')}</span>`;
     const select = row.querySelector('select');
@@ -1502,6 +1812,7 @@ function control(c) {
 function applyPalette(name) {
   if (!paletteNamed(name)) return;
   if (isRows(state)) Object.assign(state.values, rowsPalette(name));
+  else if (isMark(state)) Object.assign(state.values, markPalette(name));
   else studioPalette(state.values, name);
 }
 
@@ -1550,8 +1861,77 @@ document.addEventListener('pointerdown', (e) => {
   if (!swatchPop.hidden && !swatchPop.contains(e.target) && e.target !== swatchAnchor && !(swatchAnchor && swatchAnchor.contains(e.target))) closeSwatches();
 });
 
+// ---------- Dropdowns ----------
+// A press on any dropdown opens this list instead of the system one: brand styling, pattern groups as headings,
+// a check on the current choice. From the keyboard, arrows still change the value; Enter or Space opens the list.
+const listbox = document.createElement('div');
+listbox.className = 'listbox';
+listbox.setAttribute('role', 'listbox');
+listbox.hidden = true;
+document.body.appendChild(listbox);
+let listboxFor = null;
+
+function openListbox(select) {
+  listboxFor = select;
+  const item = (o) => `<button type="button" role="option" data-value="${escapeHtml(o.value)}" aria-selected="${o.value === select.value}"${o.disabled ? ' disabled' : ''}>`
+    + `<span>${escapeHtml(o.textContent)}</span>${o.value === select.value ? icon('check') : ''}</button>`;
+  listbox.innerHTML = [...select.children].map((child) => child.tagName === 'OPTGROUP'
+    ? `<div class="group">${escapeHtml(child.label)}</div>${[...child.children].map(item).join('')}` : item(child)).join('');
+  listbox.hidden = false;
+  listbox.style.maxHeight = '';
+  const a = select.getBoundingClientRect();
+  listbox.style.minWidth = a.width + 'px';
+  // Below the field when it fits (or has more room), otherwise above; scrolls when taller than the room.
+  const natural = listbox.getBoundingClientRect(), roomBelow = window.innerHeight - a.bottom - 12, roomAbove = a.top - 12;
+  const below = roomBelow >= Math.min(natural.height, 260) || roomBelow >= roomAbove;
+  const height = Math.min(natural.height, below ? roomBelow : roomAbove);
+  listbox.style.maxHeight = height + 'px';
+  listbox.style.left = Math.max(8, Math.min(a.left, window.innerWidth - natural.width - 8)) + 'px';
+  listbox.style.top = (below ? a.bottom + 4 : a.top - 4 - height) + 'px';
+  select.setAttribute('aria-expanded', 'true');
+  const chosen = listbox.querySelector('[aria-selected="true"]') || listbox.querySelector('button:not(:disabled)');
+  if (chosen) { chosen.scrollIntoView({ block: 'nearest' }); chosen.focus({ preventScroll: true }); }
+  move(listbox, { opacity: [0, 1], y: [below ? -6 : 6, 0] }, SNAP);
+}
+function closeListbox(restoreFocus = false) {
+  if (listbox.hidden) return;
+  const select = listboxFor;
+  listbox.hidden = true; listboxFor = null;
+  if (select) select.setAttribute('aria-expanded', 'false');
+  if (restoreFocus && select && select.isConnected) select.focus({ preventScroll: true });
+}
+listbox.addEventListener('click', (e) => {
+  const button = e.target.closest('button[data-value]');
+  if (!button || !listboxFor) return;
+  const select = listboxFor;
+  closeListbox(true);
+  if (select.value !== button.dataset.value) { select.value = button.dataset.value; select.dispatchEvent(new Event('change', { bubbles: true })); }
+});
+listbox.addEventListener('keydown', (e) => {
+  e.stopPropagation();  // arrow keys move through the list, not through looks
+  const items = [...listbox.querySelectorAll('button:not(:disabled)')], index = items.indexOf(document.activeElement);
+  if (e.key === 'ArrowDown' || e.key === 'ArrowUp') { e.preventDefault(); items[E.clamp(index + (e.key === 'ArrowDown' ? 1 : -1), 0, items.length - 1)]?.focus(); }
+  else if (e.key === 'Home' || e.key === 'End') { e.preventDefault(); items[e.key === 'Home' ? 0 : items.length - 1]?.focus(); }
+  else if (e.key === 'Escape' || e.key === 'Tab') { e.preventDefault(); closeListbox(true); }
+});
+document.addEventListener('mousedown', (e) => {
+  const select = e.target.closest('.select select');
+  if (select) {
+    e.preventDefault();  // keeps the system list shut
+    const reopen = listboxFor !== select;
+    closeListbox();
+    if (reopen) { select.focus({ preventScroll: true }); openListbox(select); }
+  } else if (!listbox.contains(e.target)) closeListbox();
+});
+document.addEventListener('keydown', (e) => {
+  const select = e.target.closest && e.target.closest('.select select');
+  if (select && (e.key === 'Enter' || e.key === ' ' || (e.altKey && e.key === 'ArrowDown'))) { e.preventDefault(); openListbox(select); }
+});
+window.addEventListener('resize', () => closeListbox());
+document.getElementById('panelScroll').addEventListener('scroll', () => closeListbox(), { passive: true });
+
 function markCustomPalette() {
-  if (isRows(state)) state.values.palette = 'Custom'; else state.values.colour.palette = 'Custom';
+  if (isFlat(state)) state.values.palette = 'Custom'; else state.values.colour.palette = 'Custom';
   document.querySelectorAll('.palettes button').forEach((b) => b.setAttribute('aria-pressed', 'false'));
   for (const caption of document.querySelectorAll('.palette-name')) caption.textContent = 'Custom colours';
 }
@@ -1559,7 +1939,7 @@ function markCustomPalette() {
 function setFormat(name) {
   const size = FORMATS[name];
   if (!size) return;
-  if (isRows(state)) state.values.format = name;
+  if (isFlat(state)) state.values.format = name;
   else Object.assign(state.values.canvas, { format: name, width: size[0], height: size[1] });
 }
 
@@ -1593,7 +1973,21 @@ function variationOf(pattern, base, seed) {
   const clear = (p, hex) => Math.abs(luminance(p.background) - luminance(hex)) >= 0.36;
   const palette = pick(BRAND_PALETTES.filter((p) => clear(p, p.stop1) && (rows || clear(p, p.stop2))));
   if (rows) return remixRows(next, pick, palette);
+  if (patternOf(pattern).kind === 'mark') return remixMark(next, pick, palette);
   return remixStudio(pattern, next, base, pick, random, palette);
+}
+
+/** Bracket: the mark and its grid stay; texture, detail and effect come in combinations that keep the cells legible. */
+function remixMark(v, pick, palette) {
+  const texture = pick(['pixel', 'pixel', 'line', 'dot', 'slash']);
+  const weight = pick({ pixel: [1, 0.86, 0.72], line: [0.4, 0.5, 0.62], dot: [0.7, 0.82, 0.92], slash: [0.5, 0.7] }[texture]);
+  const effect = pick(['wave', 'scan', 'build', 'glitch', 'ripple', 'sparkle']);
+  return Object.assign(v, {
+    texture, weight, detail: pick([1, 1, 2, 2, 3]),
+    effect, depth: pick([0.5, 0.7, 0.9]), frequency: pick([1, 1.5, 2, 3]), direction: pick([0, 45, 90, 135, 180, 270]),
+    affects: effect === 'build' || effect === 'scan' ? 'both' : pick(['opacity', 'size', 'both']),
+    ...markPalette(palette.name),
+  });
 }
 
 /** Wave Rows: one cell shape on an even grid, a whole number of wave cycles, bands leaning one cell per row. */
@@ -1677,7 +2071,8 @@ function remixStudio(pattern, v, base, pick, random, palette) {
     case 'Interference':
       Object.assign(f.ripples, { sources: pick([2, 3, 4, 6]), spread: pick([0.12, 0.18, 0.25]), frequency: pick([6, 8, 10, 12]), rotation: pick([0, 45, 90]), decay: 0 }); break;
     case 'Logo Field':
-      Object.assign(f.logo, { frequency: pick([6, 8, 10, 12]), size: pick([0.4, 0.46, 0.55]), fill: pick(['on', 'on', 'off']) }); break;
+      Object.assign(f.logo, { frequency: pick([8, 10, 12, 14]), size: pick([0.4, 0.46, 0.55]), fill: pick(['on', 'on', 'empty', 'off']),
+        line: pick([1, 1.6, 2.4]), fade: pick([0, 0.5, 1]) }); break;
     default: break;
   }
 
@@ -1699,7 +2094,7 @@ function applySeed(raw) {
   const base = baseline.pattern === state.pattern ? baseline.values : defaultsFor(state.pattern);
   const remix = variationOf(state.pattern, base, seed);
   // A remix changes the look, not the output or the motion.
-  if (isRows(state)) Object.assign(remix, { format: state.values.format, speed: state.values.speed });
+  if (isFlat(state)) Object.assign(remix, { format: state.values.format, speed: state.values.speed });
   else { remix.canvas = { ...state.values.canvas }; remix.motion = { ...state.values.motion }; remix.pulse.speed = state.values.pulse.speed; }
   state.values = remix;
   buildPanel(); edit(); crossfade();
@@ -1856,7 +2251,7 @@ async function importPresets(file) {
   refreshPresets();
 }
 
-function changed() { save(); render(); updateStatus(); }
+function changed() { save(); requestRender(); updateStatus(); }
 // A hand edit replaces any one-off status message with the live "edited" state.
 function edit() { message = null; offerUndo = false; recordEdit(); changed(); }
 
@@ -1876,7 +2271,21 @@ document.getElementById('revert').addEventListener('click', () => applyPreset(cu
 
 // ---------- Look picker, arrows and dots ----------
 const looksDialog = document.getElementById('looks');
+// Built-in looks never change, so each thumbnail is drawn once (at the picker's size) and scaled from then on.
 const thumbCache = new Map();
+function paintThumb(c, id, st) {
+  if (!id.startsWith('builtin:')) { drawThumb(c, st); return; }
+  let image = thumbCache.get(id);
+  if (!image) {
+    image = document.createElement('canvas');
+    image.width = image.height = 280;
+    drawThumb(image, st);
+    thumbCache.set(id, image);
+  }
+  const g = c.getContext('2d');
+  g.clearRect(0, 0, c.width, c.height);
+  g.drawImage(image, 0, 0, c.width, c.height);
+}
 const lookIds = () => [...saved.map((s) => 'saved:' + s.name), ...BUILT_INS.map((b) => 'builtin:' + b.name)];
 function groupIds(id) {
   if (id.startsWith('saved:')) return saved.map((s) => 'saved:' + s.name);
@@ -1928,11 +2337,8 @@ function renderLooks() {
   const group = (title, entries, prefix, removable, empty) => `<h3>${title}</h3>${entries.length
     ? `<div class="looks-grid">${entries.map((e) => card(prefix + e.name, e, removable)).join('')}</div>`
     : `<p class="looks-empty">${empty}</p>`}`;
-  body.innerHTML =
-    group('Saved', saved, 'saved:', true, 'Press Save look to keep a look here.') +
-    group('Wave Rows', BUILT_INS.filter((b) => b.group === 'Wave Rows'), 'builtin:', false) +
-    group('Studio patterns', BUILT_INS.filter((b) => b.group === 'Studio patterns'), 'builtin:', false) +
-    group('Wave studies', BUILT_INS.filter((b) => b.group === 'Wave studies'), 'builtin:', false);
+  body.innerHTML = group('Saved', saved, 'saved:', true, 'Press Save look to keep a look here.')
+    + GROUPS.map((g) => group(g, BUILT_INS.filter((b) => b.group === g), 'builtin:', false)).join('');
   document.getElementById('exportPresets').disabled = !saved.length;
   const picks = [...body.querySelectorAll('.pick')];
   picks.forEach((el) => el.addEventListener('click', () => closeLooks(() => applyPreset(el.dataset.id))));
@@ -1945,10 +2351,8 @@ function renderLooks() {
   const next = () => {
     const end = Math.min(picks.length, index + 4);
     for (; index < end; index++) {
-      const id = picks[index].dataset.id, c = picks[index].querySelector('canvas');
-      const cached = id.startsWith('builtin:') && thumbCache.get(id);
-      if (cached) c.getContext('2d').drawImage(cached, 0, 0);
-      else { drawThumb(c, presetState(id)); if (id.startsWith('builtin:')) thumbCache.set(id, c); }
+      const id = picks[index].dataset.id;
+      paintThumb(picks[index].querySelector('canvas'), id, presetState(id));
     }
     if (index < picks.length) setTimeout(next, 0);
   };
@@ -2162,10 +2566,12 @@ function exportAnimatedSVG() {
 
 // ---------- Animation & video ----------
 // Every moving part is measured in cycles per 5 s, in half steps: whole cycles loop in 5 s, halves in 10 s.
-const speedsOf = (st) => isRows(st)
-  ? [st.values.speed]
+const speedsOf = (st) => isRows(st) ? [st.values.speed]
+  : isMark(st) ? [hasEffect(st.values) ? st.values.speed : 0]
   : [...E.motionCycles(st.values), pulseActive(st.values.pulse) ? st.values.pulse.speed : 0];
-const isAnimated = (st) => isRows(st) ? st.values.speed !== 0 : st.values.motion.speed !== 0 || (pulseActive(st.values.pulse) && st.values.pulse.speed !== 0);
+const orbiting = (v) => v.field.ripples.enabled && v.field.ripples.weight > 0 && v.field.ripples.orbit !== 0;
+const isAnimated = (st) => isFlat(st) ? speedsOf(st)[0] !== 0
+  : st.values.motion.speed !== 0 || orbiting(st.values) || (pulseActive(st.values.pulse) && st.values.pulse.speed !== 0);
 const animated = () => isAnimated(state);
 const loopSeconds = (st) => speedsOf(st).every(Number.isInteger) ? 5 : 10;
 
@@ -2262,7 +2668,7 @@ function updateViewToggle(animate = false) {
 }
 for (const b of viewButtons) b.addEventListener('click', () => {
   if (viewMode === b.dataset.view) return;
-  viewMode = b.dataset.view; write('wave-rows-view', viewMode); updateViewToggle(true); render(); crossfade();
+  viewMode = b.dataset.view; write('wave-rows-view', viewMode); updateViewToggle(true); requestRender(); crossfade();
 });
 // Indicators are measured in pixels, so they follow the layout when fonts arrive or the window resizes.
 const replaceIndicators = () => document.querySelectorAll('.segmented, .view').forEach((group) => placeIndicator(group, false));
@@ -2295,7 +2701,8 @@ document.addEventListener('keydown', (e) => {
 let last = performance.now();
 function tick(now) {
   const dt = Math.min(0.1, (now - last) / 1000); last = now;
-  if (animated() && !paused) { time += dt; render(); }
+  if (animated() && !paused) { time += dt; renderQueued = true; }
+  if (renderQueued) { renderQueued = false; render(); }
   requestAnimationFrame(tick);
 }
 
@@ -2306,7 +2713,7 @@ function tick(now) {
   timeline.committed = snapshot();
   updateViewToggle();
   buildPanel({ enter: true });
-  window.addEventListener('resize', render);
+  window.addEventListener('resize', requestRender);
   render();
   updateStatus();
   // First paint: the panel and the chrome settle in from where they sit.

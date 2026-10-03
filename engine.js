@@ -108,7 +108,7 @@
   function motionCycles(params) {
     const f = params.field;
     const cycles = [f.waveA, f.waveB, f.radial, f.chladni, f.ripples, f.logo].filter(isOn).map((part) => waveCycles(params, part));
-    if (isOn(f.ripples) && f.ripples.orbit) cycles.push(roundHalf(params.motion.speed * f.ripples.orbit));
+    if (isOn(f.ripples) && f.ripples.orbit) cycles.push(roundHalf(f.ripples.orbit));  // orbit turns on its own, Speed or not
     return cycles;
   }
 
@@ -142,7 +142,7 @@
       const loop = Math.max(1e-6, options.loopSeconds || 5);
       const t = ((time % loop) + loop) % loop;
       turn = (part) => TAU * waveCycles(params, part) * t / 5;
-      orbitTurn = ripples ? TAU * roundHalf(speed * ripples.orbit) * t / 5 : 0;
+      orbitTurn = ripples ? TAU * roundHalf(ripples.orbit) * t / 5 : 0;
       ap = radians(a.phase) + turn(a);
       bp = radians(b.phase) + turn(b);
       rp = turn(radial);
@@ -194,7 +194,9 @@
       }
     }
     const rippleK = wp ? TAU * ripples.frequency : 0, ripplePhase = wp ? turn(ripples) : 0, rippleDecay = wp ? Math.max(0, ripples.decay) * 4 : 0;
-    const logoK = wl ? TAU * logo.frequency : 0, logoPhase = wl ? turn(logo) : 0, logoFill = wl && logo.fill === 'on';
+    const logoK = wl ? TAU * logo.frequency : 0, logoPhase = wl ? turn(logo) : 0;
+    const logoInside = !wl ? null : logo.fill === 'on' ? 1 : logo.fill === 'empty' ? 0 : null;  // null: contours continue inside
+    const logoFade = wl ? Math.max(0, logo.fade || 0) * 4 : 0, logoLine = wl ? Math.max(1, logo.line || 1) : 1;
     const series = wd ? makeSeries(params) : new Float64Array(0);
     const octaves = Math.max(1, Math.min(8, Math.round(n.octaves)));
     const noiseScale = Math.max(0.001, n.scale);
@@ -238,7 +240,10 @@
       }
       if (wl) {
         const d = sampleDistance(options.sdf, x, y);  // negative inside the logo
-        value += (logoFill && d <= 0 ? 1 : 0.5 + 0.5 * wave(d * logoK - logoPhase)) * wl;
+        let contour;
+        if (d <= 0 && logoInside !== null) contour = logoInside;
+        else contour = Math.pow(0.5 + 0.5 * wave(d * logoK - logoPhase), logoLine) / (1 + logoFade * Math.abs(d));
+        value += contour * wl;
       }
       if (wn) {
         const fbm = (ox, oy) => {
@@ -399,7 +404,7 @@
     if (strands) {
       for (const cell of cells) {
         const top = cell.y - cell.height / 2;
-        let previousX = 0, previousY = 0;
+        let previousX = 0, previousY = 0, previousValue = 0;
         for (let j = 0; j < strandSamples; j++) {
           const baseY = top + cell.height * j / (strandSamples - 1);
           const u = cell.x / canvas.width, v = baseY / canvas.height;
@@ -407,8 +412,9 @@
           const x = cell.x + (value - 0.5) * layout.strandDisplacement * 2 + mapped(mappings.offsetX, value, u, v);
           const y = baseY + mapped(mappings.offsetY, value, u, v);
           if (j) {
+            // A segment takes the mean of its two ends rather than sampling the field again: one sample per point.
             const middleX = (x + previousX) / 2, middleY = (y + previousY) / 2;
-            const mu = middleX / canvas.width, mv = middleY / canvas.height, middleValue = field.sample(mu, mv);
+            const mu = middleX / canvas.width, mv = middleY / canvas.height, middleValue = (value + previousValue) / 2;
             if (middleValue >= marks.threshold) {
               const index = cell.index * (strandSamples - 1) + j - 1;
               const accent = isAccent(cell, index), thickness = mapped(mappings.thickness, middleValue, mu, mv);
@@ -418,7 +424,7 @@
               if (count > before) markCount++;
             }
           }
-          previousX = x; previousY = y;
+          previousX = x; previousY = y; previousValue = value;
         }
       }
     } else {
@@ -482,7 +488,9 @@
         // Wave studies (not in the original studio): a vibrating plate, interfering point sources and a logo distance field.
         chladni: { enabled: false, weight: 1, n: 3, m: 7, mix: -45, speed: 0.2 },
         ripples: { enabled: false, weight: 1, sources: 3, spread: 0.2, frequency: 10, decay: 0, rotation: 90, orbit: 0, speed: 0.2 },
-        logo: { enabled: false, weight: 1, shape: 'symbol', text: 'OneSyntax', size: 0.42, frequency: 9, fill: 'on', speed: 0.2 },
+        // fill: 'on' solid, 'off' contours run inside too, 'empty' leaves the mark as negative space.
+        // fade dims contours with distance from the outline; line > 1 thins them into fine lines.
+        logo: { enabled: false, weight: 1, shape: 'symbol', text: 'OneSyntax', size: 0.42, frequency: 9, fill: 'on', fade: 0, line: 1, speed: 0.2 },
         // Every periodic wave (A, B, radial, ripples, logo contours) takes this Fourier shape.
         shape: 'sine', harmonics: 8,
       },
@@ -579,62 +587,6 @@
     'RFD Stack': 'Quantised horizontal bars with the rhythm of a data readout.',
   };
 
-  const clonePreset = (name) => structuredClone(PRESETS.find((p) => p.name === name) || PRESETS[0]);
-
-  /** Seeded and pure: the same input produces the same next variation. */
-  function randomise(params, within) {
-    const seed = (params.seed + 1) >>> 0;
-    let state = seed;
-    const random = () => {
-      state += 0x6D2B79F5;
-      let n = state;
-      n = Math.imul(n ^ (n >>> 15), n | 1);
-      n ^= n + Math.imul(n ^ (n >>> 7), n | 61);
-      return ((n ^ (n >>> 14)) >>> 0) / 4294967296;
-    };
-    const p = within ? structuredClone(params) : clonePreset(PRESETS[Math.floor(random() * PRESETS.length)].name);
-    p.seed = seed;
-    p.motion = { ...params.motion };
-    p.canvas = { ...params.canvas };
-    const amount = within ? 0.15 : 0.6;
-    const nudge = (value, low, high, fallback = 1) => Math.min(high, Math.max(low, value + (random() * 2 - 1) * amount * (Math.abs(value) || fallback)));
-    for (const wave of [p.field.waveA, p.field.waveB]) {
-      wave.frequency = nudge(wave.frequency, 0.05, 12);
-      wave.weight = nudge(wave.weight, 0, 3);
-      wave.direction = nudge(wave.direction, -180, 180, 45);
-      wave.phase = nudge(wave.phase, -360, 360, 45);
-      wave.speed = nudge(wave.speed, -2, 2, 0.1);
-    }
-    p.field.radial.frequency = nudge(p.field.radial.frequency, 0.1, 12);
-    p.field.radial.x = nudge(p.field.radial.x, 0, 1); p.field.radial.y = nudge(p.field.radial.y, 0, 1);
-    p.field.noise.scale = nudge(p.field.noise.scale, 0.1, 20);
-    p.field.data.volatility = nudge(p.field.data.volatility, 0, 1);
-    p.field.data.seed = (p.field.data.seed + Math.floor(random() * 1000) + 1) >>> 0;
-    p.field.data.trend = nudge(p.field.data.trend, -1, 1, 0.1);
-    p.shaping.contrast = nudge(p.shaping.contrast, 0.1, 4); p.shaping.gamma = nudge(p.shaping.gamma, 0.1, 4);
-    if (p.shaping.warp > 0) p.shaping.warp = nudge(p.shaping.warp, 0, 0.6);
-    p.attractor.x = nudge(p.attractor.x, 0.1, 0.9); p.attractor.y = nudge(p.attractor.y, 0.1, 0.9);
-    p.attractor.strength = nudge(p.attractor.strength, -2, 2);
-    p.layout.strandDisplacement = nudge(p.layout.strandDisplacement, 0, 250);
-    if (!within) {
-      p.layout.columns = Math.round(nudge(p.layout.columns, 4, 160));
-      p.layout.rows = p.layout.mode === 'Columns' || p.layout.mode === 'Strands' ? 1 : Math.round(nudge(p.layout.rows, 4, 160));
-      const palette = PALETTES[Math.floor(random() * PALETTES.length)];
-      const { name, ...colours } = palette;
-      Object.assign(p.colour, { ...colours, palette: name });
-      p.colour.source = ['field', 'x', 'y', 'radial'][Math.floor(random() * 4)];
-      p.field.waveA.phase = random() * 360;
-    }
-    for (const key of ['thickness', 'length', 'angle']) {
-      const map = p.mappings[key];
-      const equal = map.min === map.max;
-      map.min = nudge(map.min, key === 'angle' ? -180 : 0.2, key === 'angle' ? 180 : 4000);
-      map.max = equal ? map.min : nudge(map.max, map.min, key === 'angle' ? 180 : 4000);
-    }
-    p.marks.fillThickness = nudge(p.marks.fillThickness, 1, 50);
-    p.marks.capOffset = nudge(p.marks.capOffset, -200, 200, 10);
-    return p;
-  }
 
   // ---------- svg.ts ----------
   function screenGradient(params) {
@@ -927,7 +879,13 @@ void main() {
       gl.uniform4f(u.uGradient, ...gradient.start, ...gradient.end);
       gl.uniform4f(u.uRadialGeometry, ...gradient.centre, ...gradient.radius);
       gl.uniform2f(u.uColourRange, params.mappings.colour.min, params.mappings.colour.max);
+      // Marks pushed past the artwork's edge (a wide swing, long stripes) are cut at the frame, as in every export.
+      const left = Math.max(0, Math.floor(ox)), right = Math.min(width, Math.ceil(ox + params.canvas.width * sx));
+      const top = Math.max(0, Math.floor(oy)), bottom = Math.min(height, Math.ceil(oy + params.canvas.height * sy));
+      gl.enable(gl.SCISSOR_TEST);
+      gl.scissor(left, height - bottom, Math.max(0, right - left), Math.max(0, bottom - top));
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);
+      gl.disable(gl.SCISSOR_TEST);
     }
 
     layered(instances, count) {
@@ -964,7 +922,7 @@ void main() {
   }
 
   window.WaveEngine = {
-    STRIDE, clamp, buildGeometry, motionCycles, SHAPES, waveFn, basePreset: base, PALETTES, PRESETS, PRESET_DESCRIPTIONS, randomise,
+    STRIDE, clamp, buildGeometry, motionCycles, waveFn, basePreset: base, PRESETS, PRESET_DESCRIPTIONS,
     screenGradient, colourRGB, paletteAt, gradientStops, toSVG, Renderer,
   };
 })();
