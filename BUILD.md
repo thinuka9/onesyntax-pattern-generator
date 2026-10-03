@@ -31,8 +31,8 @@ In Claude Code, the `app` entry in `.claude/launch.json` starts the same server.
 | SVG | Vector; the editable layers are `background`, `track`, `fill`, `cap`, `accent`. |
 | Animated SVG | SMIL; loops seamlessly in browsers. Design tools import the first frame. Up to about 20 MB for the densest patterns. |
 | Video | MP4 (H.264) where the browser can record it, otherwise WebM. 30 fps, seamless 5 or 10 s loop, longest side up to 1920 px. Recording runs in real time; keep the tab visible. |
-| Looks (JSON) | From the look picker: Export / Import. Also imports preset JSON from the original studio. |
-| Copy link | A URL holding the exact look. Works wherever the page is hosted. |
+| Presets (JSON) | From the preset picker: Export / Import. Also imports preset JSON from the original studio. |
+| Copy link | A URL holding the exact preset. Works wherever the page is hosted. |
 
 ### PNG sizes
 
@@ -57,8 +57,8 @@ There is no automated test runner (the project has no Node toolchain). Before sh
 3. Drag a few sliders on each pattern; nothing blanks or errors.
 4. Press shuffle a few times on Wave Rows and on a studio pattern; results stay uniform.
 5. Export a PNG at each scale, an SVG, an animated SVG and a video; each opens.
-6. Save a look, export the looks JSON, delete the look, import the JSON back.
-7. Copy link, open it in a new tab: the same look appears.
+6. Save a preset, export the presets JSON, delete the preset, import the JSON back.
+7. Copy link, open it in a new tab: the same preset appears.
 
 ## Deploy
 
@@ -92,5 +92,5 @@ git commit -m "Describe the change"
 git push
 ```
 
-Saved looks live in each browser's storage for the address the page is served from, so a new URL starts with
+Saved presets live in each browser's storage for the address the page is served from, so a new URL starts with
 none. Export them as JSON before moving, and import them on the new site.

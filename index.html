@@ -372,8 +372,8 @@
     <button data-view="fit" data-icon="fit" title="Show the exact export frame"><span>Fit</span></button>
   </div>
 </div>
-<button class="edge prev" id="prevLook" aria-label="Previous look" title="Previous look (←)" data-icon="chevron-left"></button>
-<button class="edge next" id="nextLook" aria-label="Next look" title="Next look (→)" data-icon="chevron-right"></button>
+<button class="edge prev" id="prevLook" aria-label="Previous preset" title="Previous preset (←)" data-icon="chevron-left"></button>
+<button class="edge next" id="nextLook" aria-label="Next preset" title="Next preset (→)" data-icon="chevron-right"></button>
 <div class="dots chrome" id="dots"></div>
 <div class="meta chrome" id="meta"></div>
 <button class="play" id="play" aria-label="Pause animation" hidden data-icon="pause"></button>
@@ -395,7 +395,7 @@
   <div class="panel-scroll" id="panelScroll"></div>
   <div class="panel-foot">
     <div class="save-row" id="saveRow" hidden>
-      <input id="saveName" type="text" maxlength="60" placeholder="Name this look" aria-label="Look name">
+      <input id="saveName" type="text" maxlength="60" placeholder="Name this preset" aria-label="Preset name">
       <button class="cta small" id="saveConfirm">Save</button>
       <button class="square small" id="saveCancel" aria-label="Cancel" data-icon="close"></button>
     </div>
@@ -416,23 +416,23 @@
           <button role="menuitem" data-action="animatedSvg" data-icon="sparkles"><span>Animated SVG</span><small class="loop-length">loop</small></button>
           <button role="menuitem" data-action="video" data-icon="film"><span>Video</span><small class="loop-length">loop</small></button>
           <hr>
-          <button role="menuitem" data-action="link" data-icon="link"><span>Copy link</span><small>this exact look</small></button>
+          <button role="menuitem" data-action="link" data-icon="link"><span>Copy link</span><small>this exact preset</small></button>
           <hr>
           <label data-icon="transparent"><span>Transparent background</span><input type="checkbox" class="switch" id="transparent"></label>
         </div>
       </div>
       <button class="square" id="variation" aria-label="Remix" title="Remix: new colours and settings within this pattern" data-icon="shuffle"></button>
       <button class="square" id="revert" aria-label="Revert to preset" title="Revert to preset" data-icon="reset"></button>
-      <button class="cta" id="saveLook">Save look</button>
+      <button class="cta" id="saveLook">Save preset</button>
     </div>
   </div>
 </aside>
 
 <dialog id="looks" class="glass" aria-labelledby="looksTitle">
   <div class="looks-head">
-    <h2 id="looksTitle">Looks</h2>
+    <h2 id="looksTitle">Presets</h2>
     <button class="chip-button" id="importPresets" title="Load presets from a JSON file, including studio preset JSON" data-icon="upload">Import</button>
-    <button class="chip-button" id="exportPresets" title="Download your saved looks as JSON" data-icon="export">Export</button>
+    <button class="chip-button" id="exportPresets" title="Download your saved presets as JSON" data-icon="export">Export</button>
     <input id="importFile" type="file" accept=".json,application/json" hidden>
     <button class="chip-button icon-only" id="closeLooks" aria-label="Close" data-icon="close"></button>
   </div>
@@ -910,6 +910,12 @@ const contrast = range('shaping.contrast', 'Contrast', 0.05, 4, 0.01, f2);
 const steps = range('shaping.quantise', 'Steps', 0, 32, 1, stepsFmt);
 // Cycles of the pattern's main wave per 5 s, always moving one way; negative runs it backwards.
 const animate = range('motion.speed', 'Speed', -3, 3, 0.5, offOr);
+// The wave studies choose how they move: Morph sways the figure through its shapes and back, Flow travels one way.
+const studyMotion = (...extra) => [
+  { ...choice('field.motion', 'Motion', [['Morph', 'morph'], ['Flow', 'flow']]), rebuild: true },
+  { ...range('field.morph', 'Morph', 0, 1, 0.01, pct), when: (v) => v.field.motion === 'morph' },
+  animate, ...extra,
+];
 const margin = range('layout.margin', 'Margin', 0, 400, 1, px);
 const columns = (label = 'Columns', max = 100) => range('layout.columns', label, 1, max, 1, int);
 const rowsCount = (label = 'Rows', max = 100) => range('layout.rows', label, 1, max, 1, int);
@@ -998,8 +1004,9 @@ const PATTERNS = [
     description: 'Sand on a vibrating plate: marks gather on the lines that stay still (Chladni figures).',
     sections: [
       ['Plate', [range('field.chladni.n', 'Mode n', 1, 12, 1, int), range('field.chladni.m', 'Mode m', 1, 12, 1, int),
-        range('field.chladni.mix', 'Mix', -180, 180, 1, deg), range('shaping.gamma', 'Line sharpness', 0.5, 12, 0.1, f2), animate],
-        'cos(nπx)·cos(mπy) mixed with cos(mπx)·cos(nπy). Equal modes cancel at −45°, so pick two different ones. Speed turns the mix and the figure morphs.'],
+        range('field.chladni.mix', 'Mix', -180, 180, 1, deg), range('shaping.gamma', 'Line sharpness', 0.5, 12, 0.1, f2)],
+        'cos(nπx)·cos(mπy) mixed with cos(mπx)·cos(nπy). Equal modes cancel at −45°, so pick two different ones.'],
+      ['Motion', studyMotion(), 'Morph melts the figure into its neighbours and back; Flow keeps turning the mix one way.'],
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Dots across', 8, 140, 1, int),
         range(['mappings.thickness.max', 'mappings.length.max'], 'Dot size', 1, 30, 0.5, px),
         range('mappings.opacity.min', 'Resting dots', 0, 1, 0.01, pct), margin]],
@@ -1009,8 +1016,9 @@ const PATTERNS = [
     sections: [
       ['Sources', [range('field.ripples.sources', 'Sources', 1, 8, 1, int), range('field.ripples.spread', 'Spread', 0, 0.5, 0.01, pct),
         range('field.ripples.frequency', 'Rings', 1, 40, 0.5, f1), range('field.ripples.decay', 'Fade out', 0, 3, 0.01, f2),
-        range('field.ripples.rotation', 'Rotation', -180, 180, 1, deg), range('field.ripples.orbit', 'Orbit', -2, 2, 0.5, offOr), contrast, animate],
-        'Where crests meet they add up; where a crest meets a trough they cancel. Speed sends the rings outward; Orbit turns the sources.'],
+        range('field.ripples.rotation', 'Rotation', -180, 180, 1, deg), contrast],
+        'Where crests meet they add up; where a crest meets a trough they cancel.'],
+      ['Motion', studyMotion(range('field.ripples.orbit', 'Orbit', -2, 2, 0.5, offOr)), 'Morph draws the sources apart and back while they swing; Flow sends the rings outward. Orbit turns the sources, Speed or not.'],
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Dots across', 8, 160, 1, int),
         range(['mappings.thickness.max', 'mappings.length.max'], 'Dot size', 1, 30, 0.5, px), margin]],
     ], look: studioLook() },
@@ -1023,8 +1031,9 @@ const PATTERNS = [
         choice('field.logo.fill', 'Inside', [['Solid', 'on'], ['Empty', 'empty'], ['Contours', 'off']])],
         'Distance from the outline, measured on the real logo files: text is set in Geist, the bracket on its Geist Pixel cells.'],
       ['Contours', [range('field.logo.frequency', 'Contours', 0, 30, 0.5, f1), range('field.logo.line', 'Sharpness', 1, 8, 0.05, f2),
-        range('field.logo.fade', 'Fade', 0, 3, 0.01, f2), animate],
-        'Sharpness thins the bands into fine lines; Fade lets them die away from the mark. Speed sends them outward.'],
+        range('field.logo.fade', 'Fade', 0, 3, 0.01, f2)],
+        'Sharpness thins the bands into fine lines; Fade lets them die away from the mark.'],
+      ['Motion', studyMotion(), 'Morph lets the contours breathe in and out around the mark; Flow sends them outward.'],
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Pixels across', 8, 160, 1, int),
         range(['mappings.thickness.max', 'mappings.length.max'], 'Pixel size', 1, 30, 0.5, px), margin]],
     ], look: studioLook() },
@@ -1123,6 +1132,9 @@ const mappingOf = (source, min, max) => ({ source, min, max });
 function study(name, look, paletteName, tune) {
   const p = E.basePreset(name, 'Signal');
   p.field.waveA.enabled = false;
+  // Studies open moving: a slow morph, one sway every 10 s.
+  p.field.motion = 'morph';
+  Object.assign(p.motion, { playing: true, speed: 0.5 });
   tune(p);
   return { name, look, paletteName, params: p };
 }
@@ -1237,7 +1249,7 @@ function fromImported(p, fallbackName) {
 }
 
 const storedPresets = read('wave-rows-presets', []);
-let saved = (Array.isArray(storedPresets) ? storedPresets : []).map((p, i) => fromImported(p, `Look ${i + 1}`)).filter(Boolean);
+let saved = (Array.isArray(storedPresets) ? storedPresets : []).map((p, i) => fromImported(p, `Preset ${i + 1}`)).filter(Boolean);
 // Keep migrated looks (new speed units, brand colours) so they're only converted once.
 if (saved.length && storedPresets.some((p) => p && p.v !== STORAGE_VERSION)) storePresets();
 const session = read('wave-rows-session', {});
@@ -1555,8 +1567,8 @@ function buildPanel({ enter = false } = {}) {
   panelControls = visibleControls();
   const pattern = patternOf(state.pattern);
   for (const [title, controls, hint] of pattern.sections) scroll.appendChild(section(title, controls, hint));
-  scroll.appendChild(section('Look', pattern.look));
-  scroll.insertAdjacentHTML('beforeend', '<p class="tips">Double-click a slider to type a value · Alt-click to reset it · ← → to step through looks</p>');
+  scroll.appendChild(section('Colour', pattern.look));
+  scroll.insertAdjacentHTML('beforeend', '<p class="tips">Double-click a slider to type a value · Alt-click to reset it · ← → to step through presets</p>');
   scroll.scrollTop = enter ? 0 : top;
   for (const group of scroll.querySelectorAll('.segmented')) placeIndicator(group, false);
   updateHeader();
@@ -1595,18 +1607,18 @@ function buildPicker() {
   const wrap = document.createElement('div');
   wrap.className = 'sec picker';
   const preset = presetState(current);
-  const name = preset && preset.pattern === state.pattern ? label(current) : 'Unsaved look';
+  const name = preset && preset.pattern === state.pattern ? label(current) : 'Unsaved preset';
   wrap.innerHTML = `
-    <div class="ctl"><label for="patternSelect">Pattern</label>
+    <div class="ctl"><label for="patternSelect" title="What gets drawn: the generator">Pattern</label>
       <span class="select"><select id="patternSelect">${PATTERN_GROUPS.map(([group, names]) => `<optgroup label="${group}">${names.map((n) => `<option>${n}</option>`).join('')}</optgroup>`).join('')}</select>${icon('chevron-down')}</span></div>
-    <div class="ctl"><span class="label">Look</span>
+    <div class="ctl"><span class="label" title="Saved settings for this pattern: built-in or your own">Preset</span>
       <button class="look-button" id="presetButton" aria-haspopup="dialog">
-        <canvas width="68" height="68" aria-hidden="true"></canvas><span class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="browse" aria-label="Browse looks">All${icon('chevron-right')}</span>
+        <canvas width="68" height="68" aria-hidden="true"></canvas><span class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="browse" aria-label="Browse presets">All${icon('chevron-right')}</span>
       </button></div>
     <div class="ctl"><label for="seedInput">Seed</label>
       <span class="seed-row"><span class="stepper">
         <button class="step" data-step="-1" aria-label="Previous seed" title="Previous seed">${icon('minus')}</button>
-        <input id="seedInput" type="number" min="0" max="${MAX_SEED}" step="1" inputmode="numeric" title="Same preset + same seed = same look">
+        <input id="seedInput" type="number" min="0" max="${MAX_SEED}" step="1" inputmode="numeric" title="Same preset + same seed = same result">
         <button class="step" data-step="1" aria-label="Next seed" title="Next seed">${icon('plus')}</button></span>
       <button class="dice" id="seedDice" aria-label="Remix with a random seed" title="Remix: new colours and settings within this pattern">${icon('dice')}</button></span></div>`;
   if (preset && preset.pattern === state.pattern) paintThumb(wrap.querySelector('canvas'), current, preset);
@@ -2177,11 +2189,11 @@ function updateStatus() {
   el.className = 'status';
   if (message) el.textContent = message;
   else if (edited()) { el.textContent = 'Edited · save to keep these changes'; el.classList.add('edited'); }
-  else el.textContent = current.startsWith('saved:') ? 'Saved in this browser' : presetState(current) ? 'Built-in look' : '';
+  else el.textContent = current.startsWith('saved:') ? 'Saved in this browser' : presetState(current) ? 'Built-in preset' : '';
   if (offerUndo && timeline.past.length) {
     const button = document.createElement('button');
     button.textContent = 'Undo';
-    button.addEventListener('click', () => { undoStep(); message = 'Restored your previous look'; updateStatus(); });
+    button.addEventListener('click', () => { undoStep(); message = 'Restored your previous preset'; updateStatus(); });
     el.appendChild(button);
   }
   document.getElementById('play').hidden = !animated();
@@ -2202,7 +2214,7 @@ function applyPreset(id) {
 
 function savePreset(rawName) {
   let name = rawName.trim();
-  if (!name) name = current.startsWith('saved:') ? label(current) : `Look ${saved.length + 1}`;
+  if (!name) name = current.startsWith('saved:') ? label(current) : `Preset ${saved.length + 1}`;
   const existing = saved.find((p) => p.name === name);
   const entry = { v: STORAGE_VERSION, name, pattern: state.pattern, values: structuredClone(state.values) };
   if (existing) Object.assign(existing, entry); else saved.push(entry);
@@ -2211,7 +2223,7 @@ function savePreset(rawName) {
   timeline.committed = snapshot();
   message = storePresets()
     ? (existing ? `Updated "${name}"` : `Saved "${name}"`)
-    : `Saved "${name}" for this visit only · this browser blocks storage, so export your looks to keep them`;
+    : `Saved "${name}" for this visit only · this browser blocks storage, so export your presets to keep them`;
   save(); refreshPresets();
 }
 
@@ -2246,8 +2258,8 @@ async function importPresets(file) {
     if (existing) Object.assign(existing, p); else saved.push(p);
   }
   storePresets();
-  if (incoming.length) { looksDialog.close(); applyPreset('saved:' + incoming[0].name); message = `Imported ${incoming.length} look${incoming.length === 1 ? '' : 's'}`; }
-  else notify('No looks found in that file', { error: true });
+  if (incoming.length) { looksDialog.close(); applyPreset('saved:' + incoming[0].name); message = `Imported ${incoming.length} preset${incoming.length === 1 ? '' : 's'}`; }
+  else notify('No presets found in that file', { error: true });
   refreshPresets();
 }
 
@@ -2337,7 +2349,7 @@ function renderLooks() {
   const group = (title, entries, prefix, removable, empty) => `<h3>${title}</h3>${entries.length
     ? `<div class="looks-grid">${entries.map((e) => card(prefix + e.name, e, removable)).join('')}</div>`
     : `<p class="looks-empty">${empty}</p>`}`;
-  body.innerHTML = group('Saved', saved, 'saved:', true, 'Press Save look to keep a look here.')
+  body.innerHTML = group('Saved', saved, 'saved:', true, 'Press Save preset to keep one here.')
     + GROUPS.map((g) => group(g, BUILT_INS.filter((b) => b.group === g), 'builtin:', false)).join('');
   document.getElementById('exportPresets').disabled = !saved.length;
   const picks = [...body.querySelectorAll('.pick')];
@@ -2391,7 +2403,7 @@ async function decodeLook(code) {
 
 async function copyLink() {
   const url = `${location.origin}${location.pathname}#look=${await encodeLook(state)}`;
-  try { await navigator.clipboard.writeText(url); notify('Link copied · it opens this exact look'); }
+  try { await navigator.clipboard.writeText(url); notify('Link copied · it opens this exact preset'); }
   catch { window.prompt('Copy this link:', url); }
 }
 
@@ -2401,8 +2413,8 @@ async function openSharedLook() {
   try {
     state = await decodeLook(match[1]);
     current = 'unsaved'; baseline = structuredClone(state);
-    message = 'Opened a shared look · save it to keep it';
-  } catch { notify('That link looks damaged, so the last look was kept.', { error: true }); }
+    message = 'Opened a shared preset · save it to keep it';
+  } catch { notify('That link looks damaged, so the last preset was kept.', { error: true }); }
   window.history.replaceState(null, '', location.pathname + location.search);
 }
 

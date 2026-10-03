@@ -182,19 +182,33 @@
     // Chladni plate: cos(nπx)cos(mπy) and cos(mπx)cos(nπy) mixed at an angle; −45° is the classic free-edge figure.
     // Sand (value 1) collects on the nodal lines where the plate stays still.
     const plateN = wc ? Math.PI * Math.max(1, Math.round(chladni.n)) : 0, plateM = wc ? Math.PI * Math.max(1, Math.round(chladni.m)) : 0;
-    const plateAngle = wc ? radians(chladni.mix) + turn(chladni) : 0, plateA = Math.cos(plateAngle), plateB = Math.sin(plateAngle);
+    // Morph: each study sways through its own shapes on a sine of its cycle, so it eases out and back seamlessly.
+    const morphing = options.directional && field.motion === 'morph', morph = clamp(field.morph);
+    const sway = (part, offset = 0) => Math.sin(turn(part) + offset);
+    // The plate's mix swings up to 90° either side, so the figure melts into its neighbours and back.
+    const plateAngle = !wc ? 0 : radians(chladni.mix) + (morphing ? morph * Math.PI / 2 * sway(chladni) : turn(chladni));
+    const plateA = Math.cos(plateAngle), plateB = Math.sin(plateAngle);
 
     // Ripple tank: point sources on a ring (rotating with `orbit`), each sending circular waves outward.
+    // Morphing, the sources drift apart and back and swing round instead, so the moiré fringes reshape.
     const sources = [];
+    let rippleK = 0, ripplePhase = 0;
     if (wp) {
-      const count = Math.max(1, Math.min(8, Math.round(ripples.sources))), start = radians(ripples.rotation) + orbitTurn;
+      const count = Math.max(1, Math.min(8, Math.round(ripples.sources)));
+      const swing = morphing ? morph * Math.PI / count * sway(ripples, Math.PI / 2) : 0;
+      const spread = ripples.spread * (morphing ? 1 + 0.6 * morph * sway(ripples) : 1);
+      const start = radians(ripples.rotation) + orbitTurn + swing;
       for (let k = 0; k < count; k++) {
         const angle = start + TAU * k / count;
-        sources.push([0.5 + Math.cos(angle) * ripples.spread / aspectX, 0.5 + Math.sin(angle) * ripples.spread / aspectY]);
+        sources.push([0.5 + Math.cos(angle) * spread / aspectX, 0.5 + Math.sin(angle) * spread / aspectY]);
       }
+      rippleK = TAU * ripples.frequency;
+      ripplePhase = morphing ? 0 : turn(ripples);
     }
-    const rippleK = wp ? TAU * ripples.frequency : 0, ripplePhase = wp ? turn(ripples) : 0, rippleDecay = wp ? Math.max(0, ripples.decay) * 4 : 0;
-    const logoK = wl ? TAU * logo.frequency : 0, logoPhase = wl ? turn(logo) : 0;
+    const rippleDecay = wp ? Math.max(0, ripples.decay) * 4 : 0;
+    // Logo contours: flowing, they march outward; morphing, they breathe in and out while their spacing shifts.
+    const logoK = !wl ? 0 : TAU * logo.frequency * (morphing ? 1 + 0.3 * morph * sway(logo, Math.PI / 2) : 1);
+    const logoPhase = !wl ? 0 : morphing ? morph * Math.PI * sway(logo) : turn(logo);
     const logoInside = !wl ? null : logo.fill === 'on' ? 1 : logo.fill === 'empty' ? 0 : null;  // null: contours continue inside
     const logoFade = wl ? Math.max(0, logo.fade || 0) * 4 : 0, logoLine = wl ? Math.max(1, logo.line || 1) : 1;
     const series = wd ? makeSeries(params) : new Float64Array(0);
@@ -493,6 +507,9 @@
         logo: { enabled: false, weight: 1, shape: 'symbol', text: 'OneSyntax', size: 0.42, frequency: 9, fill: 'on', fade: 0, line: 1, speed: 0.2 },
         // Every periodic wave (A, B, radial, ripples, logo contours) takes this Fourier shape.
         shape: 'sine', harmonics: 8,
+        // How the wave studies move: 'flow' sends rings outward and turns the plate one way; 'morph' sways each
+        // figure back and forth through its shapes (by `morph`, 0..1), still a whole number of cycles per loop.
+        motion: 'flow', morph: 0.6,
       },
       shaping: { warp: 0, warpScale: 3, mirror: 'none', contrast: 1, gamma: 1, quantise: 0, invert: false },
       attractor: { enabled: false, x: 0.5, y: 0.48, radius: 0.32, strength: 0.55 },

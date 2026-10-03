@@ -28,7 +28,9 @@ proofs and the earlier "classic" page.
 - **Bracket:** the `{ }` mark from the Rebranding file (Geist Pixel, 9 × 23 cells per brace, read off the Figma
   vectors). Drawn as pixels, lines (the brand's line version), dots or slashes, with finer detail per cell; one
   mark or columns × rows of them, centred on a shared cell grid; effects (wave, scan, build, glitch, ripple,
-  sparkle) that loop seamlessly. Four looks: Scope, Render, Compile, Loop.
+  sparkle) that loop seamlessly. Four presets: Scope, Render, Compile, Loop.
+- **Morph motion** for the wave studies: the Chladni figure melts into its neighbours and back, interference
+  sources drift apart and swing, logo contours breathe. Flow (rings travelling outward) remains an option.
 - **Fourier wave shapes:** sine, triangle, square, sawtooth, with 1–32 harmonics, on every wave.
 - **Pulse:** an opacity and size wave over any studio pattern.
 - **Motion:** one-way, seamless loops. Waves advance whole or half cycles per loop (5 or 10 s); noise drifts one
@@ -40,39 +42,39 @@ proofs and the earlier "classic" page.
 ### Brand and UI
 - OneSyntax rebrand from the Figma file: Geist / Geist Mono, the brand colour list (core, tints, mids, brights,
   deeps, neutrals), 13 brand palettes, the official logo SVGs, the {OS} monogram.
-- Colours can only be chosen from the brand list; older looks convert automatically and anything off-brand is
+- Colours can only be chosen from the brand list; older presets convert automatically and anything off-brand is
   flagged.
 - Design system: square corners, filled (never outlined) controls, sliding segmented choices, square toggle
   switches, palette tiles, brand colour rows, 34 px controls on an 8 px rhythm, Lucide icons.
 - The panel's text colour adapts to the pixels behind it; the glass is dense enough to stay readable.
 - Motion (motion.dev) micro-animations: spring section open/close, staggered entrances, menus and pickers,
   press feedback, canvas cross-fades. Respects "reduce motion".
-- Full-screen preview with Fill / Fit, ← → stepping through looks, page dots, pause. Marks are clipped to the
+- Full-screen preview with Fill / Fit, ← → stepping through presets, page dots, pause. Marks are clipped to the
   artwork's frame, as in every export.
-- Built-in looks are named in code vocabulary (Hello World, Telemetry, Stack Trace, Source, Scope…); a session
+- Built-in presets are named in code vocabulary (Hello World, Telemetry, Stack Trace, Source, Scope…); a session
   left on an old name follows it to the new one.
 - Dropdowns open a brand-styled list (groups as headings, a check on the current choice) instead of the system
   list; paired limits (Thinnest/Thickest, Min/Max) never cross; every pattern with one shared mark opacity has an
   Opacity control.
 
 ### Saving, sharing, exporting
-- Built-in looks, saved looks (browser storage, with JSON export/import), undo/redo, share links.
+- Built-in presets, saved presets (browser storage, with JSON export/import), undo/redo, share links.
 - PNG at 1× / 2× / 4× / 6× (stepping down past browser limits), SVG, animated SVG, MP4/WebM loops,
   transparent backgrounds.
 
 ## Verified (3 October 2026)
-- Every control on every built-in look changes the output (564 controls checked; the exceptions are by design,
+- Every control on every built-in preset changes the output (564 controls checked; the exceptions are by design,
   such as Pulse controls while Pulse is off). No console errors.
-- Every built-in look loops seamlessly: frame 0 and the frame at the loop length match exactly.
+- Every built-in preset loops seamlessly: frame 0 and the frame at the loop length match exactly.
 - Panel alignment: every control starts and ends on the same column in all 14 patterns, rows are 34 px, and no
   label or value is clipped. Export menu labels share one icon column; the PNG scale labels are centred.
 - Performance: a frame draws at most once per screen refresh, however many edits arrive; storage writes and the
   panel's tone check are throttled; marks are written without per-mark allocations; thumbnails are cached.
-  Built-in looks build in 0–2 ms; at the slider extremes the slowest (Strands, 60,000 segments) builds in about
+  Built-in presets build in 0–2 ms; at the slider extremes the slowest (Strands, 60,000 segments) builds in about
   15 ms, and Bracket detail steps down past 80,000 parts.
-- Remix: 6 different looks from 6 seeds on every pattern, brand colours only, never blank, repeatable.
+- Remix: 6 different results from 6 seeds on every pattern, brand colours only, never blank, repeatable.
 - Exports: PNG 2400 × 2400 (2×), SVG and animated SVG parse and animate, MP4 at exactly 5.00 s, including the
-  Bracket looks.
+  Bracket presets.
 
 ## Ideas not built yet
 Phyllotaxis (sunflower) layout · curl-noise flow · epicycles drawing the logo · Lissajous layouts · moiré

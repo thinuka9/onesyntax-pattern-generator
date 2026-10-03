@@ -19,16 +19,17 @@ seamless video loops.
   - *Bracket*: the brand's `{ }` mark on its own Geist Pixel grid (9 × 23 cells, read from the Figma file), drawn
     as pixels, lines, dots or slashes, alone or repeated in columns and rows, with looping effects: wave, scan,
     build, glitch, ripple, sparkle.
-- **Built-in looks named in code vocabulary:** Hello World, Throughput, Checksum, Telemetry, Bitstream, Stack Trace,
+- **Built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Telemetry, Bitstream, Stack Trace,
   Gradient Descent, Recursion, Resonance, Concurrency, Source, Scope, Render, Compile, Loop and more.
 - **Wave shapes:** every wave can be a sine, triangle, square or sawtooth, built from a Fourier series with a
   chosen number of harmonics.
 - **Pulse:** fades and scales the marks of any studio pattern along its own wave.
 - **Remix (shuffle / dice):** composes a new, uniform variation of the current pattern from its seed; the same
-  preset and seed always give the same look.
-- **Motion:** every animation moves one way and loops seamlessly in 5 or 10 seconds.
+  preset and seed always give the same result.
+- **Motion:** every animation loops seamlessly in 5 or 10 seconds. Waves flow one way; the wave studies morph,
+  swaying each figure through its shapes and back (or flow, if you choose).
 - **OneSyntax brand only:** Geist type, the brand colour list and palettes, the official logo files.
-- **Looks:** built-in presets, saved looks (stored in the browser; export them as JSON), share links.
+- **Presets:** built-in presets, saved presets (stored in the browser; export them as JSON), share links.
 - **Exports:** PNG at 1×, 2×, 4× or 6×; SVG; animated SVG (SMIL); MP4 or WebM video loops; transparent
   backgrounds for PNG and SVG.
 
