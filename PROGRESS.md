@@ -2,14 +2,15 @@
 
 ## Status (3 October 2026)
 
-The OneSyntax Pattern Generator (`index.html`) is the product. The original TypeScript/Vite studio is retired
-and archived in `Downloads\OneSyntaxPatternGenerator-archive-2026-10-03.zip`, together with its build output,
-test scripts, exported proofs and the earlier "classic" page.
+The OneSyntax Pattern Generator (`index.html`) is the product. It lives in
+`Dropbox\HAUX STUDIO\PROJECTS\ONESYNTAX REBRAND\PLUGIN\OneSyntaxPatternGenerator` and on GitHub at
+[thinuka9/onesyntax-pattern-generator](https://github.com/thinuka9/onesyntax-pattern-generator) (`main`),
+where it replaced the original TypeScript/Vite studio. That studio stays in the repository's history and in
+`PLUGIN\OneSyntaxPatternGenerator-archive-2026-10-03.zip`, together with its build output, test scripts, exported
+proofs and the earlier "classic" page.
 
 **Not done yet**
-- Upload to GitHub, replacing the old "OneSyntax Pattern Generator" repository's contents (see BUILD.md).
-  Blocked on access: Git isn't installed on this PC and Claude's GitHub connector isn't authorized.
-- Deploy to a public URL (Netlify, Vercel, Cloudflare Pages or GitHub Pages).
+- Deploy to a public URL (Netlify, Vercel, Cloudflare Pages or GitHub Pages; see BUILD.md).
 
 ## Built so far
 

@@ -65,31 +65,25 @@ There is no automated test runner (the project has no Node toolchain). Before sh
 The project root is the site root: `index.html` is the entry page.
 
 - **Quickest:** drag the project folder onto https://app.netlify.com/drop for an instant URL.
-- **With GitHub (recommended):** push the folder to a GitHub repository and connect it to Vercel, Netlify or
-  Cloudflare Pages (framework: none, build command: none, output directory: `/`). Each push to `main` then
-  deploys. GitHub Pages also works: Settings → Pages → deploy from the `main` branch, root folder.
+- **With GitHub (recommended):** connect
+  [thinuka9/onesyntax-pattern-generator](https://github.com/thinuka9/onesyntax-pattern-generator) to Vercel,
+  Netlify or Cloudflare Pages (framework: none, build command: none, output directory: `/`). Each push to `main`
+  then deploys. GitHub Pages also works: Settings → Pages → deploy from the `main` branch, root folder.
 
-### Replacing the old GitHub repository's contents
+### Saving changes to GitHub
 
-The plan is to keep the existing "OneSyntax Pattern Generator" repository and make this the new version, so the
-old code stays in its history. With Git installed:
-
-```bash
-git clone https://github.com/<owner>/<repo>.git old-repo
-```
-
-Then, inside `old-repo`: delete everything except the `.git` folder, copy in this project's files, and run:
+This folder is a Git working copy of that repository (branch `main`). After changing files, from this folder:
 
 ```bash
 git add -A
 ```
 
 ```bash
-git commit -m "Replace the studio with the OneSyntax Pattern Generator"
+git commit -m "Describe the change"
 ```
 
 ```bash
-git push origin main
+git push
 ```
 
 Saved looks live in each browser's storage for the address the page is served from, so a new URL starts with
