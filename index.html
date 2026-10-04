@@ -31,7 +31,7 @@
     --track: rgba(252,252,252,.12); --track-hover: rgba(252,252,252,.2);
     --button: rgba(252,252,252,.12); --button-hover: rgba(252,252,252,.2);
     --on-art: rgba(252,252,252,.88); --shadow: 0 24px 64px rgba(0,0,0,.35);
-    --cta: var(--white); --cta-text: var(--black); --menu: rgba(21,21,21,.97);
+    --cta: var(--white); --cta-text: var(--black); --menu: rgba(21,21,21,.97); --surface: var(--black);
     /* The logo files paint their inner shapes in the colour they were drawn on, so they sit on that exact colour. */
     --logo-bg: var(--black); --logo-text: var(--white);
   }
@@ -41,7 +41,7 @@
     --track: rgba(21,21,21,.06); --track-hover: rgba(21,21,21,.11);
     --button: rgba(21,21,21,.06); --button-hover: rgba(21,21,21,.11);
     --on-art: rgba(21,21,21,.78); --shadow: 0 24px 64px rgba(16,24,40,.18);
-    --cta: var(--black); --cta-text: var(--white); --menu: rgba(252,252,252,.98);
+    --cta: var(--black); --cta-text: var(--white); --menu: rgba(252,252,252,.98); --surface: var(--white);
     --logo-bg: #EDEDED; --logo-text: var(--black);
   }
   * { box-sizing: border-box; }
@@ -116,6 +116,11 @@
   }
   .toast.show { opacity: 1; }
   .toast.error { background: var(--error); }
+  /* Tooltips: the brand's ink on paper, inverted against the panel's tone; square, with shortcuts as mono chips. */
+  .tip { position: fixed; z-index: 30; max-width: 260px; margin: 0; padding: 7px 10px; border: 0; inset: auto; pointer-events: none;
+    background: var(--cta); color: var(--cta-text); font: 500 12.5px/1.35 var(--sans); letter-spacing: -.005em; box-shadow: 0 8px 24px rgba(0,0,0,.22); }
+  .tip[hidden] { display: none; }
+  .tip kbd { margin-left: 8px; padding: 1px 5px; font: 500 10.5px var(--mono); background: color-mix(in srgb, var(--cta-text) 16%, transparent); }
 
   /* ---------- Panel ---------- */
   .panel {
@@ -140,7 +145,12 @@
   .status.edited::before { content: ''; width: 6px; height: 6px; background: var(--accent); }
   .status button { text-decoration: underline; text-underline-offset: 2px; font-size: 12px; }
 
-  .panel-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 8px var(--pad) 28px; scrollbar-width: thin; scrollbar-color: var(--faint) transparent; }
+  .panel-scroll { flex: 1; min-height: 0; overflow-y: auto; padding: 8px var(--pad) 28px; }
+  /* Thin, quiet scrollbars wherever something scrolls: no arrows, no grey gutter. */
+  .panel-scroll, dialog#looks, .listbox { scrollbar-width: thin; scrollbar-color: var(--faint) transparent; }
+  .panel-scroll::-webkit-scrollbar, dialog#looks::-webkit-scrollbar, .listbox::-webkit-scrollbar { width: 6px; }
+  .panel-scroll::-webkit-scrollbar-thumb, dialog#looks::-webkit-scrollbar-thumb, .listbox::-webkit-scrollbar-thumb { background: var(--faint); }
+  .panel-scroll::-webkit-scrollbar-track, dialog#looks::-webkit-scrollbar-track, .listbox::-webkit-scrollbar-track { background: transparent; }
   .sec { padding-bottom: 8px; }
   .sec + .sec { border-top: 1px solid var(--line); }
   .sec-head {
@@ -212,7 +222,7 @@
   .select select:hover { background: var(--track-hover); }
   .select select option, .select select optgroup { color: var(--black); background: var(--white); }
   /* Dropdowns open this list (the export menu's look) instead of the system one. */
-  .listbox { position: fixed; z-index: 9; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; padding: 6px; background: var(--menu); color: var(--text); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
+  .listbox { position: fixed; z-index: 9; overflow-y: auto; overscroll-behavior: contain; padding: 6px; background: var(--menu); color: var(--text); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
   .listbox .group { padding: 10px 10px 6px; font-size: 10.5px; font-weight: 600; letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   .listbox .group ~ .group { margin-top: 6px; padding-top: 14px; box-shadow: inset 0 1px 0 var(--line); }
   .listbox button { display: grid; grid-template-columns: 1fr 15px; align-items: center; gap: 12px; width: 100%; height: 34px; padding: 0 10px; text-align: left; font-size: 14px; font-weight: 500; white-space: nowrap; transition: background .15s var(--ease); }
@@ -295,7 +305,6 @@
   .menu { position: absolute; left: 0; bottom: 54px; min-width: 292px; white-space: nowrap; padding: 6px; z-index: 7; background: var(--menu); box-shadow: var(--shadow), inset 0 0 0 1px var(--line); }
   .menu[hidden] { display: none; }
   .menu button, .menu label { display: grid; grid-template-columns: 18px 1fr auto; align-items: center; gap: 12px; width: 100%; height: 40px; padding: 0 12px; text-align: left; font-size: 14px; font-weight: 500; cursor: pointer; transition: background .2s var(--ease); }
-  .menu label { grid-template-columns: 1fr auto; }
   .menu button:hover:not(:disabled), .menu label:hover { background: var(--button); }
   .menu .icon { width: 17px; height: 17px; color: var(--muted); }
   .menu-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 12px; height: 40px; padding: 0 6px 0 12px; }
@@ -313,7 +322,9 @@
     background: var(--glass-strong); color: var(--text);
   }
   dialog#looks::backdrop { background: rgba(10,12,18,.35); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
-  .looks-head { position: sticky; top: 0; z-index: 1; display: flex; align-items: center; gap: 6px; padding: 20px 24px; box-shadow: inset 0 -1px 0 var(--line); background: inherit; }
+  /* Solid, so presets scrolling underneath never show through the title and buttons. */
+  .looks-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 20px 24px; box-shadow: inset 0 -1px 0 var(--line); background: var(--surface); }
+  .looks-head h2:focus { outline: none; }
   .looks-head h2 { margin: 0 auto 0 0; font-weight: 500; font-size: 26px; letter-spacing: -.04em; }
   .looks-head .chip-button { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; background: var(--button); font-size: 13px; font-weight: 500; }
   .looks-head .chip-button:hover:not(:disabled) { background: var(--button-hover); }
@@ -368,15 +379,15 @@
   </span>
   <div class="view" role="group" aria-label="Preview">
     <span class="indicator" aria-hidden="true"></span>
-    <button data-view="fill" data-icon="fill" title="Fill the screen (crops the artwork)"><span>Fill</span></button>
-    <button data-view="fit" data-icon="fit" title="Show the exact export frame"><span>Fit</span></button>
+    <button data-view="fill" data-icon="fill" title="Fill the screen · crops the edges"><span>Fill</span></button>
+    <button data-view="fit" data-icon="fit" title="Fit · the exact export frame"><span>Fit</span></button>
   </div>
 </div>
 <button class="edge prev" id="prevLook" aria-label="Previous preset" title="Previous preset (←)" data-icon="chevron-left"></button>
 <button class="edge next" id="nextLook" aria-label="Next preset" title="Next preset (→)" data-icon="chevron-right"></button>
 <div class="dots chrome" id="dots"></div>
 <div class="meta chrome" id="meta"></div>
-<button class="play" id="play" aria-label="Pause animation" hidden data-icon="pause"></button>
+<button class="play" id="play" aria-label="Pause animation" data-tip="Pause" hidden data-icon="pause"></button>
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
 <aside class="panel glass" id="panel" aria-label="Pattern controls">
@@ -401,7 +412,7 @@
     </div>
     <div class="bar">
       <div class="menu-wrap">
-        <button class="square" id="exportButton" aria-label="Export" aria-haspopup="menu" aria-expanded="false" title="Export" data-icon="export"></button>
+        <button class="square" id="exportButton" aria-label="Export" aria-haspopup="menu" aria-expanded="false" title="Export · PNG, SVG, animated SVG or video" data-icon="export"></button>
         <div class="menu" id="exportMenu" role="menu" hidden>
           <div class="menu-row" role="group" aria-label="Export PNG at a scale">
             <span class="menu-label" data-icon="image"><span>PNG</span></span>
@@ -421,20 +432,20 @@
           <label data-icon="transparent"><span>Transparent background</span><input type="checkbox" class="switch" id="transparent"></label>
         </div>
       </div>
-      <button class="square" id="variation" aria-label="Remix" title="Remix: new colours and settings within this pattern" data-icon="shuffle"></button>
-      <button class="square" id="revert" aria-label="Revert to preset" title="Revert to preset" data-icon="reset"></button>
-      <button class="cta" id="saveLook">Save preset</button>
+      <button class="square" id="variation" aria-label="Remix" title="Remix · new colours and settings, same pattern" data-icon="shuffle"></button>
+      <button class="square" id="revert" aria-label="Revert to preset" title="Revert · back to the preset, edits dropped" data-icon="reset"></button>
+      <button class="cta" id="saveLook" title="Save these settings as a preset">Save preset</button>
     </div>
   </div>
 </aside>
 
 <dialog id="looks" class="glass" aria-labelledby="looksTitle">
   <div class="looks-head">
-    <h2 id="looksTitle">Presets</h2>
-    <button class="chip-button" id="importPresets" title="Load presets from a JSON file, including studio preset JSON" data-icon="upload">Import</button>
+    <h2 id="looksTitle" tabindex="-1">Presets</h2>
+    <button class="chip-button" id="importPresets" title="Import presets from a JSON file" data-icon="upload">Import</button>
     <button class="chip-button" id="exportPresets" title="Download your saved presets as JSON" data-icon="export">Export</button>
     <input id="importFile" type="file" accept=".json,application/json" hidden>
-    <button class="chip-button icon-only" id="closeLooks" aria-label="Close" data-icon="close"></button>
+    <button class="chip-button icon-only" id="closeLooks" aria-label="Close" title="Close (Esc)" data-icon="close"></button>
   </div>
   <div class="looks-body" id="looksBody"></div>
 </dialog>
@@ -1535,6 +1546,60 @@ function render() {
   if (meta !== metaText) { metaText = meta; document.getElementById('meta').textContent = meta; }
 }
 
+// ---------- Tooltips ----------
+// Every title becomes a brand tooltip: after a short pause on hover (at once while sweeping across controls, or
+// on keyboard focus), above the control or below when there is no room, with a trailing shortcut as a chip.
+// It sits in the top layer, so it shows over the presets window too.
+const tip = document.createElement('div');
+tip.className = 'tip'; tip.id = 'tip'; tip.setAttribute('role', 'tooltip');
+const tipPopover = 'popover' in HTMLElement.prototype;
+if (tipPopover) tip.popover = 'manual'; else tip.hidden = true;
+document.body.appendChild(tip);
+let tipFor = null, tipTimer = 0, tipHiddenAt = -1e9;
+/** A control's tooltip text; its title moves to data-tip so the system tooltip never shows as well. */
+function tipText(el) {
+  if (el.hasAttribute('title')) { el.dataset.tip = el.getAttribute('title'); el.removeAttribute('title'); }
+  return el.dataset.tip;
+}
+function showTip(el) {
+  const text = tipText(el);
+  if (!text || !el.isConnected) return;
+  const shortcut = text.match(/^(.*?)\s*\(((?:Ctrl|Shift|Esc|←|→)[^)]*)\)$/);
+  tip.innerHTML = shortcut ? `${escapeHtml(shortcut[1])}<kbd>${escapeHtml(shortcut[2])}</kbd>` : escapeHtml(text);
+  tip.style.left = '0px'; tip.style.top = '0px';  // measured at the corner, where it can take its full width
+  if (tipPopover) tip.showPopover(); else tip.hidden = false;
+  const a = el.getBoundingClientRect(), t = tip.getBoundingClientRect(), above = a.top - t.height - 8 >= 8;
+  tip.style.left = E.clamp(a.left + a.width / 2 - t.width / 2, 8, window.innerWidth - t.width - 8) + 'px';
+  tip.style.top = (above ? a.top - t.height - 8 : a.bottom + 8) + 'px';
+  tipFor = el;
+  el.setAttribute('aria-describedby', 'tip');
+  move(tip, { opacity: [0, 1], y: [above ? 4 : -4, 0] }, SNAP);
+}
+function hideTip() {
+  clearTimeout(tipTimer);
+  if (!tipFor) return;
+  tipFor.removeAttribute('aria-describedby');
+  tipFor = null; tipHiddenAt = performance.now();
+  if (tipPopover) { if (tip.matches(':popover-open')) tip.hidePopover(); } else tip.hidden = true;
+}
+document.addEventListener('pointerover', (e) => {
+  if (e.pointerType === 'touch') return;
+  const el = e.target.closest('[title], [data-tip]');
+  if (el && el === tipFor) return;
+  hideTip();
+  if (!el) return;
+  tipText(el);
+  tipTimer = setTimeout(() => showTip(el), performance.now() - tipHiddenAt < 500 ? 0 : 450);
+});
+document.addEventListener('focusin', (e) => {
+  const el = e.target.closest('[title], [data-tip]');
+  if (el && el.matches(':focus-visible')) { hideTip(); showTip(el); }
+});
+document.addEventListener('focusout', hideTip);
+document.addEventListener('pointerdown', hideTip, true);
+document.addEventListener('scroll', hideTip, true);
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') hideTip(); });
+
 // ---------- Toast ----------
 let toastTimer = 0;
 function notify(text, { error = false, stay = false } = {}) {
@@ -1609,18 +1674,18 @@ function buildPicker() {
   const preset = presetState(current);
   const name = preset && preset.pattern === state.pattern ? label(current) : 'Unsaved preset';
   wrap.innerHTML = `
-    <div class="ctl"><label for="patternSelect" title="What gets drawn: the generator">Pattern</label>
+    <div class="ctl"><label for="patternSelect" title="Pattern · what gets drawn">Pattern</label>
       <span class="select"><select id="patternSelect">${PATTERN_GROUPS.map(([group, names]) => `<optgroup label="${group}">${names.map((n) => `<option>${n}</option>`).join('')}</optgroup>`).join('')}</select>${icon('chevron-down')}</span></div>
-    <div class="ctl"><span class="label" title="Saved settings for this pattern: built-in or your own">Preset</span>
+    <div class="ctl"><span class="label" title="Preset · saved settings for this pattern, built-in or yours">Preset</span>
       <button class="look-button" id="presetButton" aria-haspopup="dialog">
-        <canvas width="68" height="68" aria-hidden="true"></canvas><span class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="browse" aria-label="Browse presets">All${icon('chevron-right')}</span>
+        <canvas width="68" height="68" aria-hidden="true"></canvas><span class="name" title="${escapeHtml(name)}">${escapeHtml(name)}</span><span class="browse" aria-label="Browse presets" title="All presets">All${icon('chevron-right')}</span>
       </button></div>
     <div class="ctl"><label for="seedInput">Seed</label>
       <span class="seed-row"><span class="stepper">
         <button class="step" data-step="-1" aria-label="Previous seed" title="Previous seed">${icon('minus')}</button>
-        <input id="seedInput" type="number" min="0" max="${MAX_SEED}" step="1" inputmode="numeric" title="Same preset + same seed = same result">
+        <input id="seedInput" type="number" min="0" max="${MAX_SEED}" step="1" inputmode="numeric" title="Seed · the same preset and seed always give the same result">
         <button class="step" data-step="1" aria-label="Next seed" title="Next seed">${icon('plus')}</button></span>
-      <button class="dice" id="seedDice" aria-label="Remix with a random seed" title="Remix: new colours and settings within this pattern">${icon('dice')}</button></span></div>`;
+      <button class="dice" id="seedDice" aria-label="Remix with a random seed" title="Random seed · a fresh remix of this preset">${icon('dice')}</button></span></div>`;
   if (preset && preset.pattern === state.pattern) paintThumb(wrap.querySelector('canvas'), current, preset);
   else drawThumb(wrap.querySelector('canvas'), state);
   const select = wrap.querySelector('#patternSelect');
@@ -1732,7 +1797,7 @@ function control(c) {
     });
   } else if (c.type === 'select' && c.options.length <= 4) {
     row.innerHTML = `<span class="label">${c.label}</span><div class="segmented" role="radiogroup" aria-label="${c.label}"><span class="indicator" aria-hidden="true"></span>${c.options.map(([text, value, art]) =>
-      `<button role="radio" data-value="${value}" title="${text}"${art ? ` aria-label="${text}"` : ''}>${art || text}</button>`).join('')}</div>`;
+      `<button role="radio" data-value="${value}"${art ? ` title="${text}" aria-label="${text}"` : ''}>${art || text}</button>`).join('')}</div>`;
     const group = row.querySelector('.segmented'), buttons = [...row.querySelectorAll('button')];
     const mark = () => buttons.forEach((b) => b.setAttribute('aria-checked', String(b.dataset.value === getPath(state.values, c.key))));
     mark();
@@ -1835,7 +1900,7 @@ let swatchPick = null, swatchAnchor = null;
 function openSwatches(anchor, currentHex, onPick) {
   const currentKey = String(currentHex).toUpperCase();
   swatchPop.innerHTML = BRAND_COLOURS.map(([group, list]) => `<h4>${group}</h4><div class="grid">${list.map(([name, hex]) =>
-    `<button style="--c:${hex};--ink:${luminance(hex) > 0.55 ? '#151515' : '#FCFCFC'}" data-hex="${hex}" title="${name} ${hex}" aria-label="${name} ${hex}" aria-pressed="${hex === currentKey}">${hex === currentKey ? icon('check') : ''}</button>`).join('')}</div>`).join('')
+    `<button style="--c:${hex};--ink:${luminance(hex) > 0.55 ? '#151515' : '#FCFCFC'}" data-hex="${hex}" aria-label="${name} ${hex}" aria-pressed="${hex === currentKey}">${hex === currentKey ? icon('check') : ''}</button>`).join('')}</div>`).join('')
     + `<p class="picked">${brandName(currentHex) ? `${escapeHtml(brandName(currentHex))} · ${currentKey}` : `${escapeHtml(currentKey)} is off-brand`}</p>`;
   swatchPick = onPick; swatchAnchor = anchor;
   swatchPop.hidden = false;
@@ -2331,6 +2396,7 @@ function openLooks() {
   renderLooks();
   if (looksDialog.open) return;
   looksDialog.showModal();
+  document.getElementById('looksTitle').focus();  // not the first button, which would show a focus ring on open
   move(looksDialog, { opacity: [0, 1], y: [18, 0], scale: [0.985, 1] }, GENTLE);
   move([...looksDialog.querySelectorAll('.look-card')].slice(0, 30), { opacity: [0, 1], y: [14, 0] }, { ...GENTLE, delay: stagger(0.018) });
 }
@@ -2464,9 +2530,31 @@ function exportSVG() {
 }
 
 // ---------- Animated SVG ----------
-// Samples one loop and gives every mark its own SMIL tracks (position, rotation, size, colour, opacity).
-// The first sample is repeated at the end, so the file loops without a seam in any browser.
-const MAX_ANIMATED_SVG_BYTES = 60e6;
+// Made for the web. One loop is sampled densely, then each mark keeps only the keyframes it needs: a sample is
+// dropped when the straight line between kept ones passes within a hair of it (Ramer–Douglas–Peucker), so motion
+// stays smooth while files stay small. Values that never change are plain attributes, a mark's size animates as
+// one scale where its shape allows, marks that never show are left out, and numbers keep only visible digits.
+// The first sample closes the loop, so it repeats without a seam. Plays in browsers (also as an <img>); design
+// tools import the first frame.
+const MAX_ANIMATED_SVG_BYTES = 60e6, HEAVY_ANIMATED_SVG_BYTES = 5e6, HEAVY_ANIMATED_SVG_MARKS = 4000;
+// How far (in px, degrees, opacity or colour) a dropped sample may sit from the curve between kept keyframes.
+const KEYFRAME_TOLERANCE = { position: 0.35, size: 0.3, angle: 0.5, opacity: 0.015, colour: 4 / 255 };
+// Most motion here is sine-like, so a segment between a peak and a trough eases in and out: SMIL's
+// keySplines ".364 0 .636 1", which matches a half sine to within 0.03%. EASE gives its progress at time u (0..1).
+const EASE_SPLINE = '.364 0 .636 1';
+const EASE = (() => {
+  const steps = 512, table = new Float32Array(steps + 1);
+  for (let i = 0; i <= steps; i++) {
+    let low = 0, high = 1;  // solve x(s) = u on the bezier (0,0) (.364,0) (.636,1) (1,1), then read y(s)
+    for (let k = 0; k < 40; k++) {
+      const s = (low + high) / 2, x = 3 * (1 - s) * (1 - s) * s * 0.364 + 3 * (1 - s) * s * s * 0.636 + s * s * s;
+      if (x < i / steps) low = s; else high = s;
+    }
+    const s = (low + high) / 2;
+    table[i] = 3 * (1 - s) * s * s + s * s * s;
+  }
+  return (u) => table[Math.round(u * steps)];
+})();
 
 /** Continuous colour, sampled at the mark's centre (the static SVG fills each mark with the gradient itself). */
 function continuousColour(params, x, y) {
@@ -2482,85 +2570,322 @@ function continuousColour(params, x, y) {
 }
 
 function animatedSVG(st, { transparent = false } = {}) {
-  const loop = loopSeconds(st);
-  const first = geometryFor(st, 0);
-  // Fewer samples for busy patterns keeps files manageable; SMIL interpolates between them.
-  const perSecond = first.markCount > 4000 ? 4 : first.markCount > 1500 ? 6 : 8;
-  const samples = Math.max(8, Math.round(loop * perSecond));
-  const hex = (rgb) => '#' + rgb.map((c) => Math.round(E.clamp(c) * 255).toString(16).padStart(2, '0')).join('');
-  const tracks = new Map();
+  const loop = loopSeconds(st), first = geometryFor(st, 0);
+  // A hundred samples a loop (20 a second over 5 s) catch every turn of the motion, and keep each keyframe time to
+  // two decimals; the keyframe pass then keeps only what is needed.
+  const samples = 100, S = samples + 1;  // plus the sample that closes the loop
+  // Each mark's samples sit in one typed array, F fields per sample.
+  const X = 0, Y = 1, W = 2, H = 3, A = 4, O = 5, RED = 6, GREEN = 7, BLUE = 8, RADIUS = 9, F = 10;
+  const byId = new Map(), tracks = [];
   for (let k = 0; k < samples; k++) {
     const geo = k ? geometryFor(st, k * loop / samples) : first;
     const I = geo.instances, continuous = geo.params.colour.continuous;
     for (let i = 0; i < geo.count; i++) {
-      const o = i * STRIDE, id = I[o + 13], w = I[o + 2], h = I[o + 3], shape = I[o + 7];
-      let track = tracks.get(id);
+      const o = i * STRIDE, shape = I[o + 7];
+      let track = byId.get(I[o + 13]);
       if (!track) {
-        track = { layer: Math.round(E.clamp(I[o + 12], 0, 3)), shape, skew: shape === 2 ? I[o + 6] : 0, frames: new Array(samples) };
-        tracks.set(id, track);
+        track = { layer: Math.round(E.clamp(I[o + 12], 0, 3)), shape, skew: shape === 2 ? I[o + 6] : 0, data: new Float32Array(S * F).fill(NaN) };
+        byId.set(I[o + 13], track);
+        tracks.push(track);
       }
-      track.frames[k] = {
-        x: I[o], y: I[o + 1], w, h, angle: I[o + 4] * 180 / Math.PI, opacity: Math.min(1, I[o + 11]),
-        radius: shape === 1 || shape === 3 ? Math.min(w, h) / 2 : E.clamp(I[o + 5], 0, Math.min(w, h) / 2),
-        fill: hex(continuous && track.layer < 3 ? continuousColour(geo.params, I[o], I[o + 1]) : [I[o + 8], I[o + 9], I[o + 10]]),
+      const d = track.data, p = k * F, w = I[o + 2], h = I[o + 3];
+      const colour = continuous && track.layer < 3 ? continuousColour(geo.params, I[o], I[o + 1]) : [I[o + 8], I[o + 9], I[o + 10]];
+      d[p + X] = I[o]; d[p + Y] = I[o + 1]; d[p + W] = w; d[p + H] = h; d[p + A] = I[o + 4] * 180 / Math.PI;
+      d[p + O] = Math.min(1, I[o + 11]); d[p + RED] = colour[0]; d[p + GREEN] = colour[1]; d[p + BLUE] = colour[2];
+      d[p + RADIUS] = shape === 1 || shape === 3 ? Math.min(w, h) / 2 : E.clamp(I[o + 5], 0, Math.min(w, h) / 2);
+    }
+  }
+
+  // Short numbers: only the digits that show, no leading zero ("-.5", ".25").
+  const num = (v, digits) => {
+    const s = String(Math.round(v * 10 ** digits) / 10 ** digits);
+    return s === '-0' ? '0' : s.replace(/^(-?)0\./, '$1.');
+  };
+  const hex = (r, g, b) => '#' + [r, g, b].map((c) => Math.round(E.clamp(c) * 255).toString(16).padStart(2, '0')).join('');
+  const wrap180 = (deg) => ((deg + 90) % 180 + 180) % 180 - 90;  // every mark shape looks the same turned 180°
+  const timing = `dur="${loop}s" repeatCount="indefinite"`;
+
+  /**
+   * The samples an animation needs, so every dropped one lies within its tolerance of the curve between kept
+   * ones (Ramer–Douglas–Peucker). `eased` first keeps each turning point (a peak or trough that swings by more
+   * than the tolerance), then fits eased segments between them; otherwise segments are straight lines.
+   */
+  function keyframes(d, fields, tolerance, eased) {
+    const keep = new Uint8Array(S);
+    keep[0] = keep[S - 1] = 1;
+    if (eased) for (const f of fields) {
+      let trend = 0, pivot = 0;
+      for (let m = 1; m < S; m++) {
+        const v = d[m * F + f], p = d[pivot * F + f];
+        if (trend >= 0) {
+          if (v >= p) { pivot = m; trend = 1; } else if (p - v > tolerance) { keep[pivot] = 1; trend = -1; pivot = m; }
+        } else if (v <= p) pivot = m;
+        else if (v - p > tolerance) { keep[pivot] = 1; trend = 1; pivot = m; }
+      }
+    }
+    const stack = [];
+    for (let m = 1, previous = 0; m < S; m++) if (keep[m]) { stack.push(previous, m); previous = m; }
+    while (stack.length) {
+      const j = stack.pop(), i = stack.pop();
+      let worst = 1, at = -1;  // the furthest sample, measured in tolerances
+      for (let m = i + 1; m < j; m++) {
+        const u = (m - i) / (j - i), w = eased ? EASE(u) : u;
+        for (const f of fields) {
+          const a = d[i * F + f], off = Math.abs(d[m * F + f] - (a + (d[j * F + f] - a) * w)) / tolerance;
+          if (off > worst) { worst = off; at = m; }
+        }
+      }
+      if (at >= 0) { keep[at] = 1; stack.push(i, at, at, j); }
+    }
+    const list = [];
+    for (let m = 0; m < S; m++) if (keep[m]) list.push(m);
+    return list;
+  }
+  /** The widest even spacing (a divisor of the sample count) at which straight lines stay within tolerance. */
+  function evenStep(d, fields, tolerance) {
+    for (const step of [50, 25, 20, 10, 5, 4, 2]) {
+      let fits = true;
+      for (let m = 0; m < S - 1 && fits; m++) {
+        const i = m - m % step, j = i + step, u = (m - i) / step;
+        for (const f of fields) {
+          const a = d[i * F + f];
+          if (Math.abs(d[m * F + f] - (a + (d[j * F + f] - a) * u)) > tolerance) { fits = false; break; }
+        }
+      }
+      if (fits) return step;
+    }
+    return 1;
+  }
+  /**
+   * One property's track: its first value, and an animation when it moves. Three encodings are tried and the
+   * shortest kept: evenly spaced keyframes (no keyTimes), straight segments between chosen keyframes, and eased
+   * segments between peaks and troughs.
+   */
+  function series(d, fields, tolerance, write, attribute, transform) {
+    const step = evenStep(d, fields, tolerance), even = [];
+    for (let m = 0; m < S; m += step) even.push(m);
+    const options = [{ keys: even, timed: false, eased: false }, ...[false, true].map((eased) => ({ keys: keyframes(d, fields, tolerance, eased), timed: true, eased }))]
+      .map(({ keys, timed, eased }) => {
+        const values = keys.map((m) => write(m * F));
+        const times = timed ? ` keyTimes="${keys.map((m) => num(m / samples, 2)).join(';')}"` : '';
+        const pacing = eased ? ` calcMode="spline" keySplines="${Array(keys.length - 1).fill(EASE_SPLINE).join(';')}"` : '';
+        return { values, attributes: `${timing}${times}${pacing} values="${values.join(';')}"` };
+      });
+    const best = options.reduce((a, b) => (b.attributes.length < a.attributes.length ? b : a));
+    if (best.values.every((v) => v === best.values[0])) return { value: best.values[0], animation: '' };
+    const element = transform
+      ? `<animateTransform attributeName="transform" type="${transform}" ${best.attributes}/>`
+      : `<animate attributeName="${attribute}" ${best.attributes}/>`;
+    return { value: best.values[0], animation: element };
+  }
+
+  // ---- Shared motion ----
+  // A mark that stays put and only fades, recolours or resizes often follows the same motion as many others,
+  // just shifted in time. Each mark's motion is moved so its strongest harmonic starts at phase zero; marks
+  // whose shifted motion matches share one CSS animation, and each keeps only its own delay.
+  const N = samples;
+  /** Samples by which this field's motion is ahead of its phase-zero form. */
+  function phaseShift(d, f) {
+    let best = 1, strength = -1, phase = 0;
+    for (let h = 1; h <= 12; h++) {
+      let c = 0, s = 0;
+      for (let k = 0; k < N; k++) { const a = 2 * Math.PI * h * k / N; c += d[k * F + f] * Math.cos(a); s += d[k * F + f] * Math.sin(a); }
+      if (Math.hypot(c, s) > strength) { strength = Math.hypot(c, s); best = h; phase = Math.atan2(-s, c); }
+    }
+    const period = N / best;
+    return (((-phase / (2 * Math.PI)) * period) % period + period) % period;
+  }
+  /** The motion moved by `shift` samples (Catmull–Rom between samples), in the same layout as the track. */
+  function shifted(d, shift, fields) {
+    const out = new Float32Array(S * F), at = (k, f) => d[(((k % N) + N) % N) * F + f];
+    for (let k = 0; k < S; k++) {
+      const x = k + shift, i = Math.floor(x), t = x - i;
+      for (const f of fields) {
+        const p0 = at(i - 1, f), p1 = at(i, f), p2 = at(i + 1, f), p3 = at(i + 2, f);
+        out[k * F + f] = 0.5 * (2 * p1 + (p2 - p0) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t * t + (3 * p1 - p0 - 3 * p2 + p3) * t * t * t);
+      }
+    }
+    return out;
+  }
+  const candidates = [];
+
+  const pending = [[], [], [], []];  // per layer: { fill, build }
+  let crisp = true;  // square, unturned marks render crisp (and faster) with shape-rendering="crispEdges"
+  for (const track of tracks) {
+    const d = track.data;
+    // A mark hidden in some samples keeps its nearest shown shape there, fully transparent.
+    for (let k = 0; k < samples; k++) {
+      if (!Number.isNaN(d[k * F])) continue;
+      let j = 1;
+      while (Number.isNaN(d[((k + j) % samples) * F]) && j < samples) j++;
+      d.copyWithin(k * F, ((k + j) % samples) * F, ((k + j) % samples) * F + F);
+      d[k * F + O] = 0;
+    }
+    let shown = 0;
+    for (let k = 0; k < samples; k++) shown = Math.max(shown, d[k * F + O]);
+    if (shown < 0.004) continue;  // never visible: left out
+    // Unwrap angles so marks turn the short way; then the closing sample repeats the first.
+    for (let k = 1; k < samples; k++) d[k * F + A] = d[(k - 1) * F + A] + wrap180(d[k * F + A] - d[(k - 1) * F + A]);
+    d.copyWithin(samples * F, 0, F);
+    d[samples * F + A] = d[(samples - 1) * F + A] + wrap180(d[A] - d[(samples - 1) * F + A]);
+
+    let widest = 0, tallest = 0, rounded = 0;
+    for (let k = 0; k < S; k++) { widest = Math.max(widest, d[k * F + W]); tallest = Math.max(tallest, d[k * F + H]); rounded = Math.max(rounded, d[k * F + RADIUS]); }
+    // Ellipses, square-cornered rects and thin pills (round ends too small to show the stretch) size as one scale;
+    // wider pills and rounded or skewed marks keep exact sizes.
+    const pill = track.shape === 1 || track.shape === 3;
+    const scaled = track.shape === 4 || (track.shape === 0 && rounded < 0.05 && !track.skew) || (pill && Math.min(widest, tallest) <= 6);
+    const scaleDigits = Math.max(widest, tallest) > 40 ? 3 : 2;  // steps well under half a pixel either way
+
+    // A mark moving along one axis animates only that coordinate; the still one sits on an outer group.
+    const spread = (f) => { let low = Infinity, high = -Infinity; for (let k = 0; k < S; k++) { low = Math.min(low, d[k * F + f]); high = Math.max(high, d[k * F + f]); } return high - low; };
+    const still = KEYFRAME_TOLERANCE.position, xMoves = spread(X) > still, yMoves = spread(Y) > still;
+    let at, outer = '';
+    if (xMoves && !yMoves) { at = series(d, [X], still, (p) => num(d[p + X], 1), null, 'translate'); outer = `translate(0 ${num(d[Y], 1)})`; }
+    else if (yMoves && !xMoves) { at = series(d, [Y], still, (p) => `0 ${num(d[p + Y], 1)}`, null, 'translate'); outer = `translate(${num(d[X], 1)} 0)`; }
+    else at = series(d, [X, Y], still, (p) => `${num(d[p + X], 1)} ${num(d[p + Y], 1)}`, null, 'translate');
+    const turn = series(d, [A], KEYFRAME_TOLERANCE.angle, (p) => num(d[p + A], 1), null, 'rotate');
+    const alpha = series(d, [O], KEYFRAME_TOLERANCE.opacity, (p) => num(d[p + O], 2), 'fill-opacity');
+    const fill = series(d, [RED, GREEN, BLUE], KEYFRAME_TOLERANCE.colour, (p) => hex(d[p + RED], d[p + GREEN], d[p + BLUE]), 'fill');
+    if (track.shape !== 0 || rounded >= 0.05 || track.skew || turn.animation || turn.value !== '0') crisp = false;
+
+    // Marks are written once each layer's most common fill is known, so that colour can sit on the layer.
+    const element = (tag, attributes, children) => `<${tag}${attributes}${children ? `>${children}</${tag}>` : '/>'}`;
+    const paint = (common) => `${fill.animation || fill.value !== common ? ` fill="${fill.value}"` : ''}${alpha.value === '1' ? '' : ` fill-opacity="${alpha.value}"`}`;
+    const colouring = fill.animation + alpha.animation;
+    let sizeMoving, centred;  // centred(common): the mark drawn around its own origin
+    if (scaled) {
+      const size = series(d, [W, H], KEYFRAME_TOLERANCE.size, (p) => {
+        const sx = num(d[p + W] / widest, scaleDigits), sy = num(d[p + H] / tallest, scaleDigits);
+        return sx === sy ? sx : `${sx} ${sy}`;
+      }, null, 'scale');
+      sizeMoving = Boolean(size.animation);
+      const still = size.animation || size.value === '1' ? '' : ` transform="scale(${size.value})"`;
+      const ends = pill ? ` rx="${num(Math.min(widest, tallest) / 2, 1)}"` : '';
+      centred = (common) => track.shape === 4
+        ? element('ellipse', ` rx="${num(widest / 2, 1)}" ry="${num(tallest / 2, 1)}"${paint(common)}${still}`, colouring + size.animation)
+        : element('rect', ` x="${num(-widest / 2, 1)}" y="${num(-tallest / 2, 1)}" width="${num(widest, 1)}" height="${num(tallest, 1)}"${ends}${paint(common)}${still}`, colouring + size.animation);
+    } else {
+      const wide = series(d, [W], KEYFRAME_TOLERANCE.size, (p) => num(d[p + W], 1), 'width');
+      const left = series(d, [W], KEYFRAME_TOLERANCE.size, (p) => num(-d[p + W] / 2, 1), 'x');
+      const tall = series(d, [H], KEYFRAME_TOLERANCE.size, (p) => num(d[p + H], 1), 'height');
+      const top = series(d, [H], KEYFRAME_TOLERANCE.size, (p) => num(-d[p + H] / 2, 1), 'y');
+      const round = series(d, [RADIUS], KEYFRAME_TOLERANCE.size, (p) => num(d[p + RADIUS], 1), 'rx');
+      sizeMoving = Boolean(wide.animation || tall.animation || round.animation);
+      const skew = track.skew ? ` transform="skewX(${num(Math.atan(track.skew) * 180 / Math.PI, 1)})"` : '';
+      const rx = round.value === '0' && !round.animation ? '' : ` rx="${round.value}"`;
+      centred = (common) => element('rect', ` x="${left.value}" y="${top.value}" width="${wide.value}" height="${tall.value}"${rx}${paint(common)}${skew}`,
+        colouring + wide.animation + left.animation + tall.animation + top.animation + round.animation);
+    }
+    let build;
+    if (!at.animation && !turn.animation && !sizeMoving && !track.skew) {
+      // Stays put, keeps its size, does not turn: placed directly, no groups.
+      const cx = num(d[X], 1), cy = num(d[Y], 1), w0 = d[W], h0 = d[H], r0 = d[RADIUS];
+      const spin = turn.value === '0' ? '' : ` transform="rotate(${turn.value} ${cx} ${cy})"`;
+      build = (common) => track.shape === 4
+        ? element('ellipse', ` cx="${cx}" cy="${cy}" rx="${num(w0 / 2, 1)}" ry="${num(h0 / 2, 1)}"${paint(common)}${spin}`, colouring)
+        : element('rect', ` x="${num(d[X] - w0 / 2, 1)}" y="${num(d[Y] - h0 / 2, 1)}" width="${num(w0, 1)}" height="${num(h0, 1)}"${r0 >= 0.05 ? ` rx="${num(r0, 1)}"` : ''}${paint(common)}${spin}`, colouring);
+    } else {
+      // A moving position animates the outer group's transform; a still one shares it with a still rotation.
+      const rotation = turn.animation || turn.value === '0' ? '' : ` rotate(${turn.value})`;
+      build = (common) => {
+        let mark = centred(common);
+        if (turn.animation) mark = `<g transform="rotate(${turn.value})">${turn.animation}${mark}</g>`;
+        if (!at.animation) return `<g transform="translate(${outer ? `${num(d[X], 1)} ${num(d[Y], 1)}` : at.value})${rotation}">${mark}</g>`;
+        if (rotation) mark = `<g transform="${rotation.trim()}">${mark}</g>`;
+        const moving = `<g transform="translate(${at.value})">${at.animation}${mark}</g>`;
+        return outer ? `<g transform="${outer}">${moving}</g>` : moving;
+      };
+    }
+    const entry = { fill: fill.animation ? null : fill.value, build };
+    pending[track.layer].push(entry);
+    // A shared-motion candidate stays put, does not turn, and is resized (if at all) as one scale.
+    const flags = { opacity: Boolean(alpha.animation), colour: Boolean(fill.animation), size: scaled && sizeMoving };
+    if (!at.animation && !turn.animation && turn.value === '0' && !track.skew && (scaled || !sizeMoving) && (flags.opacity || flags.colour || flags.size)) {
+      // The phase is read from whichever field swings most for its range.
+      const swings = [flags.opacity && [O, spread(O)], ...(flags.colour ? [[RED, spread(RED)], [GREEN, spread(GREEN)], [BLUE, spread(BLUE)]] : []),
+        flags.size && [W, spread(W) / widest], flags.size && [H, spread(H) / tallest]].filter(Boolean);
+      const shift = phaseShift(d, swings.reduce((a, b) => (b[1] > a[1] ? b : a))[0]);
+      const form = shifted(d, shift, [...(flags.opacity ? [O] : []), ...(flags.colour ? [RED, GREEN, BLUE] : []), ...(flags.size ? [W, H] : [])]);
+      const key = [];
+      for (let k = 0; k < S; k++) {
+        const p = k * F;
+        key.push(`${flags.opacity ? num(form[p + O], 2) : ''},${flags.colour ? hex(form[p + RED], form[p + GREEN], form[p + BLUE]) : ''},`
+          + `${flags.size ? `${num(form[p + W] / widest, scaleDigits)} ${num(form[p + H] / tallest, scaleDigits)}` : ''}`);
+      }
+      candidates.push({ entry, key: key.join(';'), shift, form, flags, widest, tallest, scaleDigits, shape: track.shape, cx: d[X], cy: d[Y],
+        radius: pill ? Math.min(widest, tallest) / 2 : d[RADIUS], opacity: alpha.value, colour: fill.value });
+    }
+  }
+
+  // Motions shared by two or more marks become one CSS animation each; the rest keep their own SMIL animations.
+  const groups = new Map();
+  for (const c of candidates) { const list = groups.get(c.key); if (list) list.push(c); else groups.set(c.key, [c]); }
+  const styles = [];
+  let scaling = false;
+  for (const list of groups.values()) {
+    if (list.length < 2) continue;
+    const name = 'k' + styles.length.toString(36), { form, flags, widest, tallest, scaleDigits } = list[0];
+    // A stop wherever any animated field needs one (straight lines between, within tolerance).
+    const stops = new Set();
+    const need = (fields, tolerance) => {
+      const step = evenStep(form, fields, tolerance), even = [], fitted = keyframes(form, fields, tolerance, false);
+      for (let m = 0; m < S; m += step) even.push(m);
+      for (const m of fitted.length < even.length ? fitted : even) stops.add(m);
+    };
+    if (flags.opacity) need([O], KEYFRAME_TOLERANCE.opacity);
+    if (flags.colour) need([RED, GREEN, BLUE], KEYFRAME_TOLERANCE.colour);
+    if (flags.size) need([W, H], KEYFRAME_TOLERANCE.size);
+    const frames = [...stops].sort((a, b) => a - b).map((m) => {
+      const p = m * F, set = [];
+      if (flags.opacity) set.push(`fill-opacity:${num(form[p + O], 2)}`);
+      if (flags.colour) set.push(`fill:${hex(form[p + RED], form[p + GREEN], form[p + BLUE])}`);
+      if (flags.size) {
+        const sx = num(form[p + W] / widest, scaleDigits), sy = num(form[p + H] / tallest, scaleDigits);
+        set.push(`transform:scale(${sx === sy ? sx : `${sx},${sy}`})`);
+      }
+      return `${num(m / samples * 100, 2)}%{${set.join(';')}}`;
+    });
+    styles.push(`.${name}{animation:${name} ${loop}s linear infinite}@keyframes ${name}{${frames.join('')}}`);
+    scaling = scaling || flags.size;
+    for (const c of list) {
+      // Starting the shared motion this far back puts the mark exactly where its own motion is at time zero.
+      const delay = num(-(((N - c.shift) % N) / N) * loop, 2);
+      const tail = `${c.opacity === '1' ? '' : ` fill-opacity="${c.opacity}"`} class="${flags.size ? 'm ' : ''}${name}"${delay === '0' ? '' : ` style="animation-delay:${delay}s"`}/>`;
+      c.entry.fill = c.colour;
+      c.entry.build = (common) => {
+        const paint = c.colour !== common ? ` fill="${c.colour}"` : '';
+        return c.shape === 4
+          ? `<ellipse cx="${num(c.cx, 1)}" cy="${num(c.cy, 1)}" rx="${num(c.widest / 2, 1)}" ry="${num(c.tallest / 2, 1)}"${paint}${tail}`
+          : `<rect x="${num(c.cx - c.widest / 2, 1)}" y="${num(c.cy - c.tallest / 2, 1)}" width="${num(c.widest, 1)}" height="${num(c.tallest, 1)}"${c.radius >= 0.05 ? ` rx="${num(c.radius, 1)}"` : ''}${paint}${tail}`;
       };
     }
   }
+  // Scaled marks grow from their own centres.
+  if (scaling) styles.unshift('.m{transform-box:fill-box;transform-origin:center}');
 
-  const n = (v) => Number(v.toFixed(2)).toString();
-  const wrap180 = (d) => ((d + 90) % 180 + 180) % 180 - 90;  // every mark shape looks the same turned 180°
-  const anim = (attr, list) => `<animate attributeName="${attr}" dur="${loop}s" repeatCount="indefinite" values="${list.join(';')}"/>`;
-  const turning = (type, list) => `<animateTransform attributeName="transform" type="${type}" dur="${loop}s" repeatCount="indefinite" values="${list.join(';')}"/>`;
-  const layers = [[], [], [], []];
-  for (const track of tracks.values()) {
-    const f = track.frames;
-    // A mark hidden in some samples keeps its nearest shape there, fully transparent.
-    const known = f.findIndex(Boolean);
-    for (let k = 0; k < samples; k++) {
-      if (f[k]) continue;
-      let j = 1;
-      while (!f[(k + j) % samples] && j < samples) j++;
-      f[k] = { ...(f[(k + j) % samples] || f[known]), opacity: 0 };
-    }
-    // Unwrap angles so marks turn the short way, then close the loop on the first sample.
-    for (let k = 1; k < samples; k++) f[k] = { ...f[k], angle: f[k - 1].angle + wrap180(f[k].angle - f[k - 1].angle) };
-    const closing = { ...f[0], angle: f[samples - 1].angle + wrap180(f[0].angle - f[samples - 1].angle) };
-    const all = [...f, closing];
-    const series = (pick) => { const list = all.map(pick); return { list, moving: list.some((v) => v !== list[0]) }; };
-    const at = series((p) => `${n(p.x)} ${n(p.y)}`), turn = series((p) => n(p.angle));
-    const wide = series((p) => n(p.w)), tall = series((p) => n(p.h)), left = series((p) => n(-p.w / 2)), top = series((p) => n(-p.h / 2));
-    const round = series((p) => n(p.radius)), fill = series((p) => p.fill), alpha = series((p) => n(p.opacity));
-    const animations = [
-      fill.moving && anim('fill', fill.list), alpha.moving && anim('fill-opacity', alpha.list),
-    ];
-    let mark;
-    if (track.shape === 4) {
-      const rx = series((p) => n(p.w / 2)), ry = series((p) => n(p.h / 2));
-      mark = `<ellipse rx="${rx.list[0]}" ry="${ry.list[0]}" fill="${fill.list[0]}" fill-opacity="${alpha.list[0]}">${[...animations,
-        rx.moving && anim('rx', rx.list), ry.moving && anim('ry', ry.list)].filter(Boolean).join('')}</ellipse>`;
-    } else {
-      const skew = track.skew ? ` transform="skewX(${n(Math.atan(track.skew) * 180 / Math.PI)})"` : '';
-      mark = `<rect x="${left.list[0]}" y="${top.list[0]}" width="${wide.list[0]}" height="${tall.list[0]}" rx="${round.list[0]}" fill="${fill.list[0]}" fill-opacity="${alpha.list[0]}"${skew}>${[...animations,
-        wide.moving && anim('width', wide.list), wide.moving && anim('x', left.list),
-        tall.moving && anim('height', tall.list), tall.moving && anim('y', top.list),
-        round.moving && anim('rx', round.list)].filter(Boolean).join('')}</rect>`;
-    }
-    if (turn.moving || turn.list[0] !== '0') mark = `<g transform="rotate(${turn.list[0]})">${turn.moving ? turning('rotate', turn.list) : ''}${mark}</g>`;
-    layers[track.layer].push(`<g transform="translate(${at.list[0]})">${at.moving ? turning('translate', at.list) : ''}${mark}</g>`);
-  }
-
+  // Each layer carries its most common still fill, so marks of that colour leave it out.
+  const commons = pending.map((list) => {
+    const counts = new Map();
+    for (const { fill } of list) if (fill) counts.set(fill, (counts.get(fill) || 0) + 1);
+    let best = null, most = 0;
+    for (const [fill, n] of counts) if (n > most) { best = fill; most = n; }
+    return best;
+  });
+  const layers = pending.map((list, layer) => list.map(({ build }) => build(commons[layer])));
   const { width, height } = first;
+  const marks = layers.reduce((n, list) => n + list.length, 0);
   const escape = (s) => s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
-  const svg = `<?xml version="1.0" encoding="UTF-8"?>
-<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"${crisp ? ' shape-rendering="crispEdges"' : ''}>
 <title>${escape(document.getElementById('title').textContent)} · OneSyntax</title>
-<desc>Seamless ${loop}-second loop · ${tracks.size} marks · ${samples} samples · seed ${st.values.seed}. Plays in browsers (SMIL); design tools import the first frame.</desc>
+<desc>Seamless ${loop}-second loop · ${marks} marks · seed ${st.values.seed}. Plays in browsers (SMIL and CSS animation); design tools import the first frame.</desc>
 <metadata id="onesyntax-preset">${escape(JSON.stringify(st))}</metadata>
-<g id="background">${transparent ? '' : `<rect width="${width}" height="${height}" fill="${first.params.colour.background}"/>`}</g>
-${['track', 'fill', 'cap', 'accent'].map((name, layer) => `<g id="${name}">\n${layers[layer].join('\n')}\n</g>`).join('\n')}
+${styles.length ? `<style>${styles.join('\n')}</style>` : ''}
+${transparent ? '' : `<rect id="background" width="${width}" height="${height}" fill="${first.params.colour.background}"/>`}
+${['track', 'fill', 'cap', 'accent'].map((name, layer) => layers[layer].length ? `<g id="${name}"${commons[layer] ? ` fill="${commons[layer]}"` : ''}>\n${layers[layer].join('\n')}\n</g>` : '').filter(Boolean).join('\n')}
 </svg>`;
   if (svg.length > MAX_ANIMATED_SVG_BYTES) throw new Error(`This animated SVG would be ${Math.round(svg.length / 1e6)} MB. Export video instead, or use fewer marks.`);
-  return { svg, loop, marks: tracks.size, samples };
+  return { svg, loop, marks, samples };
 }
 
 function exportAnimatedSVG() {
@@ -2571,7 +2896,10 @@ function exportAnimatedSVG() {
     try {
       const result = animatedSVG(state, { transparent: exportOptions.transparent });
       download(new Blob([result.svg], { type: 'image/svg+xml' }), `${fileBase()}_${result.loop}s-loop.svg`);
-      notify(`Exported an animated SVG · ${result.loop}-second loop · ${(result.svg.length / 1e6).toFixed(1)} MB`);
+      const size = result.svg.length < 1e6 ? `${Math.round(result.svg.length / 1e3)} KB` : `${(result.svg.length / 1e6).toFixed(1)} MB`;
+      // Thousands of animated marks play heavily in a browser; past that, video is the smoother web format.
+      const heavy = result.svg.length > HEAVY_ANIMATED_SVG_BYTES || result.marks > HEAVY_ANIMATED_SVG_MARKS;
+      notify(`Exported an animated SVG · ${result.loop}-second loop · ${size}${heavy ? ' · busy for the web: Video plays smoother, or use fewer marks' : ''}`);
     } catch (error) { notify(error.message, { error: true }); }
   }, 30);
 }
@@ -2692,6 +3020,7 @@ playButton.addEventListener('click', () => {
   paused = !paused;
   playButton.innerHTML = icon(paused ? 'play' : 'pause');
   playButton.setAttribute('aria-label', paused ? 'Play animation' : 'Pause animation');
+  playButton.dataset.tip = paused ? 'Play' : 'Pause';
 });
 
 document.addEventListener('keydown', (e) => {

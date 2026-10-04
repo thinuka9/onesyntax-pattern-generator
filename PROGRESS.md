@@ -53,13 +53,15 @@ proofs and the earlier "classic" page.
   artwork's frame, as in every export.
 - Built-in presets are named in code vocabulary (Hello World, Telemetry, Stack Trace, Source, Scope…); a session
   left on an old name follows it to the new one.
+- Brand tooltips (inverted ink, square, shortcut chips) replace the system ones; solid presets header and thin
+  scrollbars.
 - Dropdowns open a brand-styled list (groups as headings, a check on the current choice) instead of the system
   list; paired limits (Thinnest/Thickest, Min/Max) never cross; every pattern with one shared mark opacity has an
   Opacity control.
 
 ### Saving, sharing, exporting
 - Built-in presets, saved presets (browser storage, with JSON export/import), undo/redo, share links.
-- PNG at 1× / 2× / 4× / 6× (stepping down past browser limits), SVG, animated SVG, MP4/WebM loops,
+- PNG at 1× / 2× / 4× / 6× (stepping down past browser limits), SVG, web-optimised animated SVG, MP4/WebM loops,
   transparent backgrounds.
 
 ## Verified (3 October 2026)
@@ -73,6 +75,8 @@ proofs and the earlier "classic" page.
   Built-in presets build in 0–2 ms; at the slider extremes the slowest (Strands, 60,000 segments) builds in about
   15 ms, and Bracket detail steps down past 80,000 parts.
 - Remix: 6 different results from 6 seeds on every pattern, brand colours only, never blank, repeatable.
+- Animated SVG: 59% smaller across all presets (Scope 15 KB, Loop 187 KB, Hello World 90 KB, Source 1.6 MB);
+  played back and frozen at set moments it matches the app to under 1/255 per pixel on average.
 - Exports: PNG 2400 × 2400 (2×), SVG and animated SVG parse and animate, MP4 at exactly 5.00 s, including the
   Bracket presets.
 
