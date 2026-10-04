@@ -1,6 +1,6 @@
 # OneSyntax Pattern Generator
 
-> **Internal to Haux Studio.** These notes (README, BUILD, PROGRESS) record how the patterns are made: the studio's
+> **Internal to Haux Studio.** These notes (README, BUILD, PROGRESS, MEMORY) record how the patterns are made: the studio's
 > own knowledge. Keep them up to date and never hand them over to the client. The panel text in the app says what each
 > control does, never how a pattern is built.
 
@@ -11,6 +11,7 @@ seamless video loops.
 - **Run it:** see [BUILD.md](BUILD.md). In short: `powershell -ExecutionPolicy Bypass -File serve.ps1`,
   then open http://127.0.0.1:4174/.
 - **What's been built and what's next:** [PROGRESS.md](PROGRESS.md).
+- **What was decided and why, and what was dropped:** [MEMORY.md](MEMORY.md).
 
 ## What it does
 
@@ -27,14 +28,18 @@ seamless video loops.
   - *Bracket*: the brand's `{ }` mark on its own Geist Pixel grid (9 × 23 cells, read from the Figma file), drawn
     as pixels, lines, dots or slashes, alone or repeated in columns and rows, with looping effects: wave, scan,
     build, glitch, ripple, sparkle.
-- **Built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Telemetry, Bitstream, Stack Trace,
-  Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Render, Compile, Loop and
-  more. Refactor (Eddy) twists a bar grid round a quiet centre; Event Stream, Event Queue and Event Loop are Orbit.
+- **50 built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Telemetry, Bitstream, Stack
+  Trace, Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Render, Compile,
+  Loop and more; every pattern has at least three. Refactor (Eddy) twists a bar grid round a quiet centre; Event
+  Stream, Event Queue and Event Loop are Orbit.
 - **Wave shapes:** every wave can be a sine, triangle, square or sawtooth, built from a Fourier series with a
   chosen number of harmonics.
-- **Pulse:** fades and scales the marks of any studio pattern along its own wave.
-- **Remix (shuffle / dice):** composes a new, uniform variation of the current pattern from its seed; the same
-  preset and seed always give the same result.
+- **Pulse:** fades and scales the marks of any studio pattern (Orbit included) along its own wave.
+- **Browsing:** the Pattern menu shows a preview of each pattern; the artwork arrows, ← → and the dots step through
+  the current pattern's presets.
+- **Shuffle and dice:** shuffle jumps to another pattern at random, one of its presets, with new colours and
+  settings (one undo comes back). The seed dice composes a new, uniform variation of the current pattern from its
+  seed; the same preset and seed always give the same result.
 - **Motion:** every animation loops seamlessly in 5 or 10 seconds. Waves flow one way; the wave studies morph,
   swaying each figure through its shapes and back (or flow, if you choose).
 - **OneSyntax brand only:** Geist type, the brand colour list and palettes, the official logo files.
@@ -48,7 +53,10 @@ seamless video loops.
 index.html          The app: UI, controls, presets, remix, exports.
 engine.js           Pattern engine: fields, layouts, marks, SVG export, WebGL renderer.
 serve.ps1           Local preview server (Windows PowerShell, no Node needed).
-publish.sh          Hosting build step: copies only the app into dist/.
+publish.sh          Hosting build step: installs terser and runs build.mjs.
+build.mjs           Writes the app into dist/ with every comment stripped (the published site).
+package.json        Build tooling only (terser); the app itself needs no install.
+handover.ps1        Downloads the live site and zips the client's copy (no notes, no history).
 brand/              Official OneSyntax logo files (from the Rebranding Figma file).
 .claude/            Preview configuration for Claude Code.
 ```

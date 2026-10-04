@@ -28,8 +28,8 @@ In Claude Code, the `app` entry in `.claude/launch.json` starts the same server.
 | Export | Notes |
 |---|---|
 | PNG 1× / 2× / 4× / 6× | Optional transparent background. Sizes below. |
-| SVG | Vector; the editable layers are `background`, `track`, `fill`, `cap`, `accent`. |
-| Animated SVG | Built for the web: resolution-free, loops seamlessly, plays in browsers and `<img>` tags. Marks sharing a motion share one CSS animation; the rest keep only the keyframes they need. Most presets export at 15–400 KB. Patterns with thousands of independently moving marks (Threads, Concurrency) stay heavy: use Video for those. Design tools import the first frame. |
+| SVG | Vector; the editable layers are `background`, `track`, `fill`, `cap`, `accent`. Orbit's arcs export each dash as one closed curve, grouped by colour. Margins clip every export to the frame. |
+| Animated SVG | Built for the web: resolution-free, loops seamlessly, plays in browsers and `<img>` tags. Marks sharing a motion share one CSS animation; the rest keep only the keyframes they need. Most presets export at 15–400 KB. Orbit's Flow (without Pulse) slides whole dashes along their lines: Event Stream 0.37 MB, Event Queue 0.79 MB. Patterns with thousands of independently moving marks (Threads, Concurrency, Orbit with Sway or Pulse) stay heavy: use Video for those. Design tools import the first frame. |
 | Video | MP4 (H.264), 30 fps, seamless 5 or 10 s loop, longest side up to 1920 px. Encoded frame by frame with WebCodecs, faster than real time and with the tab in the background (MP4 packing by mp4-muxer, MIT, loaded on first use). Browsers without it fall back to real-time recording (MP4 or WebM; keep the tab visible). |
 | Presets (JSON) | From the preset picker: Export / Import. Also imports preset JSON from the original studio. |
 | Copy link | A URL holding the exact preset. Works wherever the page is hosted. |
@@ -50,23 +50,27 @@ largest size that fits, and the tool says so.
 
 ## Checks to run before a release
 
-There is no automated test runner (the project has no Node toolchain). Before shipping, in the browser:
+There is no automated test runner (Node is used only to strip comments when publishing). Before shipping, in the
+browser:
 
 1. The page loads with no console errors, with the icons and Geist type showing.
-2. Step through every pattern with ← →. Each draws, and the panel shows its controls.
+2. Open every pattern from the Pattern menu, and step through its presets with ← →. Each draws, and the panel
+   shows its controls.
 3. Drag a few sliders on each pattern; nothing blanks or errors.
-4. Press shuffle a few times on Wave Rows and on a studio pattern; results stay uniform.
+4. Press the seed dice a few times on Wave Rows and on a studio pattern; results stay uniform. Press shuffle: it
+   opens another pattern, and one undo comes back.
 5. Export a PNG at each scale, an SVG, an animated SVG and a video; each opens.
 6. Save a preset, export the presets JSON, delete the preset, import the JSON back.
 7. Copy link, open it in a new tab: the same preset appears.
+8. After the push deploys, open the live site: no console errors, and no comments in its source.
 
 ## Deploy
 
 Only the app is published, with every comment stripped: `publish.sh` installs terser (`npm install`) and runs
 `build.mjs`, which writes `index.html`, `engine.js` and `brand/` into `dist/` with HTML, CSS and JavaScript comments
 removed (names and logic untouched: no compression, no renaming). The notes on how the patterns are made stay in
-the source and in these .md files, which are Haux Studio's and never go live or to the client. The docs
-and the preview server never go live.
+the source and in these .md files, which are Haux Studio's: they, the build scripts and the preview server never
+go live or to the client.
 
 **Cloudflare Pages (recommended):** free for commercial use, and Cloudflare Access can limit the site to the
 team's email addresses.

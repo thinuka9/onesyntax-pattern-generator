@@ -1,16 +1,22 @@
 # Progress
 
-## Status (3 October 2026)
+## Status (5 October 2026)
 
 The OneSyntax Pattern Generator (`index.html`) is the product. It lives in
 `Dropbox\HAUX STUDIO\PROJECTS\ONESYNTAX REBRAND\PLUGIN\OneSyntaxPatternGenerator` and on GitHub at
-[thinuka9/onesyntax-pattern-generator](https://github.com/thinuka9/onesyntax-pattern-generator) (`main`),
+[thinuka9/onesyntax-pattern-generator](https://github.com/thinuka9/onesyntax-pattern-generator) (`main`, private),
 where it replaced the original TypeScript/Vite studio. That studio stays in the repository's history and in
-`PLUGIN\OneSyntaxPatternGenerator-archive-2026-10-03.zip`, together with its build output, test scripts, exported
-proofs and the earlier "classic" page.
+`PLUGIN\_archive\OneSyntaxPatternGenerator-archive-2026-10-03.zip`, together with its build output, test scripts,
+exported proofs and the earlier "classic" page. `PLUGIN\_archive\Archive.zip` holds the earlier generator projects
+(claude-generator, codex) as they came off the Mac.
+
+Live at https://onesyntax-pattern-generator.pages.dev (Cloudflare Pages, redeployed on every push to `main`, comments
+stripped by `build.mjs`). 15 patterns, 50 built-in presets.
 
 **Not done yet**
-- Deploy to a public URL (Netlify, Vercel, Cloudflare Pages or GitHub Pages; see BUILD.md).
+- Event Queue: the reference packs its finest lines tighter along the top right than the fit does.
+- The presets window could open scrolled to the current pattern's presets.
+- A lighter animated SVG for Orbit's Sway (Event Queue Sway is 5.8 MB; Flow is 0.79 MB).
 
 ## Built so far
 
@@ -22,8 +28,8 @@ proofs and the earlier "classic" page.
   (Eddy) twists a 22 × 12 bar grid round a quiet centre: angle 90° ± 60° times the attractor bump
   (1 − d²/R²)², easing to nothing at radius R.
 - **Orbit, Grid layout** (preset Event Loop; the Horizon pattern until 5 October, Vector Field before that; saves under
-  either name open as Orbit in this layout, its settings kept under `grid`, colours and format shared). Formerly
-  open): a direction-field plot. Each dash lies along F(x, y) = cos α·⟨−y, x⟩ + sin α·⟨x, y⟩ from the centre,
+  either name open as Orbit in this layout, its settings kept under `grid`, colours and format shared): a
+  direction-field plot. Each dash lies along F(x, y) = cos α·⟨−y, x⟩ + sin α·⟨x, y⟩ from the centre,
   normalised: α = 0 is the rotation field (circles), ±90° a source or sink, spirals between. The field sits on
   a plane receding towards the top (x = middle + X·near, y = lift·e^Z − lift, lift = 0.04 + 4(1 − depth)²,
   near = (bottom + lift) / stretch), sampled by rows evenly spaced in Z and columns spaced out from the centre's
@@ -51,8 +57,9 @@ proofs and the earlier "classic" page.
     S = spacing·(r / r_out)^growth, one Dash length, centred at (i + k·bend) spacings from the line's point facing
     the page's middle. Lines whose far side shows on the page close their count evenly instead (no seam). Each
     dash is drawn as 2–12 overlapping round pieces so it curves with its line.
-  - Thickness: (1 − Line gap)·√(line spacing × mean spacing) × √(squeeze), capped at 0.9 × line spacing and
-    0.6 × dash length; Taper thins the ends.
+  - Thickness: Thickness·√(line spacing × mean spacing), the line spacing measured across the stretch (× √stretch),
+    capped at 0.9 × line spacing and 0.6 × dash length (the dash itself at 0.95 × its spacing); Roundness rounds
+    the ends, Taper thins them. Saves from the Horizon days carried Row gap: Thickness = 1 − Row gap.
   - Fitted to the reference (539 detected strokes, directions from second moments): one shared centre fits the
     stroke directions to 19° RMS; a shifting centre to 7.3°; shifting centre on a receding plane to 4.9°
     (stretch 2.414, D = (−0.882, 0.401), rotation 9.4°, lift 0.42, centre (−0.057, −0.141) on the plane). Line
@@ -84,12 +91,14 @@ proofs and the earlier "classic" page.
   in as few pieces as each curve needs (Event Queue Sway 5.8 MB, was 13.9).
 - **More presets (5 October):** every pattern that had one preset now has three, each drawn from the first with
   another density, wave and palette: Uptime and Benchmark (Gauge), Hash and Payload (Barcode), Bandwidth
-  and Packet (Threshold Stripes), Latency and Throttle (Halftone Diagonal), Heap and Closure (Contour Field),
+  and Packet (Threshold Stripes), Latency and Throttle (Halftone Diagonal), Heap and Closure (Contour Field, from Schema),
   Protocol and Socket (Strands), Kernel and Mutex (Kaleido Pixels), Buffer and Register (Stack), Overflow and
   Daemon (Cymatics), Cluster and Webhook (Interference). 50 built-in presets in all; each loops seamlessly.
 - **Renames (5 October):** the studio's three borrowed names are gone: Sinky Meter is Gauge, Amaya Flow is Eddy,
   RFD Stack is Stack (in the engine and the app). Saves and share links under the old names open in the new
-  patterns (`PATTERN_ALIASES`), and a studio save's own name is refreshed on load, so SVG titles follow.
+  patterns (`PATTERN_ALIASES`), and a studio save's own name is refreshed on load, so SVG titles follow. Contour
+  Field's first preset, Vector Field (a method term), is now Schema. A session left on an old preset name (Vector
+  Field, or the studio's Sinky Meter, Amaya Flow, RFD Stack) opens the renamed preset (`RENAMED_LOOKS`).
 - **Large formats (5 October):** studio sizes are pixels on the 1200 px square they were designed on; on a page
   whose shorter side is larger (A4 portrait, 2480 px) `scaledStudio` multiplies margins, gutters, mark lengths and
   thicknesses, meter parts, strand swing and offsets by shorter side / 1200 at draw time, so marks keep their
@@ -114,7 +123,7 @@ proofs and the earlier "classic" page.
 - **Morph motion** for the wave studies: the Chladni figure melts into its neighbours and back, interference
   sources drift apart and swing, logo contours breathe. Flow (rings travelling outward) remains an option.
 - **Fourier wave shapes:** sine, triangle, square, sawtooth, with 1–32 harmonics, on every wave.
-- **Pulse:** an opacity and size wave over any studio pattern.
+- **Pulse:** an opacity and size wave over any studio pattern and over Orbit (both layouts).
 - **Motion:** one-way, seamless loops. Waves advance whole or half cycles per loop (5 or 10 s); noise drifts one
   way and cross-fades with itself one loop earlier.
 - **Seeds and remix:** a seed is a repeatable remix of the preset. Remixes are composed: even cells, one item count
@@ -145,6 +154,18 @@ proofs and the earlier "classic" page.
 - Built-in presets, saved presets (browser storage, with JSON export/import), undo/redo, share links.
 - PNG at 1× / 2× / 4× / 6× (stepping down past browser limits), SVG, web-optimised animated SVG, MP4/WebM loops,
   transparent backgrounds.
+
+## Verified (5 October 2026)
+- All 50 built-in presets loop seamlessly at 1:1 and at A4 portrait.
+- Orbit's SVG matches the app to 1–3/255 per pixel on average; its Flow animated SVG, frozen at set moments,
+  matches the app.
+- No method words (formulas or method names) in any panel text, description or hint.
+- The live site (after commit b092455) serves the stripped build: no comments, 196 KB page (258 KB before), no
+  console errors, 50 presets load, the pattern list shows Gauge, Eddy and Stack, and Event Stream exports one
+  vector path per dash.
+- Handover: `handover.ps1` made `PLUGIN\OneSyntax-Pattern-Generator.zip` (107 KB: the page, engine, five brand
+  SVGs, README.txt), byte for byte the live page, no comments. Setting keys and function names in the code still
+  carry a few method words (`chladni`); they are code, not text the app shows.
 
 ## Verified (4 October 2026)
 - Every control on every built-in preset changes the output (564 controls checked; the exceptions are by design,

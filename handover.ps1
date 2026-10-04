@@ -7,14 +7,17 @@ param(
 )
 $ErrorActionPreference = 'Stop'
 $parent = Split-Path $PSScriptRoot -Parent
-$folder = Join-Path $parent $Name
+# The files are gathered in a temporary folder and only the zip is left beside the repository.
+$folder = Join-Path ([IO.Path]::GetTempPath()) $Name
 $zip = Join-Path $parent "$Name.zip"
 if (Test-Path $folder) { Remove-Item $folder -Recurse -Force }
 New-Item -ItemType Directory -Force (Join-Path $folder 'brand') | Out-Null
 
 $files = @('index.html', 'engine.js') + (Get-ChildItem (Join-Path $PSScriptRoot 'brand') -File | ForEach-Object { "brand/$($_.Name)" })
 foreach ($file in $files) {
-  Invoke-WebRequest -UseBasicParsing -Uri "$Site/$file" -OutFile (Join-Path $folder $file)
+  # Cloudflare answers /index.html with a 308 to /, which Windows PowerShell does not follow: ask for / directly.
+  $path = if ($file -eq 'index.html') { '' } else { $file }
+  Invoke-WebRequest -UseBasicParsing -Uri "$Site/$path" -OutFile (Join-Path $folder $file)
 }
 # The handover must carry no notes: stop if a comment slipped through the build.
 $code = (Get-Content (Join-Path $folder 'index.html') -Raw) + (Get-Content (Join-Path $folder 'engine.js') -Raw)
@@ -34,4 +37,5 @@ Video export loads one small library (mp4-muxer) from a public CDN when first us
 
 if (Test-Path $zip) { Remove-Item $zip -Force }
 Compress-Archive -Path (Join-Path $folder '*') -DestinationPath $zip
+Remove-Item $folder -Recurse -Force
 Write-Host "Handover copy: $zip"

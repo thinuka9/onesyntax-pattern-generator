@@ -673,12 +673,13 @@ const ROW_PRESETS = [
 // Each studio pattern's built-in look, by pattern name.
 const STUDIO_LOOKS = {
   'Gauge': 'Telemetry', 'Eddy': 'Data Flow', Barcode: 'Bitstream', 'Threshold Stripes': 'Stack Trace',
-  'Halftone Diagonal': 'Gradient Descent', 'Contour Field': 'Vector Field', Strands: 'Threads', 'Kaleido Pixels': 'Recursion', 'Stack': 'Call Stack',
+  'Halftone Diagonal': 'Gradient Descent', 'Contour Field': 'Schema', Strands: 'Threads', 'Kaleido Pixels': 'Recursion', 'Stack': 'Call Stack',
 };
 // Looks renamed in the brand vocabulary; a session left on an old name follows it to the new one.
 const RENAMED_LOOKS = {
   'Soft Wave': 'Hello World', 'Meter Rows': 'Throughput', 'Barcode Rows': 'Checksum', 'Threshold Rows': 'Pipeline', 'Halftone Dots': 'Dot Notation',
   'Azure Drift': 'Async', 'Night Tide': 'Night Build', 'Pulse Dots': 'Heartbeat', 'RFD Rows': 'Stdout',
+  'Sinky Meter': 'Telemetry', 'Amaya Flow': 'Data Flow', 'RFD Stack': 'Call Stack', 'Vector Field': 'Schema',
   ...STUDIO_LOOKS, Cymatics: 'Resonance', Interference: 'Concurrency', 'Logo Field': 'Source',
 };
 // The studio patterns keep their geometry and move onto the closest brand palette.
@@ -1685,9 +1686,9 @@ const MORE_PRESETS = [
     'mappings.length.min': 20, 'mappings.length.max': 20, 'marks.fixedAngle': 45, 'field.gradient.direction': 135, 'shaping.gamma': 0.8, 'field.waveA.weight': 0.3, 'field.waveA.frequency': 2.5 } },
   { name: 'Throttle', from: 'Gradient Descent', palette: 'Coral', set: { 'layout.columns': 22, 'layout.rows': 22, 'mappings.thickness.min': 1.5, 'mappings.thickness.max': 20,
     'mappings.length.min': 44, 'mappings.length.max': 44, 'marks.fixedAngle': -30, 'field.gradient.direction': 0, 'shaping.gamma': 2, 'field.waveA.weight': 0 } },
-  { name: 'Heap', from: 'Vector Field', palette: 'Midnight', set: { 'layout.columns': 44, 'layout.rows': 44, 'mappings.length.min': 8, 'mappings.length.max': 24,
+  { name: 'Heap', from: 'Schema', palette: 'Midnight', set: { 'layout.columns': 44, 'layout.rows': 44, 'mappings.length.min': 8, 'mappings.length.max': 24,
     'mappings.thickness.min': 3.6, 'mappings.thickness.max': 3.6, 'field.waveA.frequency': 2.4, 'field.waveA.direction': 120, 'field.waveB.weight': 0.9, 'field.radial.weight': 0.5, 'shaping.warp': 0.12 } },
-  { name: 'Closure', from: 'Vector Field', palette: 'Grape', set: { 'layout.columns': 30, 'layout.rows': 30, 'mappings.length.min': 10, 'mappings.length.max': 34,
+  { name: 'Closure', from: 'Schema', palette: 'Grape', set: { 'layout.columns': 30, 'layout.rows': 30, 'mappings.length.min': 10, 'mappings.length.max': 34,
     'mappings.thickness.min': 4, 'mappings.thickness.max': 4, 'field.waveA.frequency': 0.8, 'field.waveA.direction': 10, 'field.waveB.weight': 0.3, 'field.radial.weight': 0.1, 'shaping.warp': 0.04 } },
   { name: 'Protocol', from: 'Threads', palette: 'Midnight', set: { 'layout.columns': 90, 'mappings.thickness.min': 0.6, 'mappings.thickness.max': 2,
     'layout.strandDisplacement': 120, 'layout.strandSamples': 160, 'field.waveA.frequency': 2.1, 'field.waveA.direction': 20, 'field.waveB.weight': 0.6, 'colour.accentEvery': 0 } },
