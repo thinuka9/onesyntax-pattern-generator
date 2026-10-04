@@ -361,14 +361,24 @@
   const mapped = (mapping, value, u, v) => mapping.min + (mapping.max - mapping.min) * sourceValue(mapping.source, value, u, v);
   const shapeIds = { Rectangle: 0, Pill: 1, Parallelogram: 2, Line: 3, Dot: 4, Meter: 0 };
 
-  /** Slot 13 of each instance holds a mark id that stays the same from frame to frame. */
+  /**
+   * Room for `length` floats. With a `pool` (the live preview passes one) the same buffer is reused frame after
+   * frame and grown when needed, so drawing does not churn memory; without one, a fresh buffer the caller keeps.
+   */
+  function instanceBuffer(pool, length) {
+    if (!pool) return new Float32Array(length);
+    if (!pool.buffer || pool.buffer.length < length) pool.buffer = new Float32Array(Math.ceil(length * 1.25));
+    return pool.buffer.subarray(0, length);
+  }
+
+  /** Slot 13 of each instance holds a mark id that stays the same from frame to frame. `options.pool`: see instanceBuffer. */
   function buildGeometry(params, time, options = {}) {
     const cells = buildLayout(params), field = createField(params, time, options);
     const { mappings, marks, layout, canvas, colour } = params;
     const strands = layout.mode === 'Strands';
     const strandSamples = Math.max(2, Math.min(2048, Math.round(layout.strandSamples)));
     const capacity = cells.length * (strands ? strandSamples - 1 : marks.shape === 'Meter' ? 3 : 1);
-    const instances = new Float32Array(capacity * STRIDE);
+    const instances = instanceBuffer(options.pool, capacity * STRIDE);
     const globalAngle = radians(layout.rotation), gc = Math.cos(globalAngle), gs = Math.sin(globalAngle);
     const centerX = canvas.width / 2, centerY = canvas.height / 2;
     const stop1 = hexRgb(colour.stop1), stop2 = hexRgb(colour.stop2), stop3 = hexRgb(colour.stop3);
@@ -473,7 +483,8 @@
         if (count > before) markCount++;
       }
     }
-    return { instances: count === capacity ? instances : instances.slice(0, count * STRIDE), count, markCount };
+    const used = count === capacity ? instances : options.pool ? instances.subarray(0, count * STRIDE) : instances.slice(0, count * STRIDE);
+    return { instances: used, count, markCount };
   }
 
   // ---------- presets.ts ----------
@@ -939,7 +950,7 @@ void main() {
   }
 
   window.WaveEngine = {
-    STRIDE, clamp, buildGeometry, motionCycles, waveFn, basePreset: base, PRESETS, PRESET_DESCRIPTIONS,
+    STRIDE, clamp, buildGeometry, instanceBuffer, motionCycles, waveFn, basePreset: base, PRESETS, PRESET_DESCRIPTIONS,
     screenGradient, colourRGB, paletteAt, gradientStops, toSVG, Renderer,
   };
 })();

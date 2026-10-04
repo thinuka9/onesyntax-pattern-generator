@@ -21,7 +21,7 @@ In Claude Code, the `app` entry in `.claude/launch.json` starts the same server.
 
 - A current Chromium-based browser (Chrome, Edge, Arc) for everything, including WebGL 2 and video export.
   Firefox and Safari run the tool; video export depends on their MediaRecorder support.
-- An internet connection for Geist, Lucide and Motion (see [README.md](README.md#dependencies)).
+- An internet connection for Geist and Motion (see [README.md](README.md#dependencies)).
 
 ## Exports
 
@@ -52,7 +52,7 @@ largest size that fits, and the tool says so.
 
 There is no automated test runner (the project has no Node toolchain). Before shipping, in the browser:
 
-1. The page loads with no console errors, with the Lucide icons and Geist type showing.
+1. The page loads with no console errors, with the icons and Geist type showing.
 2. Step through every pattern with ← →. Each draws, and the panel shows its controls.
 3. Drag a few sliders on each pattern; nothing blanks or errors.
 4. Press shuffle a few times on Wave Rows and on a studio pattern; results stay uniform.

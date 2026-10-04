@@ -46,15 +46,14 @@ brand/              Official OneSyntax logo files (from the Rebranding Figma fil
 
 ## Dependencies
 
-All loaded from CDNs at runtime, so the page needs an internet connection:
+Geist and Motion load from CDNs at runtime; the icons are part of the page:
 
 | Library | Version | Licence | Used for |
 |---|---|---|---|
 | [Geist / Geist Mono](https://vercel.com/font) (Google Fonts) | latest | SIL OFL 1.1 | Brand typography |
-| [Lucide](https://lucide.dev) | 0.460.0 | ISC | Icons |
+| [Lucide](https://lucide.dev) | 0.460.0 | ISC | Icons: the 24 the app uses are kept in the page, not loaded |
 | [Motion](https://motion.dev) | 12.23.12 | MIT | UI micro-animations |
 
-Without the CDNs the tool still works: text falls back to the system font, icon buttons keep their labels for
-screen readers, and animations are skipped.
+Without the CDNs the tool still works: text falls back to the system font and animations are skipped.
 
 The OneSyntax name, logo files and colours belong to OneSyntax.

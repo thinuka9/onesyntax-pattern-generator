@@ -12,7 +12,7 @@
 <style>
   /* OneSyntax design system (Rebranding file): square corners, Geist set tight, solid Black / Primary Blue
      actions with sentence-case labels. Controls are filled, never outlined: choices are segments in a tinted
-     track, the chosen one a solid white block; colours are square tiles. Icons are Lucide. */
+     track, the chosen one a solid white block; colours are square tiles. Icons are Lucide, kept inline. */
   :root {
     --sans: 'Geist', system-ui, sans-serif; --mono: 'Geist Mono', ui-monospace, monospace;
     --panel-w: 396px; --gap: 20px; --pad: 28px; --chip-w: 58px; --control: 34px;
@@ -452,7 +452,6 @@
 
 <div class="swatch-pop" id="swatchPop" role="dialog" aria-label="OneSyntax brand colours" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/lucide@0.460.0/dist/umd/lucide.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/motion@12.23.12/dist/motion.js"></script>
 <script src="./engine.js"></script>
 <script>
@@ -460,23 +459,37 @@ const E = window.WaveEngine;
 const STRIDE = E.STRIDE;
 
 // ---------- Icons ----------
-// Lucide (ISC licence), pinned. Names here are the page's own; without the CDN, buttons keep their aria-labels.
-const LUCIDE = {
-  'chevron-left': 'ChevronLeft', 'chevron-right': 'ChevronRight', 'chevron-down': 'ChevronDown',
-  undo: 'Undo2', redo: 'Redo2', export: 'Download', shuffle: 'Shuffle', reset: 'RotateCcw',
-  pause: 'Pause', play: 'Play', close: 'X', plus: 'Plus', minus: 'Minus', dice: 'Dice5', check: 'Check',
-  fill: 'Maximize2', fit: 'Scan', image: 'Image', vector: 'FileCode2', sparkles: 'Sparkles', film: 'Film',
-  link: 'Link', upload: 'Upload', transparent: 'SquareDashed',
+// The 24 Lucide icons the page uses (lucide.dev, ISC licence, v0.460.0), kept here instead of loading the whole
+// set (356 KB) from a CDN. Names are the page's own; each comment gives the Lucide name.
+const ICONS = {
+  'chevron-left': '<path d="m15 18-6-6 6-6"/>',  // ChevronLeft
+  'chevron-right': '<path d="m9 18 6-6-6-6"/>',  // ChevronRight
+  'chevron-down': '<path d="m6 9 6 6 6-6"/>',  // ChevronDown
+  undo: '<path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 5.5 5.5a5.5 5.5 0 0 1-5.5 5.5H11"/>',  // Undo2
+  redo: '<path d="m15 14 5-5-5-5"/><path d="M20 9H9.5A5.5 5.5 0 0 0 4 14.5A5.5 5.5 0 0 0 9.5 20H13"/>',  // Redo2
+  export: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/>',  // Download
+  shuffle: '<path d="M2 18h1.4c1.3 0 2.5-.6 3.3-1.7l6.1-8.6c.7-1.1 2-1.7 3.3-1.7H22"/><path d="m18 2 4 4-4 4"/><path d="M2 6h1.9c1.5 0 2.9.9 3.6 2.2"/><path d="M22 18h-5.9c-1.3 0-2.6-.7-3.3-1.8l-.5-.8"/><path d="m18 14 4 4-4 4"/>',  // Shuffle
+  reset: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',  // RotateCcw
+  pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',  // Pause
+  play: '<polygon points="6 3 20 12 6 21 6 3"/>',  // Play
+  close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',  // X
+  plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',  // Plus
+  minus: '<path d="M5 12h14"/>',  // Minus
+  dice: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><path d="M16 8h.01"/><path d="M8 8h.01"/><path d="M8 16h.01"/><path d="M16 16h.01"/><path d="M12 12h.01"/>',  // Dice5
+  check: '<path d="M20 6 9 17l-5-5"/>',  // Check
+  fill: '<polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" x2="14" y1="3" y2="10"/><line x1="3" x2="10" y1="21" y2="14"/>',  // Maximize2
+  fit: '<path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/>',  // Scan
+  image: '<rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/>',  // Image
+  vector: '<path d="M4 22h14a2 2 0 0 0 2-2V7l-5-5H6a2 2 0 0 0-2 2v4"/><path d="M14 2v4a2 2 0 0 0 2 2h4"/><path d="m5 12-3 3 3 3"/><path d="m9 18 3-3-3-3"/>',  // FileCode2
+  sparkles: '<path d="M9.937 15.5A2 2 0 0 0 8.5 14.063l-6.135-1.582a.5.5 0 0 1 0-.962L8.5 9.936A2 2 0 0 0 9.937 8.5l1.582-6.135a.5.5 0 0 1 .963 0L14.063 8.5A2 2 0 0 0 15.5 9.937l6.135 1.581a.5.5 0 0 1 0 .964L15.5 14.063a2 2 0 0 0-1.437 1.437l-1.582 6.135a.5.5 0 0 1-.963 0z"/><path d="M20 3v4"/><path d="M22 5h-4"/><path d="M4 17v2"/><path d="M5 18H3"/>',  // Sparkles
+  film: '<rect width="18" height="18" x="3" y="3" rx="2"/><path d="M7 3v18"/><path d="M3 7.5h4"/><path d="M3 12h18"/><path d="M3 16.5h4"/><path d="M17 3v18"/><path d="M17 7.5h4"/><path d="M17 16.5h4"/>',  // Film
+  link: '<path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>',  // Link
+  upload: '<path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" x2="12" y1="3" y2="15"/>',  // Upload
+  transparent: '<path d="M5 3a2 2 0 0 0-2 2"/><path d="M19 3a2 2 0 0 1 2 2"/><path d="M21 19a2 2 0 0 1-2 2"/><path d="M5 21a2 2 0 0 1-2-2"/><path d="M9 3h1"/><path d="M9 21h1"/><path d="M14 3h1"/><path d="M14 21h1"/><path d="M3 9v1"/><path d="M21 9v1"/><path d="M3 14v1"/><path d="M21 14v1"/>',  // SquareDashed
 };
-const icon = (name) => {
-  const node = window.lucide && window.lucide.icons[LUCIDE[name]];
-  if (!node) return '';
-  const svg = window.lucide.createElement(node);
-  svg.setAttribute('class', 'icon');
-  svg.setAttribute('stroke-width', '1.75');
-  svg.setAttribute('aria-hidden', 'true');
-  return svg.outerHTML;
-};
+const icon = (name) => ICONS[name]
+  ? `<svg class="icon" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${ICONS[name]}</svg>`
+  : '';
 for (const el of document.querySelectorAll('[data-icon]')) el.insertAdjacentHTML('afterbegin', icon(el.dataset.icon));
 
 // ---------- Motion ----------
@@ -661,19 +674,20 @@ function rowWave(v, u, r, time, wave) {
 // Wave Rows draws with flat colour; these keep the shared renderer's gradient inputs defined.
 const flatColour = (background) => ({ continuous: false, background, stops: 2, stop1: '#000000', stop2: '#000000', stop3: '#000000', source: 'constant', gradientAngle: 0 });
 
-/** Writes mark `n` straight into the shared instance layout (no skew), without a throwaway array per mark. */
+/** Writes mark `n` straight into the shared instance layout (no skew), without a throwaway array per mark. Every slot
+ * the renderer reads is written, so a reused buffer never shows last frame's values. */
 function putMark(I, n, x, y, w, h, angle, radius, shape, red, green, blue, opacity, layer, id) {
   const o = n * STRIDE;
-  I[o] = x; I[o + 1] = y; I[o + 2] = w; I[o + 3] = h; I[o + 4] = angle; I[o + 5] = radius; I[o + 7] = shape;
+  I[o] = x; I[o + 1] = y; I[o + 2] = w; I[o + 3] = h; I[o + 4] = angle; I[o + 5] = radius; I[o + 6] = 0; I[o + 7] = shape;
   I[o + 8] = red; I[o + 9] = green; I[o + 10] = blue; I[o + 11] = opacity; I[o + 12] = layer; I[o + 13] = id;
 }
 
 /** Wave Rows emits the same instance layout as the studio engine, so one renderer draws both. */
-function rowsGeometry(v, time) {
+function rowsGeometry(v, time, pool) {
   const [width, height] = FORMATS[v.format] || FORMATS['1:1'];
   const rows = Math.max(1, Math.round(v.rows));
   const counts = Array.from({ length: rows }, (_, r) => Math.max(1, Math.round(v.items + r * v.itemStep)));
-  const instances = new Float32Array(counts.reduce((a, b) => a + b, 0) * STRIDE);
+  const instances = E.instanceBuffer(pool, counts.reduce((a, b) => a + b, 0) * STRIDE);
   const [red, green, blue] = E.colourRGB(v.ink);
   const m = Math.min(v.margin, width / 2 - 1, height / 2 - 1);
   const innerW = width - 2 * m, rowH = (height - 2 * m) / rows, h = rowH * (1 - v.gapY);
@@ -798,7 +812,7 @@ function hash2(a, b) {
  * start with the mark fully shown, so stills and thumbnails read.
  */
 const SCAN_BAND = 0.25, BUILD_SHUFFLE = 0.3, BUILD_EDGE = 0.12, MAX_MARK_PARTS = 80000;
-function markGeometry(v, time) {
+function markGeometry(v, time, pool) {
   const [width, height] = FORMATS[v.format] || FORMATS['1:1'];
   const { cells, width: markW, height: markH } = braceCells(v.mark, v.spacing);
   const columns = Math.max(1, Math.round(v.columns)), rows = Math.max(1, Math.round(v.rows)), gap = Math.max(0, Math.round(v.gap));
@@ -829,7 +843,7 @@ function markGeometry(v, time) {
   const calm = hash2(glitchKey, 3) > 0.8, chunkRows = 1 + Math.floor(hash2(glitchKey, 1) * 3);
   const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.ink2), hi = E.colourRGB(v.highlight);
 
-  const instances = new Float32Array(columns * rows * cells.length * subCount * STRIDE);
+  const instances = E.instanceBuffer(pool, columns * rows * cells.length * subCount * STRIDE);
   let count = 0;
   for (let ty = 0; ty < rows; ty++) for (let tx = 0; tx < columns; tx++) for (const [c, r] of cells) {
     const i = tx * stepX + c, j = ty * stepY + r, cellId = j * blockCols + i;  // ids hold steady from frame to frame
@@ -1292,11 +1306,12 @@ const edited = () => JSON.stringify(state) !== JSON.stringify(baseline);
 const label = (id) => id.split(':').slice(1).join(':');
 
 // ---------- Geometry & drawing ----------
-function geometryFor(st, t) {
-  if (isRows(st)) return rowsGeometry(st.values, t);
-  if (isMark(st)) return markGeometry(st.values, t);
+/** `pool` (optional) reuses one buffer across calls: only for a caller that is done with the last frame. */
+function geometryFor(st, t, pool) {
+  if (isRows(st)) return rowsGeometry(st.values, t, pool);
+  if (isMark(st)) return markGeometry(st.values, t, pool);
   const p = st.values;
-  const geo = { ...E.buildGeometry(p, t, { directional: true, loopSeconds: loopSeconds(st), sdf: logoSdf(p) }), width: p.canvas.width, height: p.canvas.height, params: p };
+  const geo = { ...E.buildGeometry(p, t, { directional: true, loopSeconds: loopSeconds(st), sdf: logoSdf(p), pool }), width: p.canvas.width, height: p.canvas.height, params: p };
   applyPulse(geo, p.pulse, t, patternOf(st.pattern).sizeMode);
   return geo;
 }
@@ -1513,13 +1528,17 @@ function sampleTone(background) {
 let renderQueued = false;
 const requestRender = () => { renderQueued = true; };
 
+// The live preview draws each frame from one reused buffer (see E.instanceBuffer).
+const framePool = {};
 function render() {
-  const geo = geometryFor(state, time);
+  const geo = geometryFor(state, time, framePool);
   const vw = window.innerWidth, vh = window.innerHeight;
   const place = artPlacement(geo, vw, vh);
-  // Supersample standard screens so hairline marks stay smooth; cap the buffer at ~16 MP.
-  let dpr = Math.max(2, window.devicePixelRatio || 1);
-  dpr = Math.min(dpr, Math.sqrt(16e6 / (vw * vh)));
+  // Supersample so hairline marks stay smooth: at least 2×, capped near 16 MP. While an animation keeps missing
+  // frames, the buffer eases to 0.75 of that (capped near 8 MP) until it stops or is edited; a still frame is full.
+  const eased = lightened && animated() && !paused;
+  let dpr = Math.max(2, window.devicePixelRatio || 1) * (eased ? 0.75 : 1);
+  dpr = Math.min(dpr, Math.sqrt((eased ? 8e6 : 16e6) / (vw * vh)));
   const pw = Math.round(vw * dpr), ph = Math.round(vh * dpr);
   const background = geo.params.colour.background;
   if (gpu) gpu.render(geo, geo.params, pw, ph, [place.s * dpr, place.s * dpr, place.x * dpr, place.y * dpr]);
@@ -2328,7 +2347,7 @@ async function importPresets(file) {
   refreshPresets();
 }
 
-function changed() { save(); requestRender(); updateStatus(); }
+function changed() { save(); fullSharpness(); requestRender(); updateStatus(); }
 // A hand edit replaces any one-off status message with the live "edited" state.
 function edit() { message = null; offerUndo = false; recordEdit(); changed(); }
 
@@ -2350,8 +2369,7 @@ document.getElementById('revert').addEventListener('click', () => applyPreset(cu
 const looksDialog = document.getElementById('looks');
 // Built-in looks never change, so each thumbnail is drawn once (at the picker's size) and scaled from then on.
 const thumbCache = new Map();
-function paintThumb(c, id, st) {
-  if (!id.startsWith('builtin:')) { drawThumb(c, st); return; }
+function thumbImage(id, st) {
   let image = thumbCache.get(id);
   if (!image) {
     image = document.createElement('canvas');
@@ -2359,9 +2377,24 @@ function paintThumb(c, id, st) {
     drawThumb(image, st);
     thumbCache.set(id, image);
   }
+  return image;
+}
+function paintThumb(c, id, st) {
+  if (!id.startsWith('builtin:')) { drawThumb(c, st); return; }
   const g = c.getContext('2d');
   g.clearRect(0, 0, c.width, c.height);
-  g.drawImage(image, 0, 0, c.width, c.height);
+  g.drawImage(thumbImage(id, st), 0, 0, c.width, c.height);
+}
+/** Draws the built-in thumbnails one by one in idle moments after load, so the presets window opens instantly. */
+function warmThumbnails() {
+  const ids = BUILT_INS.map((b) => 'builtin:' + b.name);
+  // At least one every 200 ms even when the page is never idle (a heavy animation), more when there is time.
+  const idle = window.requestIdleCallback ? (fn) => requestIdleCallback(fn, { timeout: 200 }) : (fn) => setTimeout(() => fn({ didTimeout: true, timeRemaining: () => 0 }), 50);
+  const next = (deadline) => {
+    do { const id = ids.shift(); thumbImage(id, presetState(id)); } while (ids.length && !deadline.didTimeout && deadline.timeRemaining() > 6);
+    if (ids.length) idle(next);
+  };
+  idle(next);
 }
 const lookIds = () => [...saved.map((s) => 'saved:' + s.name), ...BUILT_INS.map((b) => 'builtin:' + b.name)];
 function groupIds(id) {
@@ -2929,7 +2962,8 @@ async function recordLoop(onProgress) {
   let renderer = null;
   try { renderer = new E.Renderer(out); } catch { renderer = null; }
   const context = renderer ? null : out.getContext('2d');
-  const paint = (t) => { const geo = geometryFor(snap, t); if (renderer) renderer.render(geo, geo.params, width, height); else draw(context, geo, width / geo.width); };
+  const pool = {};  // each recorded frame reuses one buffer
+  const paint = (t) => { const geo = geometryFor(snap, t, pool); if (renderer) renderer.render(geo, geo.params, width, height); else draw(context, geo, width / geo.width); };
   paint(0);
   let stream = out.captureStream(0), track = stream.getVideoTracks()[0];
   const manualFrames = typeof track.requestFrame === 'function';
@@ -3018,6 +3052,7 @@ window.addEventListener('resize', replaceIndicators);
 const playButton = document.getElementById('play');
 playButton.addEventListener('click', () => {
   paused = !paused;
+  fullSharpness(); requestRender();  // a paused frame redraws at full sharpness
   playButton.innerHTML = icon(paused ? 'play' : 'pause');
   playButton.setAttribute('aria-label', paused ? 'Play animation' : 'Pause animation');
   playButton.dataset.tip = paused ? 'Play' : 'Pause';
@@ -3040,9 +3075,16 @@ document.addEventListener('keydown', (e) => {
 });
 
 let last = performance.now();
+// Adaptive sharpness: twenty slow frames (over 24 ms) while animating lighten the canvas; quick ones pay that back.
+let lightened = false, slowFrames = 0;
+function pace(ms) {
+  if (ms > 24) { if (++slowFrames >= 20) lightened = true; }
+  else slowFrames = Math.max(0, slowFrames - 1);
+}
+function fullSharpness() { lightened = false; slowFrames = 0; }
 function tick(now) {
-  const dt = Math.min(0.1, (now - last) / 1000); last = now;
-  if (animated() && !paused) { time += dt; renderQueued = true; }
+  const interval = now - last, dt = Math.min(0.1, interval / 1000); last = now;
+  if (animated() && !paused) { pace(interval); time += dt; renderQueued = true; }
   if (renderQueued) { renderQueued = false; render(); }
   requestAnimationFrame(tick);
 }
@@ -3060,6 +3102,7 @@ function tick(now) {
   // First paint: the panel and the chrome settle in from where they sit.
   move(panelEl, { opacity: [0, 1], x: [24, 0] }, GENTLE);
   move(document.querySelectorAll('.topbar, .edge, .dots, .meta'), { opacity: [0, 1] }, { duration: 0.5, delay: stagger(0.05) });
+  setTimeout(warmThumbnails, 1500);  // once the first frames are up
   requestAnimationFrame(tick);
 })();
 </script>
