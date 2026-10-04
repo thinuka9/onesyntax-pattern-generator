@@ -927,6 +927,106 @@ const MARK_PRESETS = [
 const MARK_HINT = 'Pixel and Line are the brand\'s two versions of the mark. Detail splits each cell into finer pixels or scanlines.';
 const EFFECT_HINT = 'Every effect loops: whole speeds repeat in 5 s, half speeds in 10 s.';
 
+// ---------- Vector Field: a grid of dashes, each laid along a vector field ----------
+// The maths, as in a plotted vector field (Calculus III, "Vector Fields"): at every grid point (x, y), measured
+// from the centre, a dash points along
+//   F(x, y) = cos α·⟨−y, x⟩ + sin α·⟨x, y⟩
+// α = 0 is the rotation field, whose flow lines are circles round the centre, so the dashes trace arcs; α = ±90°
+// points every dash straight out from the centre (a source); in between, the flow lines are spirals. Each dash is
+// F normalised (one length, as in a direction-field plot). F vanishes at the centre, so no dash sits there.
+// The field lies on a ground plane (X, Z) that recedes towards the top of the page,
+//   x = middle + X·near,  y = lift·e^Z − lift
+// so its circles flatten into arcs that crowd towards the top. Stretch widens the field (near = (bottom + lift) /
+// stretch), so its circles turn upright sooner. The grid samples it in rows evenly spaced in depth Z, which crowd
+// towards the top, and in columns spaced out from the centre's x by a gap that narrows with the row, by
+// h = √((y + lift) / (bottom + lift)), half as fast as the rows close in. Each dash is F normalised: one length on
+// the plane, so dashes flatten and thin as it recedes, and towards the top they overlap into fine lines.
+// Motion is a sine wave with a whole number of cycles per loop: through the dash lengths, outward from the centre
+// (Ripple) or round it (Sweep), or through α itself (Twist), so the field breathes between inward and outward spirals.
+const VECTOR_DEFAULTS = {
+  spiral: 0, centreX: 0, centreY: 0, columns: 12, rows: 34, length: 0.55, thickness: 0.085, margin: 0,
+  perspective: 0.86, ellipse: 2.2, motion: 'none', speed: 1, depth: 0.4, waves: 3,
+  palette: 'Mono Dark', background: '#151515', ink: '#FCFCFC', ink2: '#FCFCFC', format: '1:1', seed: 1,
+};
+const vectorPalette = (name) => { const p = paletteNamed(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2 }; };
+const VECTOR_MOTIONS = [['Still', 'none'], ['Ripple', 'ripple'], ['Sweep', 'sweep'], ['Twist', 'twist']];
+const vectorMoves = (v) => v.motion !== 'none';
+const vectorWaves = (v) => v.motion === 'ripple' || v.motion === 'sweep';
+
+function vectorGeometry(v, time, pool) {
+  const [width, height] = FORMATS[v.format] || FORMATS['1:1'];
+  const margin = E.clamp(v.margin, 0, 0.45) * Math.min(width, height);
+  const unit = Math.min(width, height) - 2 * margin;  // page units: the area's shorter side
+  const spanX = (width - 2 * margin) / unit, spanY = (height - 2 * margin) / unit;
+  // `lift` sets how strongly the plane recedes: Depth 0 is nearly flat, 1 strongest.
+  const p = E.clamp(v.perspective), lift = 0.04 + 4 * (1 - p) * (1 - p), near = (spanY + lift) / Math.max(0.2, v.ellipse);
+  const toPage = (gx, gz) => [spanX / 2 + gx * near, lift * Math.exp(gz) - lift];
+  const toGround = (x, y) => [(x - spanX / 2) / near, Math.log((y + lift) / lift)];
+  const vanish = E.clamp(v.centreX, -1, 2) * spanX;  // the columns space out from the centre's x
+  const [cx, cz] = toGround(vanish, Math.max(E.clamp(v.centreY, -1, 2) * spanY, 0.01 - lift * 0.99));
+
+  const columns = Math.max(1, Math.min(60, Math.round(v.columns))), rows = Math.max(1, Math.min(160, Math.round(v.rows)));
+  // Every dash has one length on the plane (F normalised): a share of the bottom row's gap, `cell`.
+  const deep = Math.log((spanY + lift) / lift), cellZ = deep / rows, cell = spanX / columns / near, dash = E.clamp(v.length, 0.02, 2);
+  const farthest = Math.max(...[[0, 0], [spanX, 0], [0, spanY], [spanX, spanY]].map(([x, y]) => { const [gx, gz] = toGround(x, y); return Math.hypot(gx - cx, gz - cz); }));
+  // Each row's gap between columns, and the columns whose point lands on the page (ids stay exact in a float32).
+  const spans = [];
+  let total = 0;
+  for (let j = 0; j < rows; j++) {
+    const gz = (j + 0.5) * cellZ, y = lift * Math.exp(gz) - lift, gap = spanX / columns * Math.sqrt((y + lift) / (spanY + lift));
+    const first = Math.ceil((0 - vanish) / gap - 0.5), last = Math.floor((spanX - vanish) / gap - 0.5);
+    spans.push([gz, y, gap, first, last]);
+    total += Math.max(0, last - first + 1);
+  }
+
+  const moving = vectorMoves(v), depthFx = E.clamp(v.depth), waves = Math.max(1, Math.round(v.waves)), tau = v.speed * time / 5;
+  let alpha = E.clamp(v.spiral, -90, 90) * Math.PI / 180;
+  if (moving && v.motion === 'twist') alpha += depthFx * Math.PI / 2 * Math.sin(2 * Math.PI * tau);
+  const turnIn = Math.cos(alpha), turnOut = Math.sin(alpha);
+  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.ink2);
+  const instances = E.instanceBuffer(pool, total * STRIDE);
+  let count = 0;
+  for (let j = 0; j < rows; j++) {
+    const [gz, y, gap, first, last] = spans[j], dz = gz - cz;
+    // Thickness follows the local scale: across and down the plane (their geometric mean).
+    const thick = v.thickness * cell * Math.sqrt(near * (y + lift)) * unit;
+    if (thick < 0.05) continue;
+    for (let i = first; i <= last; i++) {
+      const gx = (vanish + (i + 0.5) * gap - spanX / 2) / near, dx = gx - cx, distance = Math.hypot(dx, dz);
+      if (distance < 1e-9) continue;
+      // A wave through the dash lengths: outward from the centre, or round it.
+      let s = 1;
+      if (moving && v.motion !== 'twist') {
+        const phase = v.motion === 'ripple' ? waves * distance / farthest - tau : waves * Math.atan2(dz, dx) / (2 * Math.PI) - tau;
+        s = 1 - depthFx * (0.5 - 0.5 * Math.cos(2 * Math.PI * phase));
+      }
+      // F here, normalised: the rotation ⟨−y, x⟩ turned by α towards ⟨x, y⟩.
+      const fx = (-dz * turnIn + dx * turnOut) / distance, fz = (dx * turnIn + dz * turnOut) / distance, half = dash * cell * s / 2;
+      const [ax, ay] = toPage(gx - fx * half, gz - fz * half), [bx, by] = toPage(gx + fx * half, gz + fz * half);
+      const ddx = bx - ax, ddy = by - ay;
+      // Inside a margin, a dash reaching past the area is cut to it, its end staying round (Liang–Barsky); with no
+      // margin, the frame cuts it.
+      let t0 = 0, t1 = 1;
+      if (margin) {
+        const inset = thick / 2 / unit;
+        for (const [pp, q] of [[-ddx, ax - inset], [ddx, spanX - inset - ax], [-ddy, ay - inset], [ddy, spanY - inset - ay]]) {
+          if (Math.abs(pp) < 1e-12) { if (q < 0) t1 = -1; continue; }
+          if (pp < 0) t0 = Math.max(t0, q / pp); else t1 = Math.min(t1, q / pp);
+        }
+      }
+      const length = Math.hypot(ddx, ddy) * (t1 - t0) * unit;
+      if (t1 <= t0 || length < 0.05) continue;
+      const shade = Math.min(1, distance / farthest);
+      putMark(instances, count++, margin + (ax + ddx * (t0 + t1) / 2) * unit, margin + (ay + ddy * (t0 + t1) / 2) * unit,
+        length, thick, Math.atan2(ddy, ddx), thick / 2, 3,
+        ink[0] + (ink2[0] - ink[0]) * shade, ink[1] + (ink2[1] - ink[1]) * shade, ink[2] + (ink2[2] - ink[2]) * shade,
+        1 - 0.5 * (1 - s), 1, j * 4096 + 2048 + i);  // dashes dim by half as much as they shrink
+    }
+  }
+  const params = { name: 'Vector Field', seed: 0, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
+  return { instances, count, markCount: count, width, height, params };
+}
+
 // ---------- Studio patterns, tailored to a short list of controls ----------
 const waveFrequency = range('field.waveA.frequency', 'Frequency', 0, 12, 0.05, times);
 const waveDirection = range('field.waveA.direction', 'Direction', -180, 180, 1, deg);
@@ -1023,6 +1123,24 @@ const PATTERNS = [
         range('mappings.length.max', 'Longest', 0, 600, 1, px)]],
       ['Wave', [waveFrequency, waveDirection, secondWave, steps, animate]],
     ], look: studioLook() },
+
+  { name: 'Vector Field', kind: 'vector', group: 'Studio patterns',
+    description: 'A grid of dashes, each turned along a vector field: arcs round a centre, crowding into fine lines towards the top.',
+    sections: [
+      ['Field', [range('spiral', 'Spiral', -90, 90, 1, deg), range('centreX', 'Centre X', -1, 2, 0.01, pct), range('centreY', 'Centre Y', -1, 2, 0.01, pct)],
+        'Each dash follows F(x, y) = ⟨−y, x⟩ from the centre: the rotation field, whose flow lines are circles. Spiral turns it towards ⟨x, y⟩, out from the centre.'],
+      ['Grid', [range('columns', 'Columns', 4, 60, 1, int), range('rows', 'Rows', 4, 160, 1, int),
+        range('length', 'Dash length', 0.05, 2, 0.01, pct), range('thickness', 'Thickness', 0.02, 0.5, 0.005, pct),
+        range('margin', 'Margin', 0, 0.45, 0.01, pct)],
+        'Columns counts the dashes across the bottom row; dash length and thickness are shares of the gap there. Rows and columns crowd towards the top.'],
+      ['View', [range('perspective', 'Depth', 0, 1, 0.01, pct), range('ellipse', 'Stretch', 0.5, 4, 0.05, times)],
+        'Depth lays the grid on a plane receding towards the top, so rows and columns crowd there. Stretch widens the field so its circles turn upright sooner.'],
+      ['Motion', [{ ...choice('motion', 'Motion', VECTOR_MOTIONS), rebuild: true },
+        { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: vectorMoves }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: vectorMoves },
+        { ...range('waves', 'Waves', 1, 8, 1, int), when: vectorWaves }],
+        'A sine wave runs through the dash lengths, outward from the centre (Ripple) or round it (Sweep), or through the field itself, which breathes between spirals (Twist).'],
+    ],
+    look: [PALETTE, colour('background', 'Background'), colour('ink', 'Inner colour'), colour('ink2', 'Outer colour'), FORMAT] },
 
   // ---------- Wave studies ----------
   { name: 'Cymatics', group: 'Wave studies', noShape: true,
@@ -1195,6 +1313,25 @@ const STUDY_PRESETS = [
   }),
 ];
 
+// Looks from the client's references, built on existing patterns.
+// Refactor (Amaya Flow): bars stand upright at the edges and twist round the centre. Each bar's angle is
+// 90° ± 60° times the centre's bump, (1 − d²/R²)² inside radius R, so the twist eases smoothly to nothing.
+const STUDIO_EXTRAS = [
+  { name: 'Refactor', pattern: 'Amaya Flow', palette: 'Mono Dark', colours: { stop1: '#D5D5D5', stop2: '#D5D5D5', source: 'constant' }, tune: (p) => {
+    Object.assign(p.canvas, { format: '16:9', width: 1920, height: 1080 });
+    Object.assign(p.layout, { columns: 22, rows: 12, margin: 70 });
+    p.field.waveA.enabled = false; p.field.gradient.enabled = false;
+    Object.assign(p.attractor, { enabled: true, x: 0.5, y: 0.5, radius: 0.5, strength: 1.43 });
+    p.marks.angleMode = 'field';
+    p.mappings.angle = mappingOf('field', 30, 150);
+    p.mappings.length = mappingOf('constant', 76, 76); p.mappings.thickness = mappingOf('x', 14, 26);
+  } },
+];
+// Event Loop (Vector Field): the rotation field round the top-left corner, fine arcs crowding into the top, opening into bold dashes towards the bottom right.
+const VECTOR_PRESETS = [
+  { name: 'Event Loop', params: { spiral: 0, centreX: 0, centreY: 0, columns: 12, rows: 34, length: 0.55, thickness: 0.085, perspective: 0.86, ellipse: 2.2, ...vectorPalette('Mono Dark') } },
+];
+
 const BUILT_INS = [
   ...ROW_PRESETS.map((p) => ({ name: p.name, group: 'Wave Rows', pattern: 'Wave Rows', values: sanitizeRows(p.params) })),
   ...E.PRESETS.map((p) => {
@@ -1204,16 +1341,25 @@ const BUILT_INS = [
     return { name: STUDIO_LOOKS[p.name] || p.name, group: 'Studio patterns', pattern: p.name, values };
   }),
   ...STUDY_PRESETS.map((p) => ({ name: p.look, group: 'Wave studies', pattern: p.name, values: studioPalette(normaliseStudio(p.params), p.paletteName) })),
+  ...STUDIO_EXTRAS.map((x) => {
+    const p = E.basePreset(x.pattern, 'Signal');
+    x.tune(p);
+    const values = studioPalette(normaliseStudio(p), x.palette);
+    if (x.colours) Object.assign(values.colour, x.colours);
+    return { name: x.name, group: 'Studio patterns', pattern: x.pattern, values };
+  }),
+  ...VECTOR_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Vector Field', values: sanitizeFlat(VECTOR_DEFAULTS, p.params) })),
   ...MARK_PRESETS.map((p) => ({ name: p.name, group: 'Bracket', pattern: 'Bracket', values: sanitizeMark(p.params) })),
 ];
 const firstPreset = (pattern) => BUILT_INS.find((b) => b.pattern === pattern);
-const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS };
+const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, vector: VECTOR_DEFAULTS };
 const defaultsFor = (pattern) => FLAT_DEFAULTS[patternOf(pattern).kind] || firstPreset(pattern).values;
 
 function sanitizeState(st) {
   const pattern = patternOf(st && st.pattern);
   if (pattern.kind === 'rows') return { pattern: pattern.name, values: sanitizeRows(st && st.values) };
   if (pattern.kind === 'mark') return { pattern: pattern.name, values: sanitizeMark(st && st.values) };
+  if (pattern.kind === 'vector') return { pattern: pattern.name, values: sanitizeFlat(VECTOR_DEFAULTS, st && st.values) };
   const source = st && st.values;
   const values = normaliseStudio(deepMerge(structuredClone(firstPreset(pattern.name).values), source));
   // Pulses saved before the on/off switch existed were on whenever they were set.
@@ -1311,6 +1457,7 @@ const label = (id) => id.split(':').slice(1).join(':');
 function geometryFor(st, t, pool) {
   if (isRows(st)) return rowsGeometry(st.values, t, pool);
   if (isMark(st)) return markGeometry(st.values, t, pool);
+  if (kindOf(st) === 'vector') return vectorGeometry(st.values, t, pool);
   const p = st.values;
   const geo = { ...E.buildGeometry(p, t, { directional: true, loopSeconds: loopSeconds(st), sdf: logoSdf(p), pool }), width: p.canvas.width, height: p.canvas.height, params: p };
   applyPulse(geo, p.pulse, t, patternOf(st.pattern).sizeMode);
@@ -1910,6 +2057,7 @@ function applyPalette(name) {
   if (!paletteNamed(name)) return;
   if (isRows(state)) Object.assign(state.values, rowsPalette(name));
   else if (isMark(state)) Object.assign(state.values, markPalette(name));
+  else if (kindOf(state) === 'vector') Object.assign(state.values, vectorPalette(name));
   else studioPalette(state.values, name);
 }
 
@@ -2071,7 +2219,18 @@ function variationOf(pattern, base, seed) {
   const palette = pick(BRAND_PALETTES.filter((p) => clear(p, p.stop1) && (rows || clear(p, p.stop2))));
   if (rows) return remixRows(next, pick, palette);
   if (patternOf(pattern).kind === 'mark') return remixMark(next, pick, palette);
+  if (patternOf(pattern).kind === 'vector') return remixVector(next, pick, palette);
   return remixStudio(pattern, next, base, pick, random, palette);
+}
+
+/** Vector Field: the centre moves to a corner or an edge, the field stays near circles, and depth, stretch and the
+ *  grid stay in ranges that read as arcs. */
+function remixVector(v, pick, palette) {
+  const [centreX, centreY] = pick([[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0], [0, 0.5]]);
+  return Object.assign(v, {
+    centreX, centreY, spiral: pick([0, 0, 0, 15, -15, 35]), perspective: pick([0.8, 0.86, 0.9]), ellipse: pick([1.6, 2.2, 2.8]),
+    columns: pick([10, 12, 15]), rows: pick([28, 34, 40]), length: pick([0.45, 0.55, 0.7]), thickness: pick([0.07, 0.085, 0.11]), ...vectorPalette(palette.name),
+  });
 }
 
 /** Bracket: the mark and its grid stay; texture, detail and effect come in combinations that keep the cells legible. */
@@ -2942,6 +3101,7 @@ function exportAnimatedSVG() {
 // Every moving part is measured in cycles per 5 s, in half steps: whole cycles loop in 5 s, halves in 10 s.
 const speedsOf = (st) => isRows(st) ? [st.values.speed]
   : isMark(st) ? [hasEffect(st.values) ? st.values.speed : 0]
+  : kindOf(st) === 'vector' ? [vectorMoves(st.values) ? st.values.speed : 0]
   : [...E.motionCycles(st.values), pulseActive(st.values.pulse) ? st.values.pulse.speed : 0];
 const orbiting = (v) => v.field.ripples.enabled && v.field.ripples.weight > 0 && v.field.ripples.orbit !== 0;
 const isAnimated = (st) => isFlat(st) ? speedsOf(st)[0] !== 0

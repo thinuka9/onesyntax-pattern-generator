@@ -18,7 +18,14 @@ proofs and the earlier "classic" page.
 - **Wave Rows:** rows of items with opacity and size driven by a sine wave: rows, items, gaps, roundness,
   frequency, phase, row shift, sharpness.
 - **Studio patterns:** the original studio's nine presets, ported from TypeScript to plain JavaScript with
-  identical geometry, each with a short set of tailored controls instead of the full parameter list.
+  identical geometry, each with a short set of tailored controls instead of the full parameter list. Refactor
+  (Amaya Flow) twists a 22 × 12 bar grid round a quiet centre: angle 90° ± 60° times the attractor bump
+  (1 − d²/R²)², easing to nothing at radius R.
+- **Vector Field** (preset Event Loop): a direction-field plot. Each dash lies along F(x, y) = cos α·⟨−y, x⟩ +
+  sin α·⟨x, y⟩ from the centre, normalised: α = 0 is the rotation field (circles), ±90° a source or sink, spirals
+  between. The field sits on a plane receding towards the top (y = lift·e^Z − lift), sampled by rows evenly
+  spaced in Z and columns whose gap narrows by √((y + lift) / (bottom + lift)), so arcs crowd into fine lines
+  at the top. Motion is a sine wave through the dash lengths (Ripple outward, Sweep round) or through α (Twist).
 - **Wave studies:**
   - *Cymatics*: Chladni plate figures, cos(nπx)cos(mπy) mixed with cos(mπx)cos(nπy).
   - *Interference*: superposed circular waves from 1–8 orbiting sources.
@@ -64,11 +71,11 @@ proofs and the earlier "classic" page.
 - PNG at 1× / 2× / 4× / 6× (stepping down past browser limits), SVG, web-optimised animated SVG, MP4/WebM loops,
   transparent backgrounds.
 
-## Verified (3 October 2026)
+## Verified (4 October 2026)
 - Every control on every built-in preset changes the output (564 controls checked; the exceptions are by design,
   such as Pulse controls while Pulse is off). No console errors.
 - Every built-in preset loops seamlessly: frame 0 and the frame at the loop length match exactly.
-- Panel alignment: every control starts and ends on the same column in all 14 patterns, rows are 34 px, and no
+- Panel alignment: every control starts and ends on the same column in all 15 patterns, rows are 34 px, and no
   label or value is clipped. Export menu labels share one icon column; the PNG scale labels are centred.
 - Performance: a frame draws at most once per screen refresh, however many edits arrive; storage writes and the
   panel's tone check are throttled; marks are written without per-mark allocations; thumbnails are cached.
@@ -78,7 +85,7 @@ proofs and the earlier "classic" page.
 - Animated SVG: 59% smaller across all presets (Scope 15 KB, Loop 187 KB, Hello World 90 KB, Source 1.6 MB);
   played back and frozen at set moments it matches the app to under 1/255 per pixel on average.
 - Exports: PNG 2400 × 2400 (2×), SVG and animated SVG parse and animate, MP4 at exactly 5.00 s, including the
-  Bracket presets.
+  Bracket presets and Event Loop (Ripple, Sweep and Twist all loop seamlessly; its 64 control checks all pass).
 
 ## Ideas not built yet
 Phyllotaxis (sunflower) layout · curl-noise flow · epicycles drawing the logo · Lissajous layouts · moiré

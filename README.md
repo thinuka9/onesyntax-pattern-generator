@@ -10,17 +10,20 @@ seamless video loops.
 
 ## What it does
 
-- **14 pattern types in four groups**
+- **15 pattern types in four groups**
   - *Wave Rows*: rows of items whose opacity and size follow a sine wave.
   - *Studio patterns*: Sinky Meter, Amaya Flow, Barcode, Threshold Stripes, Halftone Diagonal, Contour Field,
-    Strands, Kaleido Pixels, RFD Stack (ported from the original studio).
+    Strands, Kaleido Pixels, RFD Stack (ported from the original studio), and Vector Field: a grid of dashes
+    each laid along F(x, y) = ⟨−y, x⟩ (the rotation field, turned towards a spiral by α) on a plane receding towards
+    the top, so arcs crowd into fine lines there.
   - *Wave studies*: Cymatics (Chladni plates), Interference (ripple tank) and Logo Field (contours around the
     OneSyntax symbol, the {OS} monogram, the `{ }` bracket or any text).
   - *Bracket*: the brand's `{ }` mark on its own Geist Pixel grid (9 × 23 cells, read from the Figma file), drawn
     as pixels, lines, dots or slashes, alone or repeated in columns and rows, with looping effects: wave, scan,
     build, glitch, ripple, sparkle.
 - **Built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Telemetry, Bitstream, Stack Trace,
-  Gradient Descent, Recursion, Resonance, Concurrency, Source, Scope, Render, Compile, Loop and more.
+  Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Render, Compile, Loop and
+  more. Refactor (Amaya Flow) twists a bar grid round a quiet centre; Event Loop is the Vector Field.
 - **Wave shapes:** every wave can be a sine, triangle, square or sawtooth, built from a Fourier series with a
   chosen number of harmonics.
 - **Pulse:** fades and scales the marks of any studio pattern along its own wave.

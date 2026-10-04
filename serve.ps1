@@ -15,17 +15,25 @@ $listener.Start()
 Write-Host "Serving $rootPath on http://127.0.0.1:$Port/  (Ctrl+C to stop)"
 while ($listener.IsListening) {
   $context = $listener.GetContext()
-  $relative = [Uri]::UnescapeDataString($context.Request.Url.AbsolutePath).TrimStart('/')
-  if ($relative -eq '') { $relative = 'index.html' }
-  $file = [IO.Path]::GetFullPath((Join-Path $rootPath $relative))
-  # Only files inside the project are served.
-  if ($file.StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $file -PathType Leaf)) {
-    $bytes = [IO.File]::ReadAllBytes($file)
-    $type = $types[[IO.Path]::GetExtension($file).ToLowerInvariant()]
-    if ($type) { $context.Response.ContentType = $type }
-    $context.Response.OutputStream.Write($bytes, 0, $bytes.Length)
-  } else {
-    $context.Response.StatusCode = 404
+  # A request the browser drops mid-reply (a reload, a closed tab) must not stop the server.
+  try {
+    $relative = [Uri]::UnescapeDataString($context.Request.Url.AbsolutePath).TrimStart('/')
+    if ($relative -eq '') { $relative = 'index.html' }
+    if ($relative.EndsWith('/')) { $relative += 'index.html' }
+    $file = [IO.Path]::GetFullPath((Join-Path $rootPath $relative))
+    # Only files inside the project are served.
+    if ($file.StartsWith($rootPath, [StringComparison]::OrdinalIgnoreCase) -and (Test-Path -LiteralPath $file -PathType Leaf)) {
+      $bytes = [IO.File]::ReadAllBytes($file)
+      $type = $types[[IO.Path]::GetExtension($file).ToLowerInvariant()]
+      if ($type) { $context.Response.ContentType = $type }
+      $context.Response.Headers['Cache-Control'] = 'no-store'
+      $context.Response.OutputStream.Write($bytes, 0, $bytes.Length)
+    } else {
+      $context.Response.StatusCode = 404
+    }
+  } catch {
+    Write-Host "Request failed: $($_.Exception.Message)"
+  } finally {
+    try { $context.Response.Close() } catch {}
   }
-  $context.Response.Close()
 }
