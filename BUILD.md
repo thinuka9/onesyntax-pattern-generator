@@ -30,7 +30,7 @@ In Claude Code, the `app` entry in `.claude/launch.json` starts the same server.
 | PNG 1× / 2× / 4× / 6× | Optional transparent background. Sizes below. |
 | SVG | Vector; the editable layers are `background`, `track`, `fill`, `cap`, `accent`. |
 | Animated SVG | Built for the web: resolution-free, loops seamlessly, plays in browsers and `<img>` tags. Marks sharing a motion share one CSS animation; the rest keep only the keyframes they need. Most presets export at 15–400 KB. Patterns with thousands of independently moving marks (Threads, Concurrency) stay heavy: use Video for those. Design tools import the first frame. |
-| Video | MP4 (H.264) where the browser can record it, otherwise WebM. 30 fps, seamless 5 or 10 s loop, longest side up to 1920 px. Recording runs in real time; keep the tab visible. |
+| Video | MP4 (H.264), 30 fps, seamless 5 or 10 s loop, longest side up to 1920 px. Encoded frame by frame with WebCodecs, faster than real time and with the tab in the background (MP4 packing by mp4-muxer, MIT, loaded on first use). Browsers without it fall back to real-time recording (MP4 or WebM; keep the tab visible). |
 | Presets (JSON) | From the preset picker: Export / Import. Also imports preset JSON from the original studio. |
 | Copy link | A URL holding the exact preset. Works wherever the page is hosted. |
 

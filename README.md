@@ -53,6 +53,7 @@ Geist and Motion load from CDNs at runtime; the icons are part of the page:
 | [Geist / Geist Mono](https://vercel.com/font) (Google Fonts) | latest | SIL OFL 1.1 | Brand typography |
 | [Lucide](https://lucide.dev) | 0.460.0 | ISC | Icons: the 24 the app uses are kept in the page, not loaded |
 | [Motion](https://motion.dev) | 12.23.12 | MIT | UI micro-animations |
+| [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) | 5.2.1 | MIT | Packing fast video exports into MP4 (loaded only when exporting video) |
 
 Without the CDNs the tool still works: text falls back to the system font and animations are skipped.
 
