@@ -68,6 +68,25 @@
   /* ---------- Artwork and overlays ---------- */
   #canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
   .frame { position: fixed; pointer-events: none; box-shadow: 0 18px 50px rgba(0,0,0,.2); }
+  /* The centre handle: rings round a knob, shown over the artwork; difference blending keeps it visible on any colour. */
+  .centre-handle { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 3; pointer-events: none; }
+  .centre-handle::before {
+    content: ''; position: absolute; left: -96px; top: -96px; width: 192px; height: 192px; border-radius: 50%; mix-blend-mode: difference;
+    background: repeating-radial-gradient(circle, transparent 0 15px, rgba(255,255,255,.8) 15px 16px);
+    -webkit-mask: radial-gradient(circle, #000 18%, transparent 70%); mask: radial-gradient(circle, #000 18%, transparent 70%);
+    opacity: 0; scale: .55; transition: opacity .25s var(--ease), scale .45s var(--spring);
+  }
+  .centre-handle .knob {
+    position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; padding: 0; border-radius: 50%; mix-blend-mode: difference;
+    border: 2px solid #fff; background: radial-gradient(circle, #fff 0 3px, transparent 3.5px); cursor: grab;
+    opacity: 0; scale: .6; transition: opacity .2s var(--ease), scale .35s var(--spring);
+  }
+  .centre-handle.shown::before { opacity: 1; scale: 1; }
+  .centre-handle.shown .knob { opacity: 1; scale: 1; pointer-events: auto; }
+  .centre-handle .knob:hover, .centre-handle.dragging .knob { scale: 1.12; }
+  .centre-handle.dragging .knob { cursor: grabbing; }
+  .centre-handle.dragging::before { scale: 1.12; }
+  .centre-handle .knob:focus-visible { outline: none; box-shadow: 0 0 0 3px #fff; }
   /* Small overlays sit on frosted blocks so they stay legible over any pattern. */
   .chrome { background: var(--glass-strong); color: var(--text); -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); }
   .topbar {
@@ -92,6 +111,7 @@
     transition: background .2s var(--ease), color .2s var(--ease);
   }
   .edge:hover { background: var(--cta); color: var(--cta-text); }
+  .edge[hidden] { display: none; }
   .edge .icon { width: 20px; height: 20px; }
   .edge.prev { left: 20px; }
   .edge.next { right: calc(var(--art-right) + 20px); }
@@ -229,6 +249,8 @@
   .listbox button:hover, .listbox button:focus { background: var(--button); box-shadow: none; outline: none; }
   .listbox button:disabled { color: var(--faint); cursor: default; }
   .listbox .icon { width: 15px; height: 15px; }
+  .listbox.previews button { grid-template-columns: 36px 1fr 15px; height: 46px; padding: 0 10px 0 5px; }
+  .listbox.previews canvas { width: 36px; height: 36px; display: block; box-shadow: inset 0 0 0 1px var(--line); }
   .text-field { width: 100%; height: var(--control); padding: 0 11px; background: var(--track); color: var(--text); font: inherit; font-size: 14px; font-weight: 500; transition: background .2s var(--ease); }
   .text-field:hover { background: var(--track-hover); }
 
@@ -369,6 +391,7 @@
 <body data-tone="light">
 <canvas id="canvas" aria-label="Pattern preview"></canvas>
 <div class="frame" id="frame" hidden></div>
+<div class="centre-handle" id="centreHandle" hidden><button class="knob" aria-label="Centre" title="Drag to move the centre · double-click to reset"></button></div>
 
 <div class="topbar">
   <span class="logo on-dark" role="img" aria-label="OneSyntax">
@@ -432,7 +455,7 @@
           <label data-icon="transparent"><span>Transparent background</span><input type="checkbox" class="switch" id="transparent"></label>
         </div>
       </div>
-      <button class="square" id="variation" aria-label="Remix" title="Remix · new colours and settings, same pattern" data-icon="shuffle"></button>
+      <button class="square" id="variation" aria-label="Shuffle" title="Shuffle · a random pattern with new colours and settings" data-icon="shuffle"></button>
       <button class="square" id="revert" aria-label="Revert to preset" title="Revert · back to the preset, edits dropped" data-icon="reset"></button>
       <button class="cta" id="saveLook" title="Save these settings as a preset">Save preset</button>
     </div>
@@ -649,8 +672,8 @@ const ROW_PRESETS = [
 ];
 // Each studio pattern's built-in look, by pattern name.
 const STUDIO_LOOKS = {
-  'Sinky Meter': 'Telemetry', 'Amaya Flow': 'Data Flow', Barcode: 'Bitstream', 'Threshold Stripes': 'Stack Trace',
-  'Halftone Diagonal': 'Gradient Descent', 'Contour Field': 'Vector Field', Strands: 'Threads', 'Kaleido Pixels': 'Recursion', 'RFD Stack': 'Call Stack',
+  'Gauge': 'Telemetry', 'Eddy': 'Data Flow', Barcode: 'Bitstream', 'Threshold Stripes': 'Stack Trace',
+  'Halftone Diagonal': 'Gradient Descent', 'Contour Field': 'Vector Field', Strands: 'Threads', 'Kaleido Pixels': 'Recursion', 'Stack': 'Call Stack',
 };
 // Looks renamed in the brand vocabulary; a session left on an old name follows it to the new one.
 const RENAMED_LOOKS = {
@@ -660,8 +683,8 @@ const RENAMED_LOOKS = {
 };
 // The studio patterns keep their geometry and move onto the closest brand palette.
 const STUDIO_PALETTES = {
-  'Sinky Meter': 'Ember', 'Amaya Flow': 'Ice', Barcode: 'Mono Light', 'Threshold Stripes': 'Midnight', 'Halftone Diagonal': 'Blue on White',
-  'Contour Field': 'Blueprint', Strands: 'Mono Light', 'Kaleido Pixels': 'Ocean', 'RFD Stack': 'Midnight',
+  'Gauge': 'Ember', 'Eddy': 'Ice', Barcode: 'Mono Light', 'Threshold Stripes': 'Midnight', 'Halftone Diagonal': 'Blue on White',
+  'Contour Field': 'Blueprint', Strands: 'Mono Light', 'Kaleido Pixels': 'Ocean', 'Stack': 'Midnight',
 };
 
 function rowWave(v, u, r, time, wave) {
@@ -713,16 +736,21 @@ const pulseNeutral = (q) => q.opacityMin === 1 && q.opacityMax === 1 && q.sizeMi
 const pulseActive = (q) => !!q && q.enabled && !pulseNeutral(q);
 
 /** Fades and scales marks along a directional sine wave. `mode` keeps lines and meters intact. */
+/** The pulse at a point given as fractions across and down the canvas: [opacity, size] multipliers. */
+function pulseField(q, time) {
+  const angle = q.direction * Math.PI / 180, dx = Math.cos(angle), dy = Math.sin(angle);
+  const phase = (q.phase + time * q.speed * DEGREES_PER_SECOND) * Math.PI / 180, wave = E.waveFn(q.shape, q.harmonics);
+  return (u, w) => {
+    const k = Math.pow((wave(2 * Math.PI * q.frequency * (u * dx + w * dy) + phase) + 1) / 2, q.sharpness);
+    return [E.clamp(q.opacityMin + (q.opacityMax - q.opacityMin) * k), Math.max(0, q.sizeMin + (q.sizeMax - q.sizeMin) * k)];
+  };
+}
 function applyPulse(geo, q, time, mode) {
   if (!pulseActive(q)) return;
-  const I = geo.instances, angle = q.direction * Math.PI / 180, dx = Math.cos(angle), dy = Math.sin(angle);
-  const phase = (q.phase + time * q.speed * DEGREES_PER_SECOND) * Math.PI / 180, wave = E.waveFn(q.shape, q.harmonics);
+  const I = geo.instances, at = pulseField(q, time);
   for (let i = 0; i < geo.count; i++) {
-    const o = i * STRIDE;
-    const d = (I[o] / geo.width) * dx + (I[o + 1] / geo.height) * dy;
-    const k = Math.pow((wave(2 * Math.PI * q.frequency * d + phase) + 1) / 2, q.sharpness);
-    I[o + 11] *= E.clamp(q.opacityMin + (q.opacityMax - q.opacityMin) * k);
-    const s = Math.max(0, q.sizeMin + (q.sizeMax - q.sizeMin) * k);
+    const o = i * STRIDE, [alpha, s] = at(I[o] / geo.width, I[o + 1] / geo.height);
+    I[o + 11] *= alpha;
     if (s === 1) continue;
     if (mode === 'thickness') { const h = I[o + 3] * s; I[o + 2] += h - I[o + 3]; I[o + 3] = h; }  // strand segments: thicker, still joined
     else { I[o + 2] *= s; if (mode !== 'width') I[o + 3] *= s; }                                    // meters keep their reading
@@ -743,7 +771,7 @@ const shapeControls = (prefix) => [
   { ...choice(`${prefix}shape`, 'Shape', SHAPE_OPTIONS), rebuild: true },
   { ...range(`${prefix}harmonics`, 'Harmonics', 1, 32, 1, int), when: (v) => getPath(v, `${prefix}shape`) !== 'sine' },
 ];
-const SHAPE_HINT = 'Each shape is a Fourier series: sine waves added in harmonics. More harmonics sharpen the edges; the ripple beside each jump is the Gibbs effect.';
+const SHAPE_HINT = 'More harmonics sharpen the edges.';
 
 const pulseControls = [
   range('pulse.opacityMin', 'Min opacity', 0, 1, 0.01, pct), range('pulse.opacityMax', 'Max opacity', 0, 1, 0.01, pct),
@@ -752,7 +780,7 @@ const pulseControls = [
   range('pulse.phase', 'Phase', 0, 360, 1, deg), range('pulse.sharpness', 'Sharpness', 0.2, 6, 0.05, f2),
   ...shapeControls('pulse.'), range('pulse.speed', 'Speed', -3, 3, 0.5, offOr),
 ];
-const PULSE_HINT = 'Fades and scales marks along a sine wave, like Wave Rows.';
+const PULSE_HINT = 'Fades and scales marks along a wave, like Wave Rows.';
 
 // ---------- Bracket: the OneSyntax brace, cell by cell ----------
 // The brace from the OneSyntax Rebranding file, set in Geist Pixel: 9 × 23 cells, read off the Figma vectors.
@@ -927,13 +955,15 @@ const MARK_PRESETS = [
 const MARK_HINT = 'Pixel and Line are the brand\'s two versions of the mark. Detail splits each cell into finer pixels or scanlines.';
 const EFFECT_HINT = 'Every effect loops: whole speeds repeat in 5 s, half speeds in 10 s.';
 
-// ---------- Vector Field: a grid of dashes, each laid along a vector field ----------
+// ---------- Horizon: a grid of dashes, each laid along a vector field ----------
 // The maths, as in a plotted vector field (Calculus III, "Vector Fields"): at every grid point (x, y), measured
 // from the centre, a dash points along
 //   F(x, y) = cos α·⟨−y, x⟩ + sin α·⟨x, y⟩
 // α = 0 is the rotation field, whose flow lines are circles round the centre, so the dashes trace arcs; α = ±90°
 // points every dash straight out from the centre (a source); in between, the flow lines are spirals. Each dash is
-// F normalised (one length, as in a direction-field plot). F vanishes at the centre, so no dash sits there.
+// F normalised (one length, as in a direction-field plot), softened to F / √(|F|² + c²) inside a core c dash lengths
+// wide, as a vortex core: there the circles are tighter than a dash, so dashes shrink smoothly to dots at the
+// centre instead of crossing each other.
 // The field lies on a ground plane (X, Z) that recedes towards the top of the page,
 //   x = middle + X·near,  y = lift·e^Z − lift
 // so its circles flatten into arcs that crowd towards the top. Stretch widens the field (near = (bottom + lift) /
@@ -941,11 +971,13 @@ const EFFECT_HINT = 'Every effect loops: whole speeds repeat in 5 s, half speeds
 // towards the top, and in columns spaced out from the centre's x by a gap that narrows with the row, by
 // h = √((y + lift) / (bottom + lift)), half as fast as the rows close in. Each dash is F normalised: one length on
 // the plane, so dashes flatten and thin as it recedes, and towards the top they overlap into fine lines.
-// Motion is a sine wave with a whole number of cycles per loop: through the dash lengths, outward from the centre
+// Dash gap and Row gap work as in Wave Rows: a dash is the bottom row's column gap less Dash gap, and its thickness
+// the local row gap (times the bottom column gap, square-rooted, so it thins as the rows close in) less Row gap.
+// Motion is a wave (sine, or a Fourier shape) with a whole number of cycles per loop: through the dash lengths, outward from the centre
 // (Ripple) or round it (Sweep), or through α itself (Twist), so the field breathes between inward and outward spirals.
 const VECTOR_DEFAULTS = {
-  spiral: 0, centreX: 0, centreY: 0, columns: 12, rows: 34, length: 0.55, thickness: 0.085, margin: 0,
-  perspective: 0.86, ellipse: 2.2, motion: 'none', speed: 1, depth: 0.4, waves: 3,
+  spiral: 0, centreX: 0, centreY: 0, core: 2, columns: 12, rows: 34, gapX: 0.45, gapY: 0.865, overlap: 0.15, radius: 1, opacity: 1, margin: 0,
+  perspective: 0.86, ellipse: 2.2, motion: 'none', speed: 1, depth: 0.4, waves: 3, shape: 'sine', harmonics: 8,
   palette: 'Mono Dark', background: '#151515', ink: '#FCFCFC', ink2: '#FCFCFC', format: '1:1', seed: 1,
 };
 const vectorPalette = (name) => { const p = paletteNamed(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2 }; };
@@ -967,7 +999,7 @@ function vectorGeometry(v, time, pool) {
 
   const columns = Math.max(1, Math.min(60, Math.round(v.columns))), rows = Math.max(1, Math.min(160, Math.round(v.rows)));
   // Every dash has one length on the plane (F normalised): a share of the bottom row's gap, `cell`.
-  const deep = Math.log((spanY + lift) / lift), cellZ = deep / rows, cell = spanX / columns / near, dash = E.clamp(v.length, 0.02, 2);
+  const deep = Math.log((spanY + lift) / lift), cellZ = deep / rows, cell = spanX / columns / near, dash = 1 - E.clamp(v.gapX, 0, 0.95);
   const farthest = Math.max(...[[0, 0], [spanX, 0], [0, spanY], [spanX, spanY]].map(([x, y]) => { const [gx, gz] = toGround(x, y); return Math.hypot(gx - cx, gz - cz); }));
   // Each row's gap between columns, and the columns whose point lands on the page (ids stay exact in a float32).
   const spans = [];
@@ -981,15 +1013,16 @@ function vectorGeometry(v, time, pool) {
 
   const moving = vectorMoves(v), depthFx = E.clamp(v.depth), waves = Math.max(1, Math.round(v.waves)), tau = v.speed * time / 5;
   let alpha = E.clamp(v.spiral, -90, 90) * Math.PI / 180;
-  if (moving && v.motion === 'twist') alpha += depthFx * Math.PI / 2 * Math.sin(2 * Math.PI * tau);
+  const wave = E.waveFn(v.shape, v.harmonics);
+  if (moving && v.motion === 'twist') alpha += depthFx * Math.PI / 2 * wave(2 * Math.PI * tau);
   const turnIn = Math.cos(alpha), turnOut = Math.sin(alpha);
-  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.ink2);
+  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.ink2), opacity = E.clamp(v.opacity), round = E.clamp(v.radius), core = Math.max(0, v.core), overlap = E.clamp(v.overlap);
   const instances = E.instanceBuffer(pool, total * STRIDE);
   let count = 0;
   for (let j = 0; j < rows; j++) {
-    const [gz, y, gap, first, last] = spans[j], dz = gz - cz;
-    // Thickness follows the local scale: across and down the plane (their geometric mean).
-    const thick = v.thickness * cell * Math.sqrt(near * (y + lift)) * unit;
+    const [gz, y, gap, first, last] = spans[j], dz = gz - cz, pitch = cellZ * (y + lift);  // this row's column gap and row pitch
+    // Thickness: the local row gap with the bottom column gap (their geometric mean), less Row gap.
+    const thick = (1 - E.clamp(v.gapY, 0, 0.98)) * Math.sqrt(cellZ * (y + lift) * spanX / columns) * unit;
     if (thick < 0.05) continue;
     for (let i = first; i <= last; i++) {
       const gx = (vanish + (i + 0.5) * gap - spanX / 2) / near, dx = gx - cx, distance = Math.hypot(dx, dz);
@@ -998,11 +1031,19 @@ function vectorGeometry(v, time, pool) {
       let s = 1;
       if (moving && v.motion !== 'twist') {
         const phase = v.motion === 'ripple' ? waves * distance / farthest - tau : waves * Math.atan2(dz, dx) / (2 * Math.PI) - tau;
-        s = 1 - depthFx * (0.5 - 0.5 * Math.cos(2 * Math.PI * phase));
+        s = 1 - depthFx * (0.5 - 0.5 * wave(2 * Math.PI * phase + Math.PI / 2));  // a sine wave reads as cos here
       }
       // F here, normalised: the rotation ⟨−y, x⟩ turned by α towards ⟨x, y⟩.
-      const fx = (-dz * turnIn + dx * turnOut) / distance, fz = (dx * turnIn + dz * turnOut) / distance, half = dash * cell * s / 2;
-      const [ax, ay] = toPage(gx - fx * half, gz - fz * half), [bx, by] = toPage(gx + fx * half, gz + fz * half);
+      const soften = distance / Math.hypot(distance, core * dash * cell);
+      const fx = (-dz * turnIn + dx * turnOut) / distance, fz = (dx * turnIn + dz * turnOut) / distance, half = dash * cell * s * soften / 2;
+      let [ax, ay] = toPage(gx - fx * half, gz - fz * half), [bx, by] = toPage(gx + fx * half, gz + fz * half);
+      // Overlap: a dash longer than its cell along its own direction (less Dash gap) is cut back to it.
+      const reach = Math.hypot(bx - ax, by - ay), ux = (bx - ax) / reach, uy = (by - ay) / reach;
+      const room = (1 - E.clamp(v.gapX, 0, 0.95)) / Math.max(Math.abs(ux) / gap, Math.abs(uy) / pitch) * (1 + 3 * overlap);
+      if (reach > room) {
+        const mx = (ax + bx) / 2, my = (ay + by) / 2;
+        ax = mx - ux * room / 2; ay = my - uy * room / 2; bx = mx + ux * room / 2; by = my + uy * room / 2;
+      }
       const ddx = bx - ax, ddy = by - ay;
       // Inside a margin, a dash reaching past the area is cut to it, its end staying round (Liang–Barsky); with no
       // margin, the frame cuts it.
@@ -1018,13 +1059,232 @@ function vectorGeometry(v, time, pool) {
       if (t1 <= t0 || length < 0.05) continue;
       const shade = Math.min(1, distance / farthest);
       putMark(instances, count++, margin + (ax + ddx * (t0 + t1) / 2) * unit, margin + (ay + ddy * (t0 + t1) / 2) * unit,
-        length, thick, Math.atan2(ddy, ddx), thick / 2, 3,
+        length, thick, Math.atan2(ddy, ddx), round * thick / 2, 0,
         ink[0] + (ink2[0] - ink[0]) * shade, ink[1] + (ink2[1] - ink[1]) * shade, ink[2] + (ink2[2] - ink[2]) * shade,
-        1 - 0.5 * (1 - s), 1, j * 4096 + 2048 + i);  // dashes dim by half as much as they shrink
+        opacity * (1 - 0.5 * (1 - s)), 1, j * 4096 + 2048 + i);  // dashes dim by half as much as they shrink
     }
   }
-  const params = { name: 'Vector Field', seed: 0, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
+  const params = { name: 'Horizon', seed: 0, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
   return { instances, count, markCount: count, width, height, params };
+}
+
+// ---------- Orbit: dashes travelling round an array of ellipses ----------
+// Lines are ellipses (x = c_x + r·stretch·cos t, y = c_y + r·sin t, rotated) whose centre shifts as they grow,
+// c(r) = C + D·r: measured on the client's reference, stroke directions fit this within 7° RMS (one shared centre:
+// 19°), and drawn on a plane receding towards the top (page y = lift·e^{Y·n} − lift, Depth) within 4.9°: stretch 2.41,
+// D = (−0.88, 0.40), rotation 9.4°, lift 0.42. Sizes run in a
+// geometric progression r = r_out·(e^{c·x} − 1) / (e^c − 1), x = (k + ½)/N, c = Crowding: the gap between lines grows
+// in proportion to its distance from the centre (measured on the reference: 9.5 px at the top to 69 px at the bottom,
+// a straight line in y). Each line carries dashes laid
+// along its own arc length: spacing S_k = spacing·(r_k / r_out)^growth, one Dash length throughout (the reference's
+// dashes keep 0.055 of the short side while their spacing doubles), offset by k·bend spacings from a shared
+// start (the direction of the page's middle), so the dashes of neighbouring lines lean into bending diagonals.
+// A dash follows its ellipse: it is drawn as a few short overlapping round segments. Thickness: the local line
+// spacing × the mean spacing, square-rooted (the reference's strokes thicken about √ as fast as its lines open out),
+// less Line gap, tapering towards the ends. Twist turns each line a little further than the one before.
+// Motion: Flow slides every dash along its line by one spacing per loop; Sway rocks the bend back and forth.
+// Grid layout: Horizon's dashes (the Event Loop look), its settings kept under `grid`; colours and format are shared.
+const ORBIT_GRID_DEFAULTS = (({ palette, background, ink, ink2, format, seed, ...grid }) => grid)(VECTOR_DEFAULTS);
+// The arcs defaults are the studio's "01" (Event Stream): centre in the corner, no shift, no depth.
+const ORBIT_DEFAULTS = {
+  layout: 'arcs',
+  centreX: 0, centreY: 0, driftX: 0, driftY: 0, stretch: 1.3, rotation: 0, twist: 0, perspective: 0,
+  lines: 46, crowding: 2.2, inner: 0, spacing: 0.1, growth: 0.15, bend: 0.3,
+  length: 0.055, thickness: 0.15, radius: 1, taper: 0.3, margin: 0, motion: 'none', speed: 1, depth: 0.3,
+  pulse: { ...PULSE_DEFAULTS },
+  grid: ORBIT_GRID_DEFAULTS,
+  palette: 'Mono Dark', background: '#151515', ink: '#FCFCFC', ink2: '#FCFCFC', format: '1:1', seed: 1,
+};
+const orbitPalette = (name) => { const p = paletteNamed(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2 }; };
+/** Orbit's values, from any save: Horizon (once Vector Field) states become the Grid layout, and arcs saved with
+ *  Line gap get the same strokes from Thickness. */
+function sanitizeOrbit(params, from) {
+  let source = params || {};
+  if (from === 'Horizon' || from === 'Vector Field') {
+    const { palette, background, ink, ink2, format, seed, ...grid } = sanitizeVector(source);
+    source = { layout: 'grid', grid, palette, background, ink, ink2, format, seed };
+  }
+  const v = deepMerge(structuredClone(ORBIT_DEFAULTS), source);
+  if (source.gapY != null && source.thickness == null) v.thickness = E.clamp(1 - source.gapY, 0.02, 1);
+  if (source.grid) { const { palette, background, ink, ink2, format, seed, ...grid } = sanitizeVector(source.grid); v.grid = grid; }
+  if (!FORMATS[v.format]) v.format = ORBIT_DEFAULTS.format;
+  return v;
+}
+const ORBIT_MOTIONS = [['Still', 'none'], ['Flow', 'flow'], ['Sway', 'sway']];
+const orbitMoves = (v) => v.motion !== 'none';
+
+// Arc length round the unit ellipse (stretch, 1), tabulated once per stretch: cumulative length by angle, and the
+// angle at evenly spaced lengths. Every line is this ellipse scaled, so one table serves them all.
+const ORBIT_TABLES = new Map();
+function orbitTable(stretch) {
+  const key = stretch.toFixed(3);
+  let table = ORBIT_TABLES.get(key);
+  if (table) return table;
+  const M = 2048, S = new Float64Array(M + 1), T = new Float64Array(M + 1);
+  for (let j = 1; j <= M; j++) {
+    const a = 2 * Math.PI * (j - 1) / M, b = 2 * Math.PI * j / M;
+    S[j] = S[j - 1] + Math.hypot(stretch * (Math.cos(b) - Math.cos(a)), Math.sin(b) - Math.sin(a));
+  }
+  const P = S[M];
+  for (let j = 0, k = 0; j <= M; j++) {
+    const s = P * j / M;
+    while (k < M - 1 && S[k + 1] < s) k++;
+    T[j] = 2 * Math.PI * (k + (s - S[k]) / Math.max(1e-12, S[k + 1] - S[k])) / M;
+  }
+  table = { S, T, P, M };
+  if (ORBIT_TABLES.size > 24) ORBIT_TABLES.clear();
+  ORBIT_TABLES.set(key, table);
+  return table;
+}
+const orbitAngleAt = (table, s) => {  // the angle at arc length s (any real s; whole turns carry over)
+  const turns = Math.floor(s / table.P), f = (s - turns * table.P) / table.P * table.M, j = Math.min(table.M - 1, Math.floor(f));
+  return turns * 2 * Math.PI + table.T[j] + (table.T[j + 1] - table.T[j]) * (f - j);
+};
+const orbitLengthAt = (table, t) => {  // the arc length at angle t, within one turn
+  const w = ((t % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI), f = w / (2 * Math.PI) * table.M, j = Math.min(table.M - 1, Math.floor(f));
+  return table.S[j] + (table.S[j + 1] - table.S[j]) * (f - j);
+};
+
+/** `outlines`, when given, collects each shown dash as its centreline in artwork pixels, [x, y, half thickness] at
+ *  even steps, with its colour: the vector export draws every dash from these as one closed path. */
+/** `coarse` draws each dash in as few pieces as its curve needs, ignoring the taper (the piece-by-piece animated SVG). */
+function orbitGeometry(v, time, pool, outlines = null, coarse = false) {
+  if (v.layout === 'grid') {
+    const geo = vectorGeometry({ ...v.grid, palette: v.palette, background: v.background, ink: v.ink, ink2: v.ink2, format: v.format, seed: v.seed }, time, pool);
+    geo.params.name = 'Orbit';
+    applyPulse(geo, v.pulse, time);
+    return geo;
+  }
+  const [width, height] = FORMATS[v.format] || FORMATS['1:1'];
+  const margin = E.clamp(v.margin, 0, 0.45) * Math.min(width, height);
+  const unit = Math.min(width, height) - 2 * margin, spanX = (width - 2 * margin) / unit, spanY = (height - 2 * margin) / unit;
+  const stretch = E.clamp(v.stretch, 0.25, 4), table = orbitTable(stretch);
+  const cx = E.clamp(v.centreX, -1, 2) * spanX, cy = E.clamp(v.centreY, -1, 2) * spanY;
+  const turn0 = v.rotation * Math.PI / 180, twist = v.twist * Math.PI / 180;
+  // The lines stay nested only while the shift is smaller than the lines grow: (D_x/stretch)² + D_y² < 1 in the
+  // ellipse's frame. Past 0.9 the shift is scaled back, so any setting still draws.
+  let driftX = E.clamp(v.driftX, -3, 3), driftY = E.clamp(v.driftY, -3, 3);
+  const reachD = Math.max(...[turn0, turn0 + twist].map((t) => ((driftX * Math.cos(t) + driftY * Math.sin(t)) / stretch) ** 2 + (-driftX * Math.sin(t) + driftY * Math.cos(t)) ** 2));
+  if (reachD > 0.9) { driftX *= Math.sqrt(0.9 / reachD); driftY *= Math.sqrt(0.9 / reachD); }
+  const lines = Math.max(2, Math.min(200, Math.round(v.lines))), crowding = E.clamp(v.crowding, 0, 6);
+  // Depth: lines are laid out on a flat plane (x, Y) that recedes towards the top: page y = lift·e^{Y·n/spanY} − lift.
+  const pz = E.clamp(v.perspective), lift = 0.04 + 40 * (1 - pz) ** 3, n = Math.log((spanY + lift) / lift);
+  const toPageY = (Y) => lift * Math.exp(Y * n / spanY) - lift, toFlatY = (y) => spanY * Math.log((y + lift) / lift) / n;
+  // The size of the line through (x, y): with the centre shifting by D·r, ((l_x − D_x r)/s)² + (l_y − D_y r)² = r² in the
+  // ellipse's own frame, a quadratic in r (the smaller positive root). The outermost line reaches past every corner.
+  const sizeAt = (x, y, turn) => {
+    const cs = Math.cos(turn), sn = Math.sin(turn), dx = x - cx, dy = y - cy;
+    const lx = dx * cs + dy * sn, ly = -dx * sn + dy * cs, Dx = driftX * cs + driftY * sn, Dy = -driftX * sn + driftY * cs;
+    const A = Dx * Dx / (stretch * stretch) + Dy * Dy - 1, B = -2 * (lx * Dx / (stretch * stretch) + ly * Dy), C = lx * lx / (stretch * stretch) + ly * ly;
+    if (Math.abs(A) < 1e-9) return B < 0 ? -C / B : 0;
+    const root = Math.sqrt(Math.max(0, B * B - 4 * A * C)), sizes = [(-B + root) / (2 * A), (-B - root) / (2 * A)].filter((r) => r > 0);
+    return sizes.length ? Math.min(...sizes) : 0;
+  };
+  let rOut = 0;
+  for (const turn of [turn0, turn0 + twist]) for (const [x, y] of [[0, 0], [spanX, 0], [0, spanY], [spanX, spanY]]) {
+    rOut = Math.max(rOut, sizeAt(x, y, turn));
+  }
+  rOut *= 1.04;
+  const rIn = E.clamp(v.inner, 0, 0.9) * rOut, mean = (rOut - rIn) / lines;
+  const radius = (x) => rIn + (rOut - rIn) * (crowding > 1e-3 ? Math.expm1(crowding * E.clamp(x)) / Math.expm1(crowding) : E.clamp(x));
+  const tau = v.speed * time / 5, flow = v.motion === 'flow' ? tau : 0;
+  const sway = v.motion === 'sway' ? E.clamp(v.depth) * 0.5 * Math.sin(2 * Math.PI * tau) : 0;
+  const lineShare = E.clamp(v.thickness, 0.02, 1), taper = E.clamp(v.taper), dashLength = Math.max(0.002, v.length), round = E.clamp(v.radius);
+  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.ink2), bg = E.colourRGB(v.background);
+  const pulse = pulseActive(v.pulse) ? pulseField(v.pulse, time) : null;
+
+  // Plan each line first: its size, spacing, thickness and the dashes that fall on it.
+  const plan = [];
+  let segments = 0, dashes = 0;
+  for (let k = 0; k < lines; k++) {
+    const x = (k + 0.5) / lines, r = radius(x);
+    if (r < 1e-6) continue;
+    const spread = (radius(Math.min(1, x + 0.5 / lines)) - radius(Math.max(0, x - 0.5 / lines))) * Math.sqrt(stretch);
+    let S = Math.max(0.004, v.spacing * Math.pow(r / rOut, v.growth));
+    // A stroke never grows thicker than its line spacing or most of its own length (lines barely nesting would
+    // otherwise swell to cover the page).
+    const L = Math.min(dashLength, 0.95 * S), w = Math.min(lineShare * Math.sqrt(spread * mean), 0.9 * spread, 0.6 * L);
+    const turn = turn0 + twist * x, cos = Math.cos(turn), sin = Math.sin(turn), ox = cx + driftX * r, oy = cy + driftY * r;  // this line's centre
+    // Dashes are counted from the line's point facing the page's middle; the line's far side (where its count
+    // closes) is off the page for a centre at an edge or corner.
+    const mx = spanX / 2 - ox, my = toFlatY(spanY / 2) - oy, ax = mx * cos + my * sin, ay = -mx * sin + my * cos;
+    const start = r * orbitLengthAt(table, Math.atan2(ay, ax / stretch)), half = r * table.P / 2;
+    const phase = k * (v.bend + sway) + flow;
+    // Where the line's far side (where its count meets itself) shows on the page, its dashes are spread evenly
+    // round the whole line instead, so no seam shows.
+    const seam = orbitAngleAt(table, (start + half) / r), sx = r * stretch * Math.cos(seam), sy = r * Math.sin(seam);
+    const seamX = ox + sx * cos - sy * sin, seamY = toPageY(oy + sx * sin + sy * cos), closed = seamX > -L && seamX < spanX + L && seamY > -L && seamY < spanY + L;
+    let first, last;
+    if (closed) { const count = Math.max(1, Math.min(2047, Math.round(2 * half / S))); S = 2 * half / count; first = 0; last = count - 1; }
+    else { first = Math.max(-2047, Math.ceil(-half / S - phase + 0.5)); last = Math.min(2047, Math.floor(half / S - phase - 0.5)); }
+    // Enough pieces to follow the curve, and more while the dash tapers, so the steps of its taper stay too small to see.
+    const pieces = Math.max(taper > 0 && !coarse ? Math.ceil(3 + 7 * taper) : 2, Math.min(12, Math.ceil(L / (0.12 * r * Math.min(1, stretch)))));
+    plan.push({ k, x, r, S, L, w, cos, sin, ox, oy, start, phase, first, last, pieces });
+    if (last >= first) { segments += (last - first + 1) * pieces; dashes += last - first + 1; }
+  }
+  const instances = E.instanceBuffer(pool, segments * STRIDE);
+  let count = 0, shown = 0;
+  for (const { k, x, r, S, L, w, cos, sin, ox, oy, start, phase, first, last, pieces } of plan) {
+    const red = ink[0] + (ink2[0] - ink[0]) * x, green = ink[1] + (ink2[1] - ink[1]) * x, blue = ink[2] + (ink2[2] - ink[2]) * x;
+    const point = (s) => {
+      const t = orbitAngleAt(table, s / r), lx = r * stretch * Math.cos(t), ly = r * Math.sin(t);
+      const y = toPageY(oy + lx * sin + ly * cos);
+      return [ox + lx * cos - ly * sin, y, (y + lift) * n / spanY];  // the page point, and how much the plane is squeezed there
+    };
+    for (let i = first; i <= last; i++) {
+      const centre = start + (i + phase) * S;
+      // Pulse: one opacity and one size for the whole dash, read at its middle, so a stroke never splits.
+      let alpha = 1, size = 1;
+      if (pulse) {
+        const [cxp, cyp] = point(centre);
+        [alpha, size] = pulse((margin + cxp * unit) / width, (margin + cyp * unit) / height);
+        if (alpha <= 0.002 || size <= 0.001) continue;
+      }
+      // A faded dash is mixed towards the background rather than made see-through, so its overlapping pieces stay
+      // one even colour (the background is always one flat colour).
+      const fr = bg[0] + (red - bg[0]) * alpha, fg = bg[1] + (green - bg[1]) * alpha, fb = bg[2] + (blue - bg[2]) * alpha;
+      const len = L * size;
+      let [px, py, pk] = point(centre - len / 2), any = false;
+      for (let j = 0; j < pieces; j++) {
+        const [qx, qy, qk] = point(centre - len / 2 + len * (j + 1) / pieces);
+        // Thickness thins with the squeeze (the square root: across and along the plane), and tapers to the ends.
+        const mx = (px + qx) / 2, my = (py + qy) / 2;
+        const thick = w * size * Math.sqrt((pk + qk) / 2) * (1 - taper * (1 - Math.sqrt(Math.sin(Math.PI * (j + 0.5) / pieces))));
+        if (thick > 0 && mx > -len && mx < spanX + len && my > -len && my < spanY + len) {
+          // Pieces overlap by half their thickness at every join, so they read as one smooth stroke; the dash's own
+          // two ends reach out by Roundness × half the thickness (square at 0, round at 1).
+          const outerStart = j === 0 ? round * thick / 2 : thick / 2, outerEnd = j === pieces - 1 ? round * thick / 2 : thick / 2;
+          const seg = Math.hypot(qx - px, qy - py) || 1e-9, ux = (qx - px) / seg, uy = (qy - py) / seg, shift = (outerEnd - outerStart) / 2;
+          const endPiece = j === 0 || j === pieces - 1;
+          putMark(instances, count++, margin + (mx + ux * shift) * unit, margin + (my + uy * shift) * unit, (seg + outerStart + outerEnd) * unit, thick * unit,
+            Math.atan2(qy - py, qx - px), (endPiece ? round : 1) * thick * unit / 2, endPiece ? 0 : 3, fr, fg, fb, 1, 1, (k * 4096 + 2048 + i) * 16 + j);
+          any = true;
+        }
+        px = qx; py = qy; pk = qk;
+      }
+      if (any) shown++;
+      // For the vector files: the dash's outline at any position along its line (`shape`), and where that is on the
+      // page (`place`); a dash that slides onto the page during an animation (`outlines.travel` spacings) counts too.
+      const place = (c) => { const [x, y] = point(c); return [margin + x * unit, margin + y * unit]; };
+      const onPage = (c) => { const [x, y] = point(c); return x > -len && x < spanX + len && y > -len && y < spanY + len; };
+      if (outlines && (any || (outlines.travel && onPage(centre + outlines.travel * S)))) {
+        const steps = outlines.steps || Math.max(4, Math.min(12, pieces + 2));  // the animation asks for fewer
+        const shape = (c) => {
+          const line = [];
+          for (let m = 0; m <= steps; m++) {
+            const t = m / steps, [x, y, kk] = point(c - len / 2 + len * t);
+            line.push([margin + x * unit, margin + y * unit, 0.5 * w * size * Math.sqrt(kk) * (1 - taper * (1 - Math.sqrt(Math.sin(Math.PI * t)))) * unit]);
+          }
+          return line;
+        };
+        outlines.push({ line: shape(centre), colour: [fr, fg, fb], shape, place, centre, S });
+      }
+    }
+  }
+  const params = { name: 'Orbit', seed: 0, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
+  // With a margin, dashes run on into it and the frame cuts them in a clean line (the views and every export).
+  const clip = margin ? [margin, margin, width - margin, height - margin] : null;
+  return { instances, count, markCount: shown, width, height, params, clip };
 }
 
 // ---------- Studio patterns, tailored to a short list of controls ----------
@@ -1048,8 +1308,47 @@ const rowsCount = (label = 'Rows', max = 100) => range('layout.rows', label, 1, 
 const markOpacity = { ...range(both('mappings.opacity'), 'Opacity', 0, 1, 0.01, pct), when: (v) => v.mappings.opacity.source === 'constant' };
 const studioLook = (...extra) => [PALETTE, colour('colour.background', 'Background'), gradient('Colours'), ...extra, markOpacity, FORMAT];
 
+// Orbit's two layouts. Grid keeps its settings one level down, under `grid`, so the two never share a value.
+/** The same controls for values kept under `prefix` (keys and conditions both read one level down). */
+const nestSections = (prefix, sections) => sections.map(([title, controls, hint]) => [title, controls.map((c) => ({
+  ...c, key: Array.isArray(c.key) ? c.key.map((k) => prefix + k) : prefix + c.key,
+  ...(c.when ? { when: (v) => c.when(getPath(v, prefix.slice(0, -1))) } : {}),
+})), hint]);
+const ORBIT_ARC_SECTIONS = [
+  ['Lines', [range('lines', 'Lines', 6, 120, 1, int), range('crowding', 'Crowding', 0, 5, 0.01, f2), range('inner', 'Centre gap', 0, 0.5, 0.01, pct),
+    range('spacing', 'Dash spacing', 0.02, 0.3, 0.001, pct), range('growth', 'Spacing growth', 0, 1.5, 0.01, f2), range('bend', 'Bend', -1, 1, 0.01, f2)],
+    'Bend shifts each line’s dashes against the one before, so they lean into curves. Spacing growth opens the dashes out on the bigger lines.'],
+  ['Dashes', [range('length', 'Dash length', 0.005, 0.3, 0.001, pct), range('thickness', 'Thickness', 0.02, 1, 0.005, pct),
+    range('radius', 'Roundness', 0, 1, 0.01, pct), range('taper', 'Taper', 0, 1, 0.01, pct), range('margin', 'Margin', 0, 0.45, 0.01, pct)],
+    'Thickness is a share of the gap between lines, so dashes thin where the lines crowd.'],
+  ['Shape', [range('centreX', 'Centre X', -1, 2, 0.01, pct), range('centreY', 'Centre Y', -1, 2, 0.01, pct),
+    range('driftX', 'Shift across', -2, 2, 0.01, f2), range('driftY', 'Shift down', -2, 2, 0.01, f2), range('stretch', 'Stretch', 0.5, 4, 0.01, times),
+    range('rotation', 'Rotation', -180, 180, 1, deg), range('twist', 'Twist', -90, 90, 1, deg), range('perspective', 'Depth', 0, 1, 0.01, pct)],
+    'Drag the centre on the artwork. Shift moves each line’s centre further as the lines grow, so they bunch on one side; Stretch widens them; Twist turns each a little further than the last.'],
+  ['Motion', [{ ...choice('motion', 'Motion', ORBIT_MOTIONS), rebuild: true },
+    { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: orbitMoves }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: (v) => v.motion === 'sway' }],
+    'Flow slides the dashes along their lines; Sway rocks the bend back and forth.'],
+];
+const ORBIT_GRID_SECTIONS = [
+  ['Field', [range('spiral', 'Spiral', -90, 90, 1, deg), range('core', 'Core', 0, 4, 0.05, times),
+    range('centreX', 'Centre X', -1, 2, 0.01, pct), range('centreY', 'Centre Y', -1, 2, 0.01, pct)],
+    'Spiral opens the arcs into a spiral; Core calms the dashes round the centre. Drag the centre on the artwork.'],
+  ['Grid', [range('columns', 'Columns', 4, 60, 1, int), range('rows', 'Rows', 4, 160, 1, int),
+    range('gapX', 'Dash gap', 0, 0.95, 0.01, pct), range('gapY', 'Row gap', 0, 0.98, 0.005, pct), range('overlap', 'Overlap', 0, 1, 0.01, pct),
+    range('radius', 'Roundness', 0, 1, 0.01, pct), range('opacity', 'Opacity', 0, 1, 0.01, pct), range('margin', 'Margin', 0, 0.45, 0.01, pct)],
+    'Columns counts the dashes across the bottom row. Rows and columns crowd towards the top; Overlap lets the dashes there run together into fine lines.'],
+  ['View', [range('perspective', 'Depth', 0, 1, 0.01, pct), range('ellipse', 'Stretch', 0.5, 4, 0.05, times)],
+    'Depth crowds the rows towards the top; Stretch turns the arcs upright sooner.'],
+  ['Motion', [{ ...choice('motion', 'Motion', VECTOR_MOTIONS), rebuild: true },
+    { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: vectorMoves }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: vectorMoves },
+    { ...range('waves', 'Waves', 1, 8, 1, int), when: vectorWaves },
+    { ...choice('shape', 'Shape', SHAPE_OPTIONS), rebuild: true, when: vectorMoves },
+    { ...range('harmonics', 'Harmonics', 1, 32, 1, int), when: (v) => vectorMoves(v) && v.shape !== 'sine' }],
+    'Ripple sends a wave out from the centre, Sweep sends it round, and Twist lets the arcs breathe in and out of a spiral.'],
+];
+
 const PATTERNS = [
-  { name: 'Wave Rows', kind: 'rows', description: 'Rows of items, each one\'s opacity and size set by a sine wave.',
+  { name: 'Wave Rows', kind: 'rows', description: 'Rows of items whose opacity and size rise and fall in waves.',
     sections: [
       ['Grid', [range('rows', 'Rows', 1, 120, 1, int), range('items', 'Items', 1, 160, 1, int),
         range('itemStep', 'Items / row', -4, 4, 0.1, signed), range('margin', 'Margin', 0, 300, 1, px),
@@ -1061,7 +1360,7 @@ const PATTERNS = [
         range('sharpness', 'Sharpness', 0.2, 6, 0.05, f2), ...shapeControls(''), range('speed', 'Speed', -3, 3, 0.5, offOr)]],
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Item colour'), FORMAT] },
-  { name: 'Sinky Meter', sizeMode: 'width', sections: [
+  { name: 'Gauge', sizeMode: 'width', sections: [
       ['Grid', [columns('Meters', 80), margin]],
       ['Meter', [range('marks.fillThickness', 'Fill width', 1, 50, 0.5, px), range('marks.trackOpacity', 'Track', 0, 1, 0.01, pct),
         range('marks.capSize', 'Cap size', 0.5, 40, 0.5, px), range('marks.capOffset', 'Cap offset', -200, 200, 1, px)]],
@@ -1069,7 +1368,7 @@ const PATTERNS = [
         range('field.waveB.weight', 'Wave', 0, 3, 0.01, f2), range('field.waveB.frequency', 'Frequency', 0, 12, 0.05, times),
         range('shaping.gamma', 'Bias', 0.1, 4, 0.01, f2), animate]],
     ], look: studioLook() },
-  { name: 'Amaya Flow', sections: [
+  { name: 'Eddy', sections: [
       ['Grid', [columns(), rowsCount(), margin]],
       ['Dashes', [range(both('mappings.length'), 'Length', 2, 160, 1, px), range(both('mappings.thickness'), 'Thickness', 0.5, 60, 0.5, px),
         range('marks.radius', 'Roundness', 0, 30, 0.5, px)]],
@@ -1117,50 +1416,43 @@ const PATTERNS = [
         choice('shaping.mirror', 'Mirror', [['None', 'none'], ['Sides', 'X'], ['Top', 'Y'], ['Both', 'XY']]),
         range('shaping.quantise', 'Colour steps', 0, 16, 1, stepsFmt), animate]],
     ], look: studioLook() },
-  { name: 'RFD Stack', sections: [
+  { name: 'Stack', sections: [
       ['Grid', [columns('Columns', 20), rowsCount('Rows', 100), margin, range('layout.gutterX', 'Column gap', 0, 100, 1, px)]],
       ['Bars', [range(both('mappings.thickness'), 'Thickness', 0.5, 40, 0.5, px), range('mappings.length.min', 'Shortest', 0, 600, 1, px),
         range('mappings.length.max', 'Longest', 0, 600, 1, px)]],
       ['Wave', [waveFrequency, waveDirection, secondWave, steps, animate]],
     ], look: studioLook() },
 
-  { name: 'Vector Field', kind: 'vector', group: 'Studio patterns',
-    description: 'A grid of dashes, each turned along a vector field: arcs round a centre, crowding into fine lines towards the top.',
+  { name: 'Orbit', kind: 'orbit', group: 'Studio patterns',
+    description: 'Dashes sweeping round nested arcs, crowding into fine lines towards the top.',
     sections: [
-      ['Field', [range('spiral', 'Spiral', -90, 90, 1, deg), range('centreX', 'Centre X', -1, 2, 0.01, pct), range('centreY', 'Centre Y', -1, 2, 0.01, pct)],
-        'Each dash follows F(x, y) = ⟨−y, x⟩ from the centre: the rotation field, whose flow lines are circles. Spiral turns it towards ⟨x, y⟩, out from the centre.'],
-      ['Grid', [range('columns', 'Columns', 4, 60, 1, int), range('rows', 'Rows', 4, 160, 1, int),
-        range('length', 'Dash length', 0.05, 2, 0.01, pct), range('thickness', 'Thickness', 0.02, 0.5, 0.005, pct),
-        range('margin', 'Margin', 0, 0.45, 0.01, pct)],
-        'Columns counts the dashes across the bottom row; dash length and thickness are shares of the gap there. Rows and columns crowd towards the top.'],
-      ['View', [range('perspective', 'Depth', 0, 1, 0.01, pct), range('ellipse', 'Stretch', 0.5, 4, 0.05, times)],
-        'Depth lays the grid on a plane receding towards the top, so rows and columns crowd there. Stretch widens the field so its circles turn upright sooner.'],
-      ['Motion', [{ ...choice('motion', 'Motion', VECTOR_MOTIONS), rebuild: true },
-        { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: vectorMoves }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: vectorMoves },
-        { ...range('waves', 'Waves', 1, 8, 1, int), when: vectorWaves }],
-        'A sine wave runs through the dash lengths, outward from the centre (Ripple) or round it (Sweep), or through the field itself, which breathes between spirals (Twist).'],
+      ['Layout', [{ ...choice('layout', 'Layout', [['Arcs', 'arcs'], ['Grid', 'grid']]), rebuild: true }],
+        'Arcs lays curved dashes along the lines; Grid sets straight dashes in rows that turn with them.'],
+      ...ORBIT_ARC_SECTIONS.map((s) => [...s, (v) => v.layout !== 'grid']),
+      ...nestSections('grid.', ORBIT_GRID_SECTIONS).map((s) => [...s, (v) => v.layout === 'grid']),
+      ['Pulse', pulseControls, PULSE_HINT],
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Inner colour'), colour('ink2', 'Outer colour'), FORMAT] },
 
   // ---------- Wave studies ----------
   { name: 'Cymatics', group: 'Wave studies', noShape: true,
-    description: 'Sand on a vibrating plate: marks gather on the lines that stay still (Chladni figures).',
+    description: 'Symmetric figures traced in dots, shifting from one mode to the next.',
     sections: [
       ['Plate', [range('field.chladni.n', 'Mode n', 1, 12, 1, int), range('field.chladni.m', 'Mode m', 1, 12, 1, int),
         range('field.chladni.mix', 'Mix', -180, 180, 1, deg), range('shaping.gamma', 'Line sharpness', 0.5, 12, 0.1, f2)],
-        'cos(nπx)·cos(mπy) mixed with cos(mπx)·cos(nπy). Equal modes cancel at −45°, so pick two different ones.'],
+        'Equal modes cancel out at −45°, so pick two different ones.'],
       ['Motion', studyMotion(), 'Morph melts the figure into its neighbours and back; Flow keeps turning the mix one way.'],
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Dots across', 8, 140, 1, int),
         range(['mappings.thickness.max', 'mappings.length.max'], 'Dot size', 1, 30, 0.5, px),
         range('mappings.opacity.min', 'Resting dots', 0, 1, 0.01, pct), margin]],
     ], look: studioLook() },
   { name: 'Interference', group: 'Wave studies',
-    description: 'Circular waves from several sources, adding up into moiré fringes.',
+    description: 'Rings from several centres, overlapping into moiré fringes.',
     sections: [
       ['Sources', [range('field.ripples.sources', 'Sources', 1, 8, 1, int), range('field.ripples.spread', 'Spread', 0, 0.5, 0.01, pct),
         range('field.ripples.frequency', 'Rings', 1, 40, 0.5, f1), range('field.ripples.decay', 'Fade out', 0, 3, 0.01, f2),
         range('field.ripples.rotation', 'Rotation', -180, 180, 1, deg), contrast],
-        'Where crests meet they add up; where a crest meets a trough they cancel.'],
+        'More sources make busier fringes; Spread moves them apart and Rings sets how fine they are.'],
       ['Motion', studyMotion(range('field.ripples.orbit', 'Orbit', -2, 2, 0.5, offOr)), 'Morph draws the sources apart and back while they swing; Flow sends the rings outward. Orbit turns the sources, Speed or not.'],
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Dots across', 8, 160, 1, int),
         range(['mappings.thickness.max', 'mappings.length.max'], 'Dot size', 1, 30, 0.5, px), margin]],
@@ -1172,7 +1464,7 @@ const PATTERNS = [
         { ...textInput('field.logo.text', 'Text'), when: (v) => v.field.logo.shape === 'text' },
         range('field.logo.size', 'Size', 0.1, 0.95, 0.01, pct),
         choice('field.logo.fill', 'Inside', [['Solid', 'on'], ['Empty', 'empty'], ['Contours', 'off']])],
-        'Distance from the outline, measured on the real logo files: text is set in Geist, the bracket on its Geist Pixel cells.'],
+        'Text is set in Geist; the bracket sits on its Geist Pixel cells.'],
       ['Contours', [range('field.logo.frequency', 'Contours', 0, 30, 0.5, f1), range('field.logo.line', 'Sharpness', 1, 8, 0.05, f2),
         range('field.logo.fade', 'Fade', 0, 3, 0.01, f2)],
         'Sharpness thins the bands into fine lines; Fade lets them die away from the mark.'],
@@ -1215,7 +1507,10 @@ const GROUPS = ['Wave Rows', 'Studio patterns', 'Wave studies', 'Bracket'];
 const PATTERN_GROUPS = GROUPS.map((g) => [g, PATTERNS.filter((p) => p.group === g).map((p) => p.name)]);
 
 // ---------- Values ----------
-const patternOf = (name) => PATTERNS.find((p) => p.name === name) || PATTERNS[0];
+// Patterns renamed since their first release still open from saved presets and share links (the first three came
+// from the original studio).
+const PATTERN_ALIASES = { 'Sinky Meter': 'Gauge', 'Amaya Flow': 'Eddy', 'RFD Stack': 'Stack', 'Vector Field': 'Orbit', Horizon: 'Orbit' };
+const patternOf = (name) => PATTERNS.find((p) => p.name === (PATTERN_ALIASES[name] || name)) || PATTERNS[0];
 const kindOf = (st) => patternOf(st.pattern).kind;
 const isRows = (st) => kindOf(st) === 'rows';
 const isMark = (st) => kindOf(st) === 'mark';
@@ -1270,6 +1565,20 @@ function sanitizeFlat(defaults, params) {
 const sanitizeRows = (params) => sanitizeFlat(ROW_DEFAULTS, params);
 // Bracket margins were pixels on the 1200 px canvas before they became a share of the shorter side.
 const sanitizeMark = (params) => { const v = sanitizeFlat(MARK_DEFAULTS, params); if (v.margin > 1) v.margin = Math.min(0.45, v.margin / 1200); return v; };
+// Vector Field dashes were sized by length and thickness before Dash gap and Row gap; the same dashes, converted.
+function sanitizeVector(params) {
+  const v = sanitizeFlat(VECTOR_DEFAULTS, params);
+  if (params && params.length != null && params.gapX == null) v.gapX = E.clamp(1 - params.length, 0, 0.95);
+  if (params && params.thickness != null && params.gapY == null) {
+    const [width, height] = FORMATS[v.format], margin = E.clamp(v.margin, 0, 0.45) * Math.min(width, height);
+    const unit = Math.min(width, height) - 2 * margin, spanX = (width - 2 * margin) / unit, spanY = (height - 2 * margin) / unit;
+    const p = E.clamp(v.perspective), lift = 0.04 + 4 * (1 - p) * (1 - p), near = (spanY + lift) / Math.max(0.2, v.ellipse);
+    const columns = Math.max(1, Math.round(v.columns)), cellZ = Math.log((spanY + lift) / lift) / Math.max(1, Math.round(v.rows));
+    v.gapY = E.clamp(1 - params.thickness * Math.sqrt(spanX / columns / cellZ / near), 0, 0.98);
+  }
+  delete v.length; delete v.thickness;
+  return v;
+}
 
 // Wave studies start from the studio's base preset with wave A off and one new field source on.
 const mappingOf = (source, min, max) => ({ source, min, max });
@@ -1314,10 +1623,10 @@ const STUDY_PRESETS = [
 ];
 
 // Looks from the client's references, built on existing patterns.
-// Refactor (Amaya Flow): bars stand upright at the edges and twist round the centre. Each bar's angle is
+// Refactor (Eddy): bars stand upright at the edges and twist round the centre. Each bar's angle is
 // 90° ± 60° times the centre's bump, (1 − d²/R²)² inside radius R, so the twist eases smoothly to nothing.
 const STUDIO_EXTRAS = [
-  { name: 'Refactor', pattern: 'Amaya Flow', palette: 'Mono Dark', colours: { stop1: '#D5D5D5', stop2: '#D5D5D5', source: 'constant' }, tune: (p) => {
+  { name: 'Refactor', pattern: 'Eddy', palette: 'Mono Dark', colours: { stop1: '#D5D5D5', stop2: '#D5D5D5', source: 'constant' }, tune: (p) => {
     Object.assign(p.canvas, { format: '16:9', width: 1920, height: 1080 });
     Object.assign(p.layout, { columns: 22, rows: 12, margin: 70 });
     p.field.waveA.enabled = false; p.field.gradient.enabled = false;
@@ -1327,9 +1636,15 @@ const STUDIO_EXTRAS = [
     p.mappings.length = mappingOf('constant', 76, 76); p.mappings.thickness = mappingOf('x', 14, 26);
   } },
 ];
-// Event Loop (Vector Field): the rotation field round the top-left corner, fine arcs crowding into the top, opening into bold dashes towards the bottom right.
-const VECTOR_PRESETS = [
-  { name: 'Event Loop', params: { spiral: 0, centreX: 0, centreY: 0, columns: 12, rows: 34, length: 0.55, thickness: 0.085, perspective: 0.86, ellipse: 2.2, ...vectorPalette('Mono Dark') } },
+// Event Loop (Horizon): the rotation field round the top-left corner, fine arcs crowding into the top, opening into bold dashes towards the bottom right.
+// Orbit: Event Stream (the studio's "01", and Orbit's default), Event Queue (the client's arcs reference, fitted),
+// and Event Loop (the Grid layout: the rotation field on a receding plane).
+const ORBIT_PRESETS = [
+  { name: 'Event Stream', params: { layout: 'arcs', ...orbitPalette('Mono Dark') } },
+  { name: 'Event Queue', params: { layout: 'arcs', centreX: -0.057, centreY: -0.141, driftX: -0.882, driftY: 0.401, stretch: 2.414, rotation: 9.4, perspective: 0.79,
+    lines: 73, crowding: 1.36, inner: 0.014, spacing: 0.147, growth: 0.35, length: 0.055, thickness: 0.28, taper: 0.4, bend: 0.5, ...orbitPalette('Mono Dark') } },
+  { name: 'Event Loop', params: { layout: 'grid', ...orbitPalette('Mono Dark'),
+    grid: { spiral: 0, centreX: 0, centreY: 0, columns: 12, rows: 34, gapX: 0.45, gapY: 0.865, overlap: 0.15, core: 2, radius: 1, perspective: 0.86, ellipse: 2.2 } } },
 ];
 
 const BUILT_INS = [
@@ -1348,20 +1663,71 @@ const BUILT_INS = [
     if (x.colours) Object.assign(values.colour, x.colours);
     return { name: x.name, group: 'Studio patterns', pattern: x.pattern, values };
   }),
-  ...VECTOR_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Vector Field', values: sanitizeFlat(VECTOR_DEFAULTS, p.params) })),
+  ...ORBIT_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Orbit', values: sanitizeOrbit(p.params) })),
   ...MARK_PRESETS.map((p) => ({ name: p.name, group: 'Bracket', pattern: 'Bracket', values: sanitizeMark(p.params) })),
 ];
+// Two more presets for each pattern that had one, each drawn from that pattern's first: another density, wave
+// and palette, set just after it, so the arrows step through all three.
+const MORE_PRESETS = [
+  { name: 'Uptime', from: 'Telemetry', palette: 'Midnight', set: { 'layout.columns': 48, 'marks.fillThickness': 7, 'marks.capSize': 5, 'marks.capOffset': 40,
+    'field.data.values': '12,18,26,31,38,44,52,57,63,70,74,81', 'field.data.smoothing': 0.5, 'field.waveB.weight': 0.2, 'field.waveB.frequency': 1.4 } },
+  { name: 'Benchmark', from: 'Telemetry', palette: 'Mono Light', set: { 'layout.columns': 24, 'marks.fillThickness': 16, 'marks.trackOpacity': 0.15,
+    'marks.capSize': 12, 'marks.capOffset': 0, 'field.data.values': '22,35,48,44,61,73,68,82,77,90,84,95', 'field.data.smoothing': 0.3, 'shaping.gamma': 1 } },
+  { name: 'Hash', from: 'Bitstream', palette: 'Mono Dark', set: { 'layout.columns': 140, 'layout.rows': 14, 'mappings.thickness.min': 0.8, 'mappings.thickness.max': 8,
+    'mappings.length.min': 60, 'mappings.length.max': 60, 'marks.threshold': 0.25, 'field.waveA.frequency': 4.1, 'field.waveA.direction': -30, 'shaping.contrast': 2.4 } },
+  { name: 'Payload', from: 'Bitstream', palette: 'Ember', set: { 'layout.columns': 64, 'layout.rows': 5, 'mappings.thickness.min': 3, 'mappings.thickness.max': 22,
+    'mappings.length.min': 180, 'mappings.length.max': 180, 'marks.threshold': 0.05, 'field.waveA.frequency': 1.4, 'field.waveA.direction': 60, 'field.waveB.weight': 0.8, 'shaping.contrast': 1.3 } },
+  { name: 'Bandwidth', from: 'Stack Trace', palette: 'Mono Light', set: { 'layout.rows': 90, 'mappings.thickness.min': 1, 'mappings.thickness.max': 8,
+    'mappings.length.min': 120, 'mappings.length.max': 1040, 'field.waveA.frequency': 2.2, 'shaping.quantise': 12, 'shaping.contrast': 2 } },
+  { name: 'Packet', from: 'Stack Trace', palette: 'Ember', set: { 'layout.rows': 24, 'mappings.thickness.min': 6, 'mappings.thickness.max': 34,
+    'mappings.length.min': 300, 'mappings.length.max': 900, 'field.waveA.frequency': 0.8, 'field.waveB.weight': 0.5, 'shaping.quantise': 4 } },
+  { name: 'Latency', from: 'Gradient Descent', palette: 'Primary', set: { 'layout.columns': 40, 'layout.rows': 40, 'mappings.thickness.min': 1.2, 'mappings.thickness.max': 14,
+    'mappings.length.min': 20, 'mappings.length.max': 20, 'marks.fixedAngle': 45, 'field.gradient.direction': 135, 'shaping.gamma': 0.8, 'field.waveA.weight': 0.3, 'field.waveA.frequency': 2.5 } },
+  { name: 'Throttle', from: 'Gradient Descent', palette: 'Coral', set: { 'layout.columns': 22, 'layout.rows': 22, 'mappings.thickness.min': 1.5, 'mappings.thickness.max': 20,
+    'mappings.length.min': 44, 'mappings.length.max': 44, 'marks.fixedAngle': -30, 'field.gradient.direction': 0, 'shaping.gamma': 2, 'field.waveA.weight': 0 } },
+  { name: 'Heap', from: 'Vector Field', palette: 'Midnight', set: { 'layout.columns': 44, 'layout.rows': 44, 'mappings.length.min': 8, 'mappings.length.max': 24,
+    'mappings.thickness.min': 3.6, 'mappings.thickness.max': 3.6, 'field.waveA.frequency': 2.4, 'field.waveA.direction': 120, 'field.waveB.weight': 0.9, 'field.radial.weight': 0.5, 'shaping.warp': 0.12 } },
+  { name: 'Closure', from: 'Vector Field', palette: 'Grape', set: { 'layout.columns': 30, 'layout.rows': 30, 'mappings.length.min': 10, 'mappings.length.max': 34,
+    'mappings.thickness.min': 4, 'mappings.thickness.max': 4, 'field.waveA.frequency': 0.8, 'field.waveA.direction': 10, 'field.waveB.weight': 0.3, 'field.radial.weight': 0.1, 'shaping.warp': 0.04 } },
+  { name: 'Protocol', from: 'Threads', palette: 'Midnight', set: { 'layout.columns': 90, 'mappings.thickness.min': 0.6, 'mappings.thickness.max': 2,
+    'layout.strandDisplacement': 120, 'layout.strandSamples': 160, 'field.waveA.frequency': 2.1, 'field.waveA.direction': 20, 'field.waveB.weight': 0.6, 'colour.accentEvery': 0 } },
+  { name: 'Socket', from: 'Threads', palette: 'Ember', set: { 'layout.columns': 36, 'mappings.thickness.min': 1.5, 'mappings.thickness.max': 5,
+    'layout.strandDisplacement': 40, 'field.waveA.frequency': 0.9, 'field.waveA.direction': 90, 'field.waveB.weight': 0.2, 'colour.accentEvery': 7, 'colour.accent': '#FCFCFC' } },
+  { name: 'Kernel', from: 'Recursion', palette: 'Ember', set: { 'layout.columns': 24, 'layout.rows': 24, 'mappings.thickness.min': 40, 'mappings.thickness.max': 40,
+    'mappings.length.min': 40, 'mappings.length.max': 40, 'field.waveA.frequency': 1.4, 'field.waveB.frequency': 3.2, 'field.noise.weight': 0.1, 'shaping.mirror': 'X', 'shaping.quantise': 4 } },
+  { name: 'Mutex', from: 'Recursion', palette: 'Violet', set: { 'layout.columns': 64, 'layout.rows': 64, 'mappings.thickness.min': 16, 'mappings.thickness.max': 16,
+    'mappings.length.min': 16, 'mappings.length.max': 16, 'field.waveA.frequency': 3.4, 'field.waveB.frequency': 2.2, 'field.noise.weight': 0.4, 'shaping.mirror': 'XY', 'shaping.quantise': 8 } },
+  { name: 'Buffer', from: 'Call Stack', palette: 'Mono Light', set: { 'layout.columns': 8, 'layout.rows': 48, 'layout.gutterX': 16, 'mappings.thickness.min': 4, 'mappings.thickness.max': 4,
+    'mappings.length.min': 16, 'mappings.length.max': 150, 'field.waveA.frequency': 2.4, 'field.waveA.direction': 60, 'shaping.quantise': 5 } },
+  { name: 'Register', from: 'Call Stack', palette: 'Ember', set: { 'layout.columns': 3, 'layout.rows': 20, 'layout.gutterX': 40, 'mappings.thickness.min': 10, 'mappings.thickness.max': 10,
+    'mappings.length.min': 40, 'mappings.length.max': 300, 'field.waveA.frequency': 0.7, 'field.waveA.direction': 100, 'shaping.quantise': 12 } },
+  { name: 'Overflow', from: 'Resonance', palette: 'Ember', set: { 'field.chladni.n': 5, 'field.chladni.m': 2, 'field.chladni.mix': -20, 'shaping.gamma': 6,
+    'layout.columns': 90, 'layout.rows': 90, 'mappings.thickness.max': 9, 'mappings.length.max': 9, 'mappings.opacity.min': 0.1 } },
+  { name: 'Daemon', from: 'Resonance', palette: 'Ice', set: { 'field.chladni.n': 6, 'field.chladni.m': 9, 'field.chladni.mix': 30, 'shaping.gamma': 3,
+    'layout.columns': 110, 'layout.rows': 110, 'mappings.thickness.max': 7, 'mappings.length.max': 7, 'mappings.opacity.min': 0.25 } },
+  { name: 'Cluster', from: 'Concurrency', palette: 'Mono Dark', set: { 'field.ripples.sources': 5, 'field.ripples.spread': 0.3, 'field.ripples.frequency': 14,
+    'field.ripples.decay': 0.4, 'field.ripples.rotation': 0, 'shaping.contrast': 1.8, 'layout.columns': 100, 'layout.rows': 100, 'mappings.thickness.max': 8, 'mappings.length.max': 8 } },
+  { name: 'Webhook', from: 'Concurrency', palette: 'Coral', set: { 'field.ripples.sources': 2, 'field.ripples.spread': 0.35, 'field.ripples.frequency': 7,
+    'field.ripples.decay': 0, 'field.ripples.rotation': 45, 'shaping.contrast': 1.2, 'layout.columns': 70, 'layout.rows': 70, 'mappings.thickness.max': 12, 'mappings.length.max': 12 } },
+];
+for (const p of MORE_PRESETS) {
+  const source = BUILT_INS.find((b) => b.name === p.from), values = studioPalette(structuredClone(source.values), p.palette);
+  for (const [key, value] of Object.entries(p.set)) setPath(values, key, value);
+  if (values.colour.source === 'constant') values.colour.stop2 = values.colour.stop1;
+  BUILT_INS.splice(BUILT_INS.findLastIndex((b) => b.pattern === source.pattern) + 1, 0, { name: p.name, group: source.group, pattern: source.pattern, values });
+}
 const firstPreset = (pattern) => BUILT_INS.find((b) => b.pattern === pattern);
-const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, vector: VECTOR_DEFAULTS };
+const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, orbit: ORBIT_DEFAULTS };
 const defaultsFor = (pattern) => FLAT_DEFAULTS[patternOf(pattern).kind] || firstPreset(pattern).values;
 
 function sanitizeState(st) {
   const pattern = patternOf(st && st.pattern);
   if (pattern.kind === 'rows') return { pattern: pattern.name, values: sanitizeRows(st && st.values) };
   if (pattern.kind === 'mark') return { pattern: pattern.name, values: sanitizeMark(st && st.values) };
-  if (pattern.kind === 'vector') return { pattern: pattern.name, values: sanitizeFlat(VECTOR_DEFAULTS, st && st.values) };
+  if (pattern.kind === 'orbit') return { pattern: pattern.name, values: sanitizeOrbit(st && st.values, st && st.pattern) };
   const source = st && st.values;
   const values = normaliseStudio(deepMerge(structuredClone(firstPreset(pattern.name).values), source));
+  values.name = pattern.name;  // a save from before a rename carries the old name into its SVG title
   // Pulses saved before the on/off switch existed were on whenever they were set.
   if (source && source.pulse && typeof source.pulse.enabled !== 'boolean') values.pulse.enabled = !pulseNeutral(values.pulse);
   const size = FORMATS[values.canvas.format];
@@ -1374,7 +1740,7 @@ function sanitizeState(st) {
 /** Picks the closest pattern for JSON exported from the main studio. */
 function guessPattern(p) {
   if (PATTERNS.some((x) => x.kind === 'studio' && x.name === p.name)) return p.name;
-  if (p.marks && p.marks.shape === 'Meter') return 'Sinky Meter';
+  if (p.marks && p.marks.shape === 'Meter') return 'Gauge';
   if (p.layout && p.layout.mode === 'Strands') return 'Strands';
   if (p.layout && p.layout.mode === 'Rows') return 'Threshold Stripes';
   if (p.shaping && p.shaping.mirror && p.shaping.mirror !== 'none') return 'Kaleido Pixels';
@@ -1454,14 +1820,30 @@ const label = (id) => id.split(':').slice(1).join(':');
 
 // ---------- Geometry & drawing ----------
 /** `pool` (optional) reuses one buffer across calls: only for a caller that is done with the last frame. */
-function geometryFor(st, t, pool) {
+function geometryFor(st, t, pool, coarse = false) {
   if (isRows(st)) return rowsGeometry(st.values, t, pool);
   if (isMark(st)) return markGeometry(st.values, t, pool);
-  if (kindOf(st) === 'vector') return vectorGeometry(st.values, t, pool);
-  const p = st.values;
+  if (kindOf(st) === 'orbit') return orbitGeometry(st.values, t, pool, null, coarse);
+  const p = scaledStudio(st.values);
   const geo = { ...E.buildGeometry(p, t, { directional: true, loopSeconds: loopSeconds(st), sdf: logoSdf(p), pool }), width: p.canvas.width, height: p.canvas.height, params: p };
   applyPulse(geo, p.pulse, t, patternOf(st.pattern).sizeMode);
   return geo;
+}
+
+/** Studio sizes are pixels on the 1200 px square they were designed on. On a larger page (A4) they grow with its
+ *  shorter side, so marks keep their proportion to the page instead of thinning out; smaller and wide formats keep
+ *  their sizes, as their presets were tuned. The settings themselves (and the panel) keep the 1200 px values. */
+function scaledStudio(p) {
+  const s = Math.max(1, Math.min(p.canvas.width, p.canvas.height) / 1200);
+  if (s === 1) return p;
+  const range = (m) => ({ ...m, min: m.min * s, max: m.max * s });
+  const { layout, marks, mappings } = p;
+  return {
+    ...p,
+    layout: { ...layout, margin: layout.margin * s, gutterX: layout.gutterX * s, gutterY: layout.gutterY * s, strandDisplacement: layout.strandDisplacement * s },
+    marks: { ...marks, radius: marks.radius * s, trackThickness: marks.trackThickness * s, fillThickness: marks.fillThickness * s, capSize: marks.capSize * s, capOffset: marks.capOffset * s },
+    mappings: { ...mappings, thickness: range(mappings.thickness), length: range(mappings.length), offsetX: range(mappings.offsetX), offsetY: range(mappings.offsetY) },
+  };
 }
 
 // ---------- Logo distance field ----------
@@ -1586,7 +1968,8 @@ function draw(target, geo, scale, { ox = 0, oy = 0, background = true } = {}) {
   if (background) { target.fillStyle = css(E.colourRGB(params.colour.background)); target.fillRect(0, 0, width, height); }
   // Marks pushed past the artwork's edge are cut at the frame, the same as in the GPU view and every export.
   target.save();
-  target.beginPath(); target.rect(0, 0, width, height); target.clip();
+  const [clipLeft, clipTop, clipRight, clipBottom] = geo.clip || [0, 0, width, height];  // a margin's frame, when the pattern gives one
+  target.beginPath(); target.rect(clipLeft, clipTop, clipRight - clipLeft, clipBottom - clipTop); target.clip();
   let fill = null, fillTransform = base;
   if (params.colour.continuous) {
     const spec = E.screenGradient(params);
@@ -1682,6 +2065,7 @@ function render() {
   const geo = geometryFor(state, time, framePool);
   const vw = window.innerWidth, vh = window.innerHeight;
   const place = artPlacement(geo, vw, vh);
+  artPlace = { ...place, width: geo.width, height: geo.height };
   // Supersample so hairline marks stay smooth: at least 2×, capped near 16 MP. While an animation keeps missing
   // frames, the buffer eases to 0.75 of that (capped near 8 MP) until it stops or is edited; a still frame is full.
   const eased = lightened && animated() && !paused;
@@ -1711,7 +2095,91 @@ function render() {
   if (viewMode === 'fit') Object.assign(frameEl.style, { left: place.x + 'px', top: place.y + 'px', width: geo.width * place.s + 'px', height: geo.height * place.s + 'px' });
   const meta = `${geo.width} × ${geo.height} · ${geo.markCount.toLocaleString()} marks${viewMode === 'fill' ? ' · filled to screen' : ''}`;
   if (meta !== metaText) { metaText = meta; document.getElementById('meta').textContent = meta; }
+  placeHandle();
 }
+
+// ---------- Centre handle ----------
+// Patterns with a centre show it on the artwork while the pointer is over the art: rings round a knob. Dragging the
+// knob moves the centre (it snaps to the edges and the middle; Alt drags freely), arrow keys nudge it, and a
+// double-click puts it back where the preset had it. `area` is the box the centre's 0–1 is measured across.
+const CENTRES = {
+  // Orbit's arcs and grid each keep their own centre; the table entry can depend on the settings.
+  Orbit: (v) => v.layout === 'grid' ? { keys: ['grid.centreX', 'grid.centreY'], min: -1, max: 2,
+    area: (s, w, h) => { const m = E.clamp(s.grid.margin, 0, 0.45) * Math.min(w, h); return [m, m, w - 2 * m, h - 2 * m]; } } : { keys: ['centreX', 'centreY'], min: -1, max: 2,
+    area: (v, w, h) => { const m = E.clamp(v.margin, 0, 0.45) * Math.min(w, h); return [m, m, w - 2 * m, h - 2 * m]; },
+    // Orbit's centre sits on its receding plane, so its height goes through the Depth squeeze both ways.
+    depth: (v, w, h) => {
+      const m = E.clamp(v.margin, 0, 0.45) * Math.min(w, h), spanY = (h - 2 * m) / (Math.min(w, h) - 2 * m);
+      const lift = 0.04 + 40 * (1 - E.clamp(v.perspective)) ** 3, n = Math.log((spanY + lift) / lift);
+      return { toPage: (f) => (lift * Math.exp(f * n) - lift) / spanY, toPlane: (g) => Math.log((Math.max(-lift * 0.999, g * spanY) + lift) / lift) / n };
+    } },
+  'Eddy': { keys: ['attractor.x', 'attractor.y'], min: 0, max: 1, area: (v, w, h) => [0, 0, w, h], active: (v) => v.attractor.enabled },
+};
+let artPlace = null, overArt = false, handleDrag = false;
+const centreHandle = document.getElementById('centreHandle'), centreKnob = centreHandle.querySelector('.knob');
+const centreOf = () => {
+  let c = CENTRES[state.pattern];
+  if (typeof c === 'function') c = c(state.values);
+  return c && (!c.active || c.active(state.values)) ? c : null;
+};
+function placeHandle() {
+  const c = centreOf();
+  centreHandle.hidden = !c || !artPlace;
+  if (centreHandle.hidden) return;
+  const [ax, ay, aw, ah] = c.area(state.values, artPlace.width, artPlace.height);
+  const depth = c.depth && c.depth(state.values, artPlace.width, artPlace.height), fy = getPath(state.values, c.keys[1]);
+  const x = artPlace.x + (ax + getPath(state.values, c.keys[0]) * aw) * artPlace.s;
+  const y = artPlace.y + (ay + (depth ? depth.toPage(fy) : fy) * ah) * artPlace.s;
+  // A centre off the screen stays reachable at its nearest edge.
+  centreHandle.style.translate = `${E.clamp(x, 18, window.innerWidth - 18)}px ${E.clamp(y, 18, window.innerHeight - 18)}px`;
+  centreHandle.classList.toggle('shown', overArt || handleDrag || document.activeElement === centreKnob);
+}
+function setCentre(fx, fy) {
+  const c = centreOf();
+  if (!c) return;
+  fx = Math.round(E.clamp(fx, c.min, c.max) * 1000) / 1000; fy = Math.round(E.clamp(fy, c.min, c.max) * 1000) / 1000;
+  setPath(state.values, c.keys[0], fx); setPath(state.values, c.keys[1], fy);
+  for (const k of c.keys) document.querySelector(`#panelScroll input[data-key="${k}"]`)?.refresh();
+  edit();
+}
+window.addEventListener('pointermove', (e) => {
+  const over = e.target === canvas || centreHandle.contains(e.target);
+  if (over !== overArt) { overArt = over; placeHandle(); }
+}, { passive: true });
+document.documentElement.addEventListener('pointerleave', () => { overArt = false; placeHandle(); });
+centreKnob.addEventListener('pointerdown', (e) => {
+  if (e.button !== 0) return;
+  e.preventDefault();
+  centreKnob.setPointerCapture(e.pointerId);
+  handleDrag = true; centreHandle.classList.add('dragging');
+});
+centreKnob.addEventListener('pointermove', (e) => {
+  const c = centreOf();
+  if (!handleDrag || !c || !artPlace) return;
+  const [ax, ay, aw, ah] = c.area(state.values, artPlace.width, artPlace.height);
+  let fx = ((e.clientX - artPlace.x) / artPlace.s - ax) / aw, fy = ((e.clientY - artPlace.y) / artPlace.s - ay) / ah;
+  // Within 10 screen pixels of an edge or the middle, the centre snaps there.
+  const snap = (f, size) => { for (const t of [0, 0.5, 1]) if (Math.abs(f - t) * size * artPlace.s < 10) return t; return f; };
+  if (!e.altKey) { fx = snap(fx, aw); fy = snap(fy, ah); }
+  const depth = c.depth && c.depth(state.values, artPlace.width, artPlace.height);
+  setCentre(fx, depth ? depth.toPlane(fy) : fy);
+});
+const endDrag = () => { if (!handleDrag) return; handleDrag = false; centreHandle.classList.remove('dragging'); placeHandle(); };
+centreKnob.addEventListener('pointerup', endDrag);
+centreKnob.addEventListener('pointercancel', endDrag);
+centreKnob.addEventListener('dblclick', () => {
+  const c = centreOf();
+  if (c && baseline.pattern === state.pattern) setCentre(getPath(baseline.values, c.keys[0]), getPath(baseline.values, c.keys[1]));
+});
+centreKnob.addEventListener('keydown', (e) => {
+  const c = centreOf(), step = e.shiftKey ? 0.1 : 0.01;
+  const d = { ArrowLeft: [-step, 0], ArrowRight: [step, 0], ArrowUp: [0, -step], ArrowDown: [0, step] }[e.key];
+  if (!c || !d) return;
+  e.preventDefault(); e.stopPropagation();
+  setCentre(getPath(state.values, c.keys[0]) + d[0], getPath(state.values, c.keys[1]) + d[1]);
+});
+centreKnob.addEventListener('focus', placeHandle);
+centreKnob.addEventListener('blur', placeHandle);
 
 // ---------- Tooltips ----------
 // Every title becomes a brand tooltip: after a short pause on hover (at once while sweeping across controls, or
@@ -1787,7 +2255,9 @@ let uid = 0, revealNext = null, panelControls = '';
 /** Which of the pattern's controls currently show, as one string to compare. */
 const visibleControls = () => {
   const p = patternOf(state.pattern);
-  return [...p.sections.flatMap((s) => s[1]), ...p.look].map((c) => !c.when || c.when(state.values) ? 1 : 0).join('');
+  // A section can show for some settings only (Orbit's layouts): its controls count as hidden with it.
+  const shown = (s) => !s[3] || s[3](state.values);
+  return [...p.sections.flatMap((s) => s[1].map((c) => [c, shown(s)])), ...p.look.map((c) => [c, true])].map(([c, on]) => on && (!c.when || c.when(state.values)) ? 1 : 0).join('');
 };
 
 /** Rebuilds the controls. `enter` staggers the new contents in (a new look); `reveal` springs one section open. */
@@ -1798,7 +2268,7 @@ function buildPanel({ enter = false } = {}) {
   scroll.appendChild(buildPicker());
   panelControls = visibleControls();
   const pattern = patternOf(state.pattern);
-  for (const [title, controls, hint] of pattern.sections) scroll.appendChild(section(title, controls, hint));
+  for (const [title, controls, hint, when] of pattern.sections) if (!when || when(state.values)) scroll.appendChild(section(title, controls, hint));
   scroll.appendChild(section('Colour', pattern.look));
   scroll.insertAdjacentHTML('beforeend', '<p class="tips">Double-click a slider to type a value · Alt-click to reset it · ← → to step through presets</p>');
   scroll.scrollTop = enter ? 0 : top;
@@ -2057,7 +2527,7 @@ function applyPalette(name) {
   if (!paletteNamed(name)) return;
   if (isRows(state)) Object.assign(state.values, rowsPalette(name));
   else if (isMark(state)) Object.assign(state.values, markPalette(name));
-  else if (kindOf(state) === 'vector') Object.assign(state.values, vectorPalette(name));
+  else if (kindOf(state) === 'orbit') Object.assign(state.values, orbitPalette(name));
   else studioPalette(state.values, name);
 }
 
@@ -2118,10 +2588,18 @@ let listboxFor = null;
 
 function openListbox(select) {
   listboxFor = select;
+  // The pattern menu shows each pattern as its first preset looks, like the presets window.
+  const previews = select.id === 'patternSelect';
+  listbox.classList.toggle('previews', previews);
   const item = (o) => `<button type="button" role="option" data-value="${escapeHtml(o.value)}" aria-selected="${o.value === select.value}"${o.disabled ? ' disabled' : ''}>`
+    + (previews ? `<canvas width="72" height="72" aria-hidden="true"></canvas>` : '')
     + `<span>${escapeHtml(o.textContent)}</span>${o.value === select.value ? icon('check') : ''}</button>`;
   listbox.innerHTML = [...select.children].map((child) => child.tagName === 'OPTGROUP'
     ? `<div class="group">${escapeHtml(child.label)}</div>${[...child.children].map(item).join('')}` : item(child)).join('');
+  if (previews) for (const c of listbox.querySelectorAll('canvas')) {
+    const preset = firstPreset(c.parentElement.dataset.value);
+    if (preset) paintThumb(c, 'builtin:' + preset.name, presetState('builtin:' + preset.name));
+  }
   listbox.hidden = false;
   listbox.style.maxHeight = '';
   const a = select.getBoundingClientRect();
@@ -2219,17 +2697,30 @@ function variationOf(pattern, base, seed) {
   const palette = pick(BRAND_PALETTES.filter((p) => clear(p, p.stop1) && (rows || clear(p, p.stop2))));
   if (rows) return remixRows(next, pick, palette);
   if (patternOf(pattern).kind === 'mark') return remixMark(next, pick, palette);
-  if (patternOf(pattern).kind === 'vector') return remixVector(next, pick, palette);
+  if (patternOf(pattern).kind === 'orbit') return remixOrbit(next, pick, palette);
   return remixStudio(pattern, next, base, pick, random, palette);
 }
 
-/** Vector Field: the centre moves to a corner or an edge, the field stays near circles, and depth, stretch and the
+/** Horizon: the centre moves to a corner or an edge, the field stays near circles, and depth, stretch and the
  *  grid stay in ranges that read as arcs. */
+/** Orbit: the centre goes to a corner or an edge; lines, bend and spacing stay in ranges that read as arcs. */
+function remixOrbit(v, pick, palette) {
+  if (v.layout === 'grid') {
+    const { palette: name, background, ink, ink2, ...grid } = remixVector({ ...v.grid }, pick, palette);
+    return Object.assign(v, { grid, palette: name, background, ink, ink2 });
+  }
+  const [centreX, centreY] = pick([[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0], [0, 0.5]]);
+  return Object.assign(v, {
+    centreX, centreY, stretch: pick([1, 1.3, 1.7]), twist: pick([0, 0, 20, -20]), lines: pick([30, 40, 52]), crowding: pick([1.3, 1.6, 2]),
+    bend: pick([0.2, 0.3, 0.5, -0.3]), growth: pick([0.2, 0.35, 0.5]), length: pick([0.045, 0.055, 0.07]), taper: pick([0, 0.3, 0.6]), ...orbitPalette(palette.name),
+  });
+}
+
 function remixVector(v, pick, palette) {
   const [centreX, centreY] = pick([[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0], [0, 0.5]]);
   return Object.assign(v, {
     centreX, centreY, spiral: pick([0, 0, 0, 15, -15, 35]), perspective: pick([0.8, 0.86, 0.9]), ellipse: pick([1.6, 2.2, 2.8]),
-    columns: pick([10, 12, 15]), rows: pick([28, 34, 40]), length: pick([0.45, 0.55, 0.7]), thickness: pick([0.07, 0.085, 0.11]), ...vectorPalette(palette.name),
+    columns: pick([10, 12, 15]), rows: pick([28, 34, 40]), gapX: pick([0.3, 0.45, 0.55]), gapY: pick([0.82, 0.865, 0.9]), radius: pick([1, 1, 0.5, 0]), ...vectorPalette(palette.name),
   });
 }
 
@@ -2290,7 +2781,7 @@ const PLATE_MODES = [[1, 2], [2, 3], [2, 5], [3, 4], [3, 5], [3, 7], [4, 5], [4,
 function remixStudio(pattern, v, base, pick, random, palette) {
   const f = v.field, scale = pick([0.75, 1, 1, 1.25, 1.5]);
   const even = (n) => Math.max(2, Math.round(n * scale / 2) * 2);
-  const single = { 'Sinky Meter': 'rows', Strands: 'rows', 'Threshold Stripes': 'columns' }[pattern];
+  const single = { 'Gauge': 'rows', Strands: 'rows', 'Threshold Stripes': 'columns' }[pattern];
   if (single !== 'columns') v.layout.columns = even(base.layout.columns);
   if (single !== 'rows') v.layout.rows = pattern === 'Kaleido Pixels' ? v.layout.columns : even(base.layout.rows);
   // Marks shrink as the grid gets finer, so density stays even.
@@ -2313,8 +2804,8 @@ function remixStudio(pattern, v, base, pick, random, palette) {
   f.harmonics = pick([3, 5, 7]);
 
   switch (pattern) {
-    case 'Sinky Meter': f.waveB.frequency = pick([0.5, 0.8, 1.2]); v.shaping.gamma = pick([1, 1.25, 1.6]); break;
-    case 'Amaya Flow':
+    case 'Gauge': f.waveB.frequency = pick([0.5, 0.8, 1.2]); v.shaping.gamma = pick([1, 1.25, 1.6]); break;
+    case 'Eddy':
       v.attractor.strength = pick([0.4, 0.6, -0.4]); f.gradient.direction = pick([0, 45, 90, 135]);
       Object.assign(v.attractor, { x: 0.5, y: 0.5 }); break;
     case 'Halftone Diagonal':
@@ -2357,6 +2848,18 @@ function applySeed(raw) {
   move(document.getElementById('seedInput'), { opacity: [0.2, 1], y: [7, 0] }, SNAP);
 }
 const newVariation = () => applySeed(1 + Math.floor(Math.random() * MAX_SEED));
+/** Shuffle: another pattern, picked at random, one of its presets, remixed with a random seed (new colours and
+ *  settings), kept at the current format. The seed dice remixes within the pattern. */
+function shuffle() {
+  const format = isFlat(state) ? state.values.format : state.values.canvas.format;
+  const names = PATTERNS.map((p) => p.name).filter((n) => n !== state.pattern);
+  const pattern = names[Math.floor(Math.random() * names.length)], presets = BUILT_INS.filter((b) => b.pattern === pattern);
+  applyPreset('builtin:' + presets[Math.floor(Math.random() * presets.length)].name);
+  if (FORMATS[format]) setFormat(format);
+  newVariation();
+  // One undo goes back to before the shuffle: the preset it passed through on the way is not a stop of its own.
+  timeline.past.pop();
+}
 
 function updateHeader() {
   const pattern = patternOf(state.pattern);
@@ -2522,7 +3025,7 @@ document.getElementById('saveLook').addEventListener('click', () => (saveRow.hid
 document.getElementById('saveConfirm').addEventListener('click', () => { savePreset(saveName.value); closeSave(); });
 document.getElementById('saveCancel').addEventListener('click', closeSave);
 saveName.addEventListener('keydown', (e) => { if (e.key === 'Enter') { savePreset(saveName.value); closeSave(); } else if (e.key === 'Escape') closeSave(); });
-document.getElementById('variation').addEventListener('click', newVariation);
+document.getElementById('variation').addEventListener('click', shuffle);
 document.getElementById('revert').addEventListener('click', () => applyPreset(current));
 
 // ---------- Look picker, arrows and dots ----------
@@ -2556,16 +3059,14 @@ function warmThumbnails() {
   };
   idle(next);
 }
-const lookIds = () => [...saved.map((s) => 'saved:' + s.name), ...BUILT_INS.map((b) => 'builtin:' + b.name)];
-function groupIds(id) {
-  if (id.startsWith('saved:')) return saved.map((s) => 'saved:' + s.name);
-  const entry = BUILT_INS.find((b) => 'builtin:' + b.name === id);
-  const group = entry ? entry.group : patternOf(state.pattern).group;
-  return BUILT_INS.filter((b) => b.group === group).map((b) => 'builtin:' + b.name);
-}
 
+/** The current pattern's presets, saved ones first: the arrows, ← → and the dots move through these only. */
+const patternLookIds = () => [
+  ...saved.filter((s) => patternOf(s.pattern).name === state.pattern).map((s) => 'saved:' + s.name),
+  ...BUILT_INS.filter((b) => b.pattern === state.pattern).map((b) => 'builtin:' + b.name),
+];
 function stepLook(direction) {
-  const ids = lookIds();
+  const ids = patternLookIds();
   let index = ids.indexOf(current);
   if (index < 0) {
     // From an unsaved look, ← returns to its pattern's preset and → moves past it.
@@ -2578,7 +3079,9 @@ document.getElementById('prevLook').addEventListener('click', () => stepLook(-1)
 document.getElementById('nextLook').addEventListener('click', () => stepLook(1));
 
 function updateDots() {
-  const ids = groupIds(current), dots = document.getElementById('dots');
+  const ids = patternLookIds(), dots = document.getElementById('dots');
+  // With one preset there is nothing to step to, so the arrows step aside.
+  document.getElementById('prevLook').hidden = document.getElementById('nextLook').hidden = ids.length < 2;
   dots.innerHTML = ids.length > 1 && ids.length <= 14
     ? ids.map((id) => `<button aria-label="${escapeHtml(label(id))}" title="${escapeHtml(label(id))}" aria-current="${id === current}" data-id="${escapeHtml(id)}"></button>`).join('')
     : '';
@@ -2718,8 +3221,78 @@ function exportPNG(requested = 2) {
   }, 30);
 }
 function exportSVG() {
+  // Orbit's arcs export as one closed path per dash; everything else as its marks.
+  if (kindOf(state) === 'orbit' && state.values.layout !== 'grid') {
+    download(new Blob([orbitSVG(state, time, { transparent: exportOptions.transparent })], { type: 'image/svg+xml' }), fileBase() + '.svg');
+    return;
+  }
   const geo = geometryFor(state, time);
   download(new Blob([E.toSVG(geo, geo.params, state, { transparent: exportOptions.transparent })], { type: 'image/svg+xml' }), fileBase() + '.svg');
+}
+
+/** One dash as a closed path: its two edges are smooth curves through the offset points (Catmull–Rom, written as
+ *  cubic Béziers), joined at each end by a cap that reaches out Roundness × half the thickness (two quarter-ellipse
+ *  curves; a square end at 0, a half circle at 1). */
+function dashPath(line, round, n) {
+  const m = line.length - 1, K = 0.5523;  // the cubic that best fits a quarter circle
+  const tangent = (i) => {
+    const [ax, ay] = line[Math.max(0, i - 1)], [bx, by] = line[Math.min(m, i + 1)], l = Math.hypot(bx - ax, by - ay) || 1;
+    return [(bx - ax) / l, (by - ay) / l];
+  };
+  const left = [], right = [], tangents = [];
+  for (let i = 0; i <= m; i++) {
+    const [x, y, h] = line[i], [ux, uy] = tangent(i);
+    tangents.push([ux, uy]);
+    left.push([x - uy * h, y + ux * h]); right.push([x + uy * h, y - ux * h]);
+  }
+  // Every curve is written relative to where the pen is ("c"), which keeps the numbers short. The pen moves by the
+  // rounded step, so rounding never drifts along the dash.
+  let pen = [Number(n(left[0][0])), Number(n(left[0][1]))];
+  const to = (c1, c2, end) => {
+    const dx = Number(n(end[0] - pen[0])), dy = Number(n(end[1] - pen[1]));
+    const d = `c${n(c1[0] - pen[0])} ${n(c1[1] - pen[1])} ${n(c2[0] - pen[0])} ${n(c2[1] - pen[1])} ${n(dx)} ${n(dy)}`;
+    pen = [pen[0] + dx, pen[1] + dy];
+    return d;
+  };
+  const curve = (P) => {  // Catmull–Rom through P, from P[0]
+    let d = '';
+    for (let i = 0; i < P.length - 1; i++) {
+      const a = P[Math.max(0, i - 1)], b = P[i], c = P[i + 1], e = P[Math.min(P.length - 1, i + 2)];
+      d += to([b[0] + (c[0] - a[0]) / 6, b[1] + (c[1] - a[1]) / 6], [c[0] - (e[0] - b[0]) / 6, c[1] - (e[1] - b[1]) / 6], c);
+    }
+    return d;
+  };
+  const cap = (from, end, [x, y, h], [ux, uy]) => {  // from one edge round the end to the other, facing (ux, uy)
+    const e = round * h, tip = [x + ux * e, y + uy * e], nx = (from[0] - x) / (h || 1), ny = (from[1] - y) / (h || 1);
+    return to([from[0] + ux * K * e, from[1] + uy * K * e], [tip[0] + nx * K * h, tip[1] + ny * K * h], tip)
+      + to([tip[0] - nx * K * h, tip[1] - ny * K * h], [end[0] + ux * K * e, end[1] + uy * K * e], end);
+  };
+  const [ex, ey] = tangents[m], [sx, sy] = tangents[0];
+  return `M${n(left[0][0])} ${n(left[0][1])}${curve(left)}${cap(left[m], right[m], line[m], [ex, ey])}`
+    + `${curve([...right].reverse())}${cap(right[0], left[0], line[0], [-sx, -sy])}z`;
+}
+
+/** Orbit's arcs as a vector file: one closed path per dash, grouped by colour, cut at the frame inside any margin. */
+function orbitSVG(st, t, { transparent = false } = {}) {
+  const outlines = [], geo = orbitGeometry(st.values, t, undefined, outlines), { width, height } = geo;
+  const n = (x) => { const s = String(Math.round(x * 10) / 10); return s === '-0' ? '0' : s; };
+  const hex = (c) => '#' + c.map((x) => Math.round(E.clamp(x) * 255).toString(16).padStart(2, '0')).join('');
+  const groups = new Map();
+  for (const { line, colour } of outlines) {
+    const fill = hex(colour);
+    (groups.get(fill) || groups.set(fill, []).get(fill)).push(`<path d="${dashPath(line, E.clamp(st.values.radius), n)}"/>`);
+  }
+  const escape = (s) => s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+  const clip = geo.clip;
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+<title>${escape(document.getElementById('title').textContent)} · OneSyntax</title>
+<desc>${outlines.length} dashes, each one closed path. Generated with the OneSyntax Pattern Generator.</desc>
+<metadata id="onesyntax-preset">${escape(JSON.stringify(st))}</metadata>
+${clip ? `<defs><clipPath id="frame"><rect x="${clip[0]}" y="${clip[1]}" width="${clip[2] - clip[0]}" height="${clip[3] - clip[1]}"/></clipPath></defs>\n` : ''}${transparent ? '' : `<rect id="background" width="${width}" height="${height}" fill="${st.values.background}"/>\n`}<g id="dashes"${clip ? ' clip-path="url(#frame)"' : ''}>
+${[...groups].map(([fill, paths]) => `<g fill="${fill}">\n${paths.join('\n')}\n</g>`).join('\n')}
+</g>
+</svg>`;
 }
 
 // ---------- Animated SVG ----------
@@ -2763,7 +3336,8 @@ function continuousColour(params, x, y) {
 }
 
 function animatedSVG(st, { transparent = false } = {}) {
-  const loop = loopSeconds(st), first = geometryFor(st, 0);
+  // Orbit's arcs go piece by piece here, as few pieces as each curve needs, to keep the file small.
+  const loop = loopSeconds(st), first = geometryFor(st, 0, undefined, true);
   // A hundred samples a loop (20 a second over 5 s) catch every turn of the motion, and keep each keyframe time to
   // two decimals; the keyframe pass then keeps only what is needed.
   const samples = 100, S = samples + 1;  // plus the sample that closes the loop
@@ -2771,7 +3345,7 @@ function animatedSVG(st, { transparent = false } = {}) {
   const X = 0, Y = 1, W = 2, H = 3, A = 4, O = 5, RED = 6, GREEN = 7, BLUE = 8, RADIUS = 9, F = 10;
   const byId = new Map(), tracks = [];
   for (let k = 0; k < samples; k++) {
-    const geo = k ? geometryFor(st, k * loop / samples) : first;
+    const geo = k ? geometryFor(st, k * loop / samples, undefined, true) : first;
     const I = geo.instances, continuous = geo.params.colour.continuous;
     for (let i = 0; i < geo.count; i++) {
       const o = i * STRIDE, shape = I[o + 7];
@@ -3074,11 +3648,61 @@ function animatedSVG(st, { transparent = false } = {}) {
 <desc>Seamless ${loop}-second loop · ${marks} marks · seed ${st.values.seed}. Plays in browsers (SMIL and CSS animation); design tools import the first frame.</desc>
 <metadata id="onesyntax-preset">${escape(JSON.stringify(st))}</metadata>
 ${styles.length ? `<style>${styles.join('\n')}</style>` : ''}
+${first.clip ? `<defs><clipPath id="frame"><rect x="${first.clip[0]}" y="${first.clip[1]}" width="${first.clip[2] - first.clip[0]}" height="${first.clip[3] - first.clip[1]}"/></clipPath></defs>` : ''}
 ${transparent ? '' : `<rect id="background" width="${width}" height="${height}" fill="${first.params.colour.background}"/>`}
-${['track', 'fill', 'cap', 'accent'].map((name, layer) => layers[layer].length ? `<g id="${name}"${commons[layer] ? ` fill="${commons[layer]}"` : ''}>\n${layers[layer].join('\n')}\n</g>` : '').filter(Boolean).join('\n')}
+${['track', 'fill', 'cap', 'accent'].map((name, layer) => layers[layer].length ? `<g id="${name}"${commons[layer] ? ` fill="${commons[layer]}"` : ''}${first.clip ? ' clip-path="url(#frame)"' : ''}>\n${layers[layer].join('\n')}\n</g>` : '').filter(Boolean).join('\n')}
 </svg>`;
   if (svg.length > MAX_ANIMATED_SVG_BYTES) throw new Error(`This animated SVG would be ${Math.round(svg.length / 1e6)} MB. Export video instead, or use fewer marks.`);
   return { svg, loop, marks, samples };
+}
+
+/** Orbit's arcs flowing, as a small animated SVG. Each dash is one path: it slides along its own line (moved and
+ *  turned through a few points on the way) while its outline eases from its shape where it starts to the shape a
+ *  dash has where it stops, one or more spacings on. At the end of the loop every dash stands where another began,
+ *  so it repeats without a seam; the file opens on the first frame, so design tools import it correctly. */
+function orbitAnimatedSVG(st, { transparent = false } = {}) {
+  const v = st.values, loop = loopSeconds(st), travel = Math.round(v.speed * loop / 5);
+  const outlines = [];
+  outlines.travel = travel; outlines.steps = 4;
+  const geo = orbitGeometry(v, 0, undefined, outlines), { width, height } = geo, round = E.clamp(v.radius);
+  const n = (x) => { const s = String(Math.round(x * 10) / 10); return s === '-0' ? '0' : s; };
+  const hex = (c) => '#' + c.map((x) => Math.round(E.clamp(x) * 255).toString(16).padStart(2, '0')).join('');
+  const timing = `dur="${loop}s" repeatCount="indefinite"`, groups = new Map(), steps = 4 * Math.max(1, Math.abs(travel));
+  for (const o of outlines) {
+    const c0 = o.centre, c1 = o.centre + travel * o.S;
+    const frame = (c) => {
+      const [x, y] = o.place(c), [ax, ay] = o.place(c - o.S * 1e-3), [bx, by] = o.place(c + o.S * 1e-3);
+      return [x, y, Math.atan2(by - ay, bx - ax)];
+    };
+    // The dash in its own frame: its middle at the origin, its line running along +x.
+    const local = (c) => {
+      const [x, y, a] = frame(c), cs = Math.cos(a), sn = Math.sin(a);
+      return o.shape(c).map(([px, py, h]) => [(px - x) * cs + (py - y) * sn, -(px - x) * sn + (py - y) * cs, h]);
+    };
+    const s0 = local(c0), s1 = local(c1);
+    const d0 = dashPath(s0, round, n);
+    const moves = s0.some((p, i) => Math.abs(p[0] - s1[i][0]) > 0.25 || Math.abs(p[1] - s1[i][1]) > 0.25 || Math.abs(p[2] - s1[i][2]) > 0.25);
+    const morph = moves ? `<animate attributeName="d" ${timing} values="${d0};${dashPath(s1, round, n)}"/>` : '';
+    const track = [];
+    for (let i = 0; i <= steps; i++) track.push(frame(c0 + (c1 - c0) * i / steps));
+    for (let i = 1; i < track.length; i++) track[i][2] = track[i - 1][2] + Math.atan2(Math.sin(track[i][2] - track[i - 1][2]), Math.cos(track[i][2] - track[i - 1][2]));
+    const [x0, y0, a0] = track[0], deg = (a) => n(a * 180 / Math.PI);
+    const fill = hex(o.colour);
+    (groups.get(fill) || groups.set(fill, []).get(fill)).push(`<g transform="translate(${n(x0)} ${n(y0)})"><animateTransform attributeName="transform" type="translate" ${timing} values="${track.map(([x, y]) => `${n(x)} ${n(y)}`).join(';')}"/>`
+      + `<path transform="rotate(${deg(a0)})" d="${d0}"><animateTransform attributeName="transform" type="rotate" ${timing} values="${track.map((t) => deg(t[2])).join(';')}"/>${morph}</path></g>`);
+  }
+  const escape = (s) => s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+  const clip = geo.clip;
+  const svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
+<title>${escape(document.getElementById('title').textContent)} · OneSyntax</title>
+<desc>Seamless ${loop}-second loop · ${outlines.length} dashes, each one path · seed ${v.seed}. Plays in browsers (SMIL); design tools import the first frame.</desc>
+<metadata id="onesyntax-preset">${escape(JSON.stringify(st))}</metadata>
+${clip ? `<defs><clipPath id="frame"><rect x="${clip[0]}" y="${clip[1]}" width="${clip[2] - clip[0]}" height="${clip[3] - clip[1]}"/></clipPath></defs>\n` : ''}${transparent ? '' : `<rect id="background" width="${width}" height="${height}" fill="${v.background}"/>\n`}<g id="dashes"${clip ? ' clip-path="url(#frame)"' : ''}>
+${[...groups].map(([fill, list]) => `<g fill="${fill}">\n${list.join('\n')}\n</g>`).join('\n')}
+</g>
+</svg>`;
+  if (svg.length > MAX_ANIMATED_SVG_BYTES) throw new Error(`This animated SVG would be ${Math.round(svg.length / 1e6)} MB. Export video instead, or use fewer lines.`);
+  return { svg, loop, marks: outlines.length, samples: steps + 1 };
 }
 
 function exportAnimatedSVG() {
@@ -3087,7 +3711,9 @@ function exportAnimatedSVG() {
   // Let the message paint before the work starts.
   setTimeout(() => {
     try {
-      const result = animatedSVG(state, { transparent: exportOptions.transparent });
+      // Orbit's arcs flowing (and not pulsing) slide whole dashes; everything else is sampled mark by mark.
+      const v = state.values, sliding = kindOf(state) === 'orbit' && v.layout !== 'grid' && v.motion === 'flow' && !pulseActive(v.pulse);
+      const result = sliding ? orbitAnimatedSVG(state, { transparent: exportOptions.transparent }) : animatedSVG(state, { transparent: exportOptions.transparent });
       download(new Blob([result.svg], { type: 'image/svg+xml' }), `${fileBase()}_${result.loop}s-loop.svg`);
       const size = result.svg.length < 1e6 ? `${Math.round(result.svg.length / 1e3)} KB` : `${(result.svg.length / 1e6).toFixed(1)} MB`;
       // Thousands of animated marks play heavily in a browser; past that, video is the smoother web format.
@@ -3101,10 +3727,11 @@ function exportAnimatedSVG() {
 // Every moving part is measured in cycles per 5 s, in half steps: whole cycles loop in 5 s, halves in 10 s.
 const speedsOf = (st) => isRows(st) ? [st.values.speed]
   : isMark(st) ? [hasEffect(st.values) ? st.values.speed : 0]
-  : kindOf(st) === 'vector' ? [vectorMoves(st.values) ? st.values.speed : 0]
+  : kindOf(st) === 'orbit' ? [st.values.layout === 'grid' ? (vectorMoves(st.values.grid) ? st.values.grid.speed : 0) : orbitMoves(st.values) ? st.values.speed : 0,
+    pulseActive(st.values.pulse) ? st.values.pulse.speed : 0]
   : [...E.motionCycles(st.values), pulseActive(st.values.pulse) ? st.values.pulse.speed : 0];
 const orbiting = (v) => v.field.ripples.enabled && v.field.ripples.weight > 0 && v.field.ripples.orbit !== 0;
-const isAnimated = (st) => isFlat(st) ? speedsOf(st)[0] !== 0
+const isAnimated = (st) => isFlat(st) ? speedsOf(st).some((s) => s !== 0)
   : st.values.motion.speed !== 0 || orbiting(st.values) || (pulseActive(st.values.pulse) && st.values.pulse.speed !== 0);
 const animated = () => isAnimated(state);
 const loopSeconds = (st) => speedsOf(st).every(Number.isInteger) ? 5 : 10;

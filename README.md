@@ -1,5 +1,9 @@
 # OneSyntax Pattern Generator
 
+> **Internal to Haux Studio.** These notes (README, BUILD, PROGRESS) record how the patterns are made: the studio's
+> own knowledge. Keep them up to date and never hand them over to the client. The panel text in the app says what each
+> control does, never how a pattern is built.
+
 A browser tool for making OneSyntax brand patterns: grids of marks whose opacity, size and angle are driven by
 wave functions. It runs as a single static page with no build step, and exports PNG, SVG, animated SVG and
 seamless video loops.
@@ -12,9 +16,11 @@ seamless video loops.
 
 - **15 pattern types in four groups**
   - *Wave Rows*: rows of items whose opacity and size follow a sine wave.
-  - *Studio patterns*: Sinky Meter, Amaya Flow, Barcode, Threshold Stripes, Halftone Diagonal, Contour Field,
-    Strands, Kaleido Pixels, RFD Stack (ported from the original studio), and Vector Field: a grid of dashes
-    each laid along F(x, y) = ⟨−y, x⟩ (the rotation field, turned towards a spiral by α) on a plane receding towards
+  - *Studio patterns*: Gauge, Eddy, Barcode, Threshold Stripes, Halftone Diagonal, Contour Field,
+    Strands, Kaleido Pixels, Stack (ported from the original studio, where Gauge, Eddy and Stack were Sinky Meter, Amaya Flow and RFD Stack), and Orbit: dashes round nested arcs, in two
+    layouts. Arcs lays curved dashes along ellipses whose centre shifts as they grow, on a plane receding towards
+    the top (Event Stream, Event Queue); Grid (once the Horizon pattern) sets straight dashes on a grid, each laid
+    along F(x, y) = ⟨−y, x⟩ (the rotation field, turned towards a spiral by α) on a plane receding towards
     the top, so arcs crowd into fine lines there.
   - *Wave studies*: Cymatics (Chladni plates), Interference (ripple tank) and Logo Field (contours around the
     OneSyntax symbol, the {OS} monogram, the `{ }` bracket or any text).
@@ -23,7 +29,7 @@ seamless video loops.
     build, glitch, ripple, sparkle.
 - **Built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Telemetry, Bitstream, Stack Trace,
   Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Render, Compile, Loop and
-  more. Refactor (Amaya Flow) twists a bar grid round a quiet centre; Event Loop is the Vector Field.
+  more. Refactor (Eddy) twists a bar grid round a quiet centre; Event Stream, Event Queue and Event Loop are Orbit.
 - **Wave shapes:** every wave can be a sine, triangle, square or sawtooth, built from a Fourier series with a
   chosen number of harmonics.
 - **Pulse:** fades and scales the marks of any studio pattern along its own wave.

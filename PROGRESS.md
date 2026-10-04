@@ -19,13 +19,88 @@ proofs and the earlier "classic" page.
   frequency, phase, row shift, sharpness.
 - **Studio patterns:** the original studio's nine presets, ported from TypeScript to plain JavaScript with
   identical geometry, each with a short set of tailored controls instead of the full parameter list. Refactor
-  (Amaya Flow) twists a 22 × 12 bar grid round a quiet centre: angle 90° ± 60° times the attractor bump
+  (Eddy) twists a 22 × 12 bar grid round a quiet centre: angle 90° ± 60° times the attractor bump
   (1 − d²/R²)², easing to nothing at radius R.
-- **Vector Field** (preset Event Loop): a direction-field plot. Each dash lies along F(x, y) = cos α·⟨−y, x⟩ +
-  sin α·⟨x, y⟩ from the centre, normalised: α = 0 is the rotation field (circles), ±90° a source or sink, spirals
-  between. The field sits on a plane receding towards the top (y = lift·e^Z − lift), sampled by rows evenly
-  spaced in Z and columns whose gap narrows by √((y + lift) / (bottom + lift)), so arcs crowd into fine lines
-  at the top. Motion is a sine wave through the dash lengths (Ripple outward, Sweep round) or through α (Twist).
+- **Orbit, Grid layout** (preset Event Loop; the Horizon pattern until 5 October, Vector Field before that; saves under
+  either name open as Orbit in this layout, its settings kept under `grid`, colours and format shared). Formerly
+  open): a direction-field plot. Each dash lies along F(x, y) = cos α·⟨−y, x⟩ + sin α·⟨x, y⟩ from the centre,
+  normalised: α = 0 is the rotation field (circles), ±90° a source or sink, spirals between. The field sits on
+  a plane receding towards the top (x = middle + X·near, y = lift·e^Z − lift, lift = 0.04 + 4(1 − depth)²,
+  near = (bottom + lift) / stretch), sampled by rows evenly spaced in Z and columns spaced out from the centre's
+  x by a gap that narrows by h = √((y + lift) / (bottom + lift)).
+  - Dash length: the bottom row's column gap less Dash gap, one length on the plane (F normalised), softened to
+    F / √(|F|² + c²) inside a core c dash lengths wide (Core, default 2): a vortex core, so the dashes nearest
+    the centre shrink to dots instead of crossing.
+  - Overlap: each dash is cut back to its cell along its own direction, room = (1 − Dash gap) /
+    max(|uₓ| / g, |u_y| / p) × (1 + 3·Overlap), with g the row's column gap and p its row pitch (cellZ·(y + lift)).
+    0 never crosses a neighbour; 1 lets the top run into continuous lines. Event Loop uses 0.15.
+  - Thickness: (1 − Row gap) × √(p × bottom column gap), so dashes thin as the rows close in.
+  - Roundness: corner radius = Roundness × thickness / 2 (1 is the old pill). Opacity scales every dash.
+  - Motion: a wave (sine, or the Fourier triangle, square or sawtooth with chosen harmonics) through the dash
+    lengths (Ripple outward, Sweep round) or through α (Twist, ±90° × Strength), whole cycles per loop.
+  - Older saves sized dashes by length and thickness; `sanitizeVector` converts them exactly:
+    Dash gap = 1 − length, Row gap = 1 − thickness·√(column gap / (cellZ·near)).
+- **Orbit, Arcs layout** (presets Event Stream, the studio's "01" and Orbit's default, and Event Queue): the client's arcs rebuilt as an
+  array of ellipses with curved dashes following each one.
+  - Lines: ellipses x = c_x + r·stretch·cos t, y = c_y + r·sin t (rotated), whose centre shifts with size,
+    c(r) = C + D·r. The line through a point solves ((l_x − D_x r)/s)² + (l_y − D_y r)² = r², a quadratic in r. The
+    shift is held to (D_x/s)² + D_y² ≤ 0.9 so the lines stay nested.
+  - Sizes: r = r_in + (r_out − r_in)·(e^{c·x} − 1)/(e^c − 1), x = (k + ½)/N (Crowding c); r_out covers every corner.
+  - Depth: the lines lie on a plane receding to the top, page y = lift·e^{Y·n} − lift, lift = 0.04 + 40(1 − depth)³.
+  - Dashes: laid along each line's arc length (one table of the unit ellipse per stretch, scaled), spacing
+    S = spacing·(r / r_out)^growth, one Dash length, centred at (i + k·bend) spacings from the line's point facing
+    the page's middle. Lines whose far side shows on the page close their count evenly instead (no seam). Each
+    dash is drawn as 2–12 overlapping round pieces so it curves with its line.
+  - Thickness: (1 − Line gap)·√(line spacing × mean spacing) × √(squeeze), capped at 0.9 × line spacing and
+    0.6 × dash length; Taper thins the ends.
+  - Fitted to the reference (539 detected strokes, directions from second moments): one shared centre fits the
+    stroke directions to 19° RMS; a shifting centre to 7.3°; shifting centre on a receding plane to 4.9°
+    (stretch 2.414, D = (−0.882, 0.401), rotation 9.4°, lift 0.42, centre (−0.057, −0.141) on the plane). Line
+    spacing on the reference's left edge runs 9.5 → 69 px, linear in y; fitted line for line: 73 lines,
+    Crowding 1.36, Centre gap 1.4%, within 0.29 of a line spacing. Dash length 0.055 of the short side, spacing
+    0.147 × (r / r_out)^0.35. Bend 0.5 chosen by eye (the reference's per-line offsets are too noisy to measure).
+    Still short: the reference packs its finest lines tighter along the top right.
+  - Motion: Flow slides the dashes one spacing per loop; Sway rocks the bend by ±Strength/2.
+- **Centre handle:** Orbit (each layout its own centre) and Eddy (so Refactor) show their centre on the artwork on hover: rings round
+  a knob that drags it, snapping within 10 px to the edges and middle (Alt drags freely); arrow keys nudge it
+  (Shift for 10%), double-click returns it to the preset. Orbit's centre is measured inside the margin; Eddy's
+  attractor across the whole canvas.
+- **Orbit additions (5 October):** Thickness (a share of the gap between lines) and Roundness for the arcs; Pulse
+  for both layouts, read once per dash at its middle and applied to the whole dash (a fade mixes the dash towards
+  the flat background, so its overlapping pieces stay even). Margins now cut cleanly: a pattern can give a frame
+  (`geometry.clip`) that the GPU scissor, the canvas drawing, SVG and animated SVG all clip to.
+- **Interface (5 October):** the artwork arrows, ← → and the dots step through the current pattern's presets
+  only (saved first), and hide when there is just one; the shuffle button picks another pattern at random, one
+  of its presets, and a random seed (new colours and settings) at the current format, while the seed dice remixes
+  within the pattern; the Pattern menu shows each pattern's first preset as a preview.
+- **Orbit vector files (5 October):** the SVG export draws each arc dash as one closed path (its two edges as
+  Catmull–Rom curves written as cubic Béziers, joined by caps of two quarter-ellipse curves sized by Roundness),
+  grouped by colour, numbers relative to the pen (rounded steps, so no drift): half the size of the old
+  piece-by-piece file. In the app, a tapering dash now gets 3 + 7 × Taper pieces so its outline matches the file.
+  The animated SVG for Flow (no Pulse) slides each dash along its line instead: a translate and a rotate through
+  4 points per spacing, and its outline eased from its shape at the start to the shape a dash has at the end;
+  every dash ends where another began, so it loops without a seam, and it opens on the first frame for design
+  tools. Event Queue 0.79 MB (was 2.6), Event Stream 0.37 MB (was 1.35). Sway and Pulse still go mark by mark,
+  in as few pieces as each curve needs (Event Queue Sway 5.8 MB, was 13.9).
+- **More presets (5 October):** every pattern that had one preset now has three, each drawn from the first with
+  another density, wave and palette: Uptime and Benchmark (Gauge), Hash and Payload (Barcode), Bandwidth
+  and Packet (Threshold Stripes), Latency and Throttle (Halftone Diagonal), Heap and Closure (Contour Field),
+  Protocol and Socket (Strands), Kernel and Mutex (Kaleido Pixels), Buffer and Register (Stack), Overflow and
+  Daemon (Cymatics), Cluster and Webhook (Interference). 50 built-in presets in all; each loops seamlessly.
+- **Renames (5 October):** the studio's three borrowed names are gone: Sinky Meter is Gauge, Amaya Flow is Eddy,
+  RFD Stack is Stack (in the engine and the app). Saves and share links under the old names open in the new
+  patterns (`PATTERN_ALIASES`), and a studio save's own name is refreshed on load, so SVG titles follow.
+- **Large formats (5 October):** studio sizes are pixels on the 1200 px square they were designed on; on a page
+  whose shorter side is larger (A4 portrait, 2480 px) `scaledStudio` multiplies margins, gutters, mark lengths and
+  thicknesses, meter parts, strand swing and offsets by shorter side / 1200 at draw time, so marks keep their
+  proportion to the page. Smaller and wide formats keep their sizes (their presets were tuned there); the stored
+  settings and the panel keep the 1200 px values.
+- **Shuffle undo (5 October):** one undo returns to before a shuffle (the preset it passes through is dropped
+  from the history).
+- **Publishing (5 October):** the published site carries no comments: `publish.sh` runs `build.mjs` (terser,
+  comments off, no compression or renaming; CSS and HTML comments by pattern). Checked by running the stripped
+  page: no errors, all presets load. `handover.ps1` downloads the deployed site, refuses it if a comment slipped
+  through, adds README.txt and zips it beside the repository: the client copy, with no notes and no history.
 - **Wave studies:**
   - *Cymatics*: Chladni plate figures, cos(nπx)cos(mπy) mixed with cos(mπx)cos(nπy).
   - *Interference*: superposed circular waves from 1–8 orbiting sources.
@@ -85,7 +160,7 @@ proofs and the earlier "classic" page.
 - Animated SVG: 59% smaller across all presets (Scope 15 KB, Loop 187 KB, Hello World 90 KB, Source 1.6 MB);
   played back and frozen at set moments it matches the app to under 1/255 per pixel on average.
 - Exports: PNG 2400 × 2400 (2×), SVG and animated SVG parse and animate, MP4 at exactly 5.00 s, including the
-  Bracket presets and Event Loop (Ripple, Sweep and Twist all loop seamlessly; its 64 control checks all pass).
+  Bracket presets and Event Loop (Ripple, Sweep and Twist loop seamlessly in every wave shape; 77 control checks pass).
 
 ## Ideas not built yet
 Phyllotaxis (sunflower) layout · curl-noise flow · epicycles drawing the logo · Lissajous layouts · moiré

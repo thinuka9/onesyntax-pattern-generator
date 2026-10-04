@@ -540,14 +540,14 @@
   function preset(name, palette, tune) { const p = base(name, palette); tune(p); return p; }
 
   const PRESETS = [
-    preset('Sinky Meter', 'Meter', (p) => {
+    preset('Gauge', 'Meter', (p) => {
       p.layout.mode = 'Columns'; p.layout.columns = 32; p.layout.rows = 1; p.layout.margin = 145;
       p.marks.shape = 'Meter'; p.marks.fillThickness = 11; p.marks.capSize = 7; p.marks.capOffset = 60; p.marks.capWave = false; p.marks.trackOpacity = 0.38;
       p.field.waveA.enabled = false; p.field.waveB.enabled = true; p.field.waveB.weight = 0.13; p.field.waveB.frequency = 0.8; p.field.waveB.direction = 0;
       p.field.data.enabled = true; p.field.data.values = '78,76,70,68,65,58,56,50,44,40,35,30,25,21,15,9'; p.field.data.smoothing = 0.7;
       p.shaping.gamma = 1.25; p.colour.source = 'x';
     }),
-    preset('Amaya Flow', 'Azure', (p) => {
+    preset('Eddy', 'Azure', (p) => {
       p.layout.columns = 20; p.layout.rows = 25; p.layout.margin = 65;
       p.field.gradient.enabled = true; p.field.gradient.direction = 90; p.field.gradient.weight = 1;
       p.field.waveA.frequency = 0.7; p.field.waveA.direction = 90; p.field.waveA.weight = 0.1;
@@ -595,7 +595,7 @@
       p.mappings.thickness = mapping('constant', 27, 27); p.mappings.length = mapping('constant', 27, 27);
       p.colour.stops = 3; p.colour.stop1 = '#082A6F'; p.colour.stop2 = '#1B98FE'; p.colour.stop3 = '#A2D5FF';
     }),
-    preset('RFD Stack', 'Night', (p) => {
+    preset('Stack', 'Night', (p) => {
       p.layout.mode = 'Grid'; p.layout.columns = 4; p.layout.rows = 31; p.layout.margin = 95; p.layout.gutterX = 30;
       p.field.waveA.frequency = 1.2; p.field.waveA.direction = 83; p.field.waveB.enabled = true; p.field.waveB.frequency = 1.4; p.field.waveB.direction = 0; p.field.waveB.weight = 0.4;
       p.shaping.quantise = 8; p.mappings.thickness = mapping('constant', 6, 6); p.mappings.length = mapping('field', 28, 206);
@@ -604,15 +604,15 @@
   ];
 
   const PRESET_DESCRIPTIONS = {
-    'Sinky Meter': 'Data, made visible. Precise meters in a warm-to-cool spectrum.',
-    'Amaya Flow': 'A field of blue dashes bending around a quiet centre.',
+    'Gauge': 'Data, made visible. Precise meters in a warm-to-cool spectrum.',
+    'Eddy': 'A field of blue dashes bending around a quiet centre.',
     Barcode: 'Rhythmic bars, variable widths, intentional negative space.',
     'Threshold Stripes': 'Stepped waves, translated into luminous horizontal bands.',
     'Halftone Diagonal': 'A gradual shift in weight across a field of diagonal strokes.',
     'Contour Field': 'Small gestures following the contours of an invisible field.',
     Strands: 'Continuous lines tracing a shared, gently shifting wave.',
     'Kaleido Pixels': 'Mirrored interference, reduced to a precise colour grid.',
-    'RFD Stack': 'Quantised horizontal bars with the rhythm of a data readout.',
+    'Stack': 'Quantised horizontal bars with the rhythm of a data readout.',
   };
 
 
@@ -719,7 +719,10 @@
       else layers[layer].push(`<rect x="${number(cx - width / 2)}" y="${number(cy - height / 2)}" width="${number(width)}" height="${number(height)}" rx="${number(radius)}"${transform} ${paint}/>`);
     }
     const { width, height } = params.canvas;
-    return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}" color-interpolation="sRGB">\n<title>${escape(params.name)} · OneSyntax</title>\n<desc>Seed ${params.seed}. ${geometry.markCount} marks. Generated with the OneSyntax Pattern Generator.</desc>\n<metadata id="onesyntax-preset">${escape(JSON.stringify(metadata))}</metadata>\n${params.colour.continuous ? `<defs>${gradientDefinition(params)}</defs>\n` : ''}<g id="background" data-name="background">${options.transparent ? '' : `<rect width="${number(width)}" height="${number(height)}" fill="${rgb(colourRGB(params.colour.background))}"/>`}</g>\n${names.map((name, layer) => `<g id="${name}" data-name="${name}">\n${layers[layer].join('\n')}\n</g>`).join('\n')}\n</svg>`;
+    // A pattern's own frame (inside its margin) cuts the marks the same way the views do.
+    const clip = geometry.clip, clipDef = clip ? `<clipPath id="frame"><rect x="${number(clip[0])}" y="${number(clip[1])}" width="${number(clip[2] - clip[0])}" height="${number(clip[3] - clip[1])}"/></clipPath>` : '';
+    const defs = params.colour.continuous || clip ? `<defs>${params.colour.continuous ? gradientDefinition(params) : ''}${clipDef}</defs>\n` : '';
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}" color-interpolation="sRGB">\n<title>${escape(params.name)} · OneSyntax</title>\n<desc>Seed ${params.seed}. ${geometry.markCount} marks. Generated with the OneSyntax Pattern Generator.</desc>\n<metadata id="onesyntax-preset">${escape(JSON.stringify(metadata))}</metadata>\n${defs}<g id="background" data-name="background">${options.transparent ? '' : `<rect width="${number(width)}" height="${number(height)}" fill="${rgb(colourRGB(params.colour.background))}"/>`}</g>\n${names.map((name, layer) => `<g id="${name}" data-name="${name}"${clip ? ' clip-path="url(#frame)"' : ''}>\n${layers[layer].join('\n')}\n</g>`).join('\n')}\n</svg>`;
   }
 
   // ---------- renderer.ts ----------
@@ -907,9 +910,11 @@ void main() {
       gl.uniform4f(u.uGradient, ...gradient.start, ...gradient.end);
       gl.uniform4f(u.uRadialGeometry, ...gradient.centre, ...gradient.radius);
       gl.uniform2f(u.uColourRange, params.mappings.colour.min, params.mappings.colour.max);
-      // Marks pushed past the artwork's edge (a wide swing, long stripes) are cut at the frame, as in every export.
-      const left = Math.max(0, Math.floor(ox)), right = Math.min(width, Math.ceil(ox + params.canvas.width * sx));
-      const top = Math.max(0, Math.floor(oy)), bottom = Math.min(height, Math.ceil(oy + params.canvas.height * sy));
+      // Marks pushed past the artwork's edge (a wide swing, long stripes) are cut at the frame, as in every export;
+      // a pattern with a margin can give a tighter frame (`geometry.clip`, in artwork pixels) to cut them at.
+      const [clipLeft, clipTop, clipRight, clipBottom] = geometry.clip || [0, 0, params.canvas.width, params.canvas.height];
+      const left = Math.max(0, Math.floor(ox + clipLeft * sx)), right = Math.min(width, Math.ceil(ox + clipRight * sx));
+      const top = Math.max(0, Math.floor(oy + clipTop * sy)), bottom = Math.min(height, Math.ceil(oy + clipBottom * sy));
       gl.enable(gl.SCISSOR_TEST);
       gl.scissor(left, height - bottom, Math.max(0, right - left), Math.max(0, bottom - top));
       gl.drawArraysInstanced(gl.TRIANGLES, 0, 6, count);

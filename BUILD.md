@@ -1,7 +1,7 @@
 # Build, run and deploy
 
-There is **no build step**. The app is three kinds of static file: `index.html`, `engine.js` and the SVGs in
-`brand/`. Anything that serves static files can host it.
+The app itself needs no build: it is three kinds of static file, `index.html`, `engine.js` and the SVGs in
+`brand/`, and anything that serves static files can host it. Publishing adds one step: it strips every comment.
 
 ## Run locally
 
@@ -62,7 +62,10 @@ There is no automated test runner (the project has no Node toolchain). Before sh
 
 ## Deploy
 
-Only the app is published: `publish.sh` copies `index.html`, `engine.js` and `brand/` into `dist/`, so the docs
+Only the app is published, with every comment stripped: `publish.sh` installs terser (`npm install`) and runs
+`build.mjs`, which writes `index.html`, `engine.js` and `brand/` into `dist/` with HTML, CSS and JavaScript comments
+removed (names and logic untouched: no compression, no renaming). The notes on how the patterns are made stay in
+the source and in these .md files, which are Haux Studio's and never go live or to the client. The docs
 and the preview server never go live.
 
 **Cloudflare Pages (recommended):** free for commercial use, and Cloudflare Access can limit the site to the
@@ -75,6 +78,19 @@ team's email addresses.
 
 Netlify and Vercel take the same build command and output directory. Vercel's free plan is for
 non-commercial use only.
+
+### Handing over to the client
+
+Hand over the published site, never this repository: its history holds the reference images and every note.
+Once a push has deployed, from this folder:
+
+```bash
+powershell -ExecutionPolicy Bypass -File handover.ps1
+```
+
+It downloads the site exactly as served (comments already stripped), checks no comment slipped through, adds a
+short hosting note (README.txt) and zips it as `OneSyntax-Pattern-Generator.zip` beside this folder. If the client
+wants a repository, make a new one from that folder, so it starts with no history.
 
 ### Saving changes to GitHub
 

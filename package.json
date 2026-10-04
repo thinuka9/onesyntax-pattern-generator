@@ -1,0 +1,12 @@
+{
+  "name": "onesyntax-pattern-generator",
+  "private": true,
+  "type": "module",
+  "description": "Build tooling only: the app itself needs no install.",
+  "scripts": {
+    "build": "node build.mjs"
+  },
+  "devDependencies": {
+    "terser": "5.36.0"
+  }
+}

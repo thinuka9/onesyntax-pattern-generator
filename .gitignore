@@ -11,3 +11,7 @@ dist/
 
 # Personal Claude Code permissions (launch.json is shared)
 .claude/settings.local.json
+
+# Build tooling (npm install for publish.sh)
+node_modules/
+package-lock.json

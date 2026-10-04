@@ -1,8 +1,7 @@
 #!/bin/sh
-# Hosting build step: copies the app, and only the app, into dist/.
-# Docs and the local preview server stay out of the published site.
+# Hosting build step: writes the app, and only the app, into dist/, with every comment stripped (build.mjs).
+# Docs, notes and the local preview server stay out of the published site.
 #   Cloudflare Pages / Netlify / Vercel: build command "sh publish.sh", output directory "dist".
 set -e
-rm -rf dist
-mkdir dist
-cp -r index.html engine.js brand dist/
+[ -d node_modules/terser ] || npm install --no-audit --no-fund
+node build.mjs
