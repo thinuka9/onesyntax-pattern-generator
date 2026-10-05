@@ -55,7 +55,8 @@ engine.js           Pattern engine: fields, layouts, marks, SVG export, WebGL re
 serve.ps1           Local preview server (Windows PowerShell, no Node needed).
 publish.sh          Hosting build step: installs terser and runs build.mjs.
 build.mjs           Writes the app into dist/ with every comment stripped (the published site).
-package.json        Build tooling only (terser); the app itself needs no install.
+check.mjs           Release checks in a real browser (npm run check; see BUILD.md).
+package.json        Build and check tooling only (terser, playwright-core); the app itself needs no install.
 handover.ps1        Downloads the live site and zips the client's copy (no notes, no history).
 brand/              Official OneSyntax logo files (from the Rebranding Figma file).
 vendor/             Geist fonts, Motion and mp4-muxer as they came from npm, with their licences.

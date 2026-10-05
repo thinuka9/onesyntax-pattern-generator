@@ -50,21 +50,57 @@ largest size that fits, and the tool says so.
 
 ## Checks to run before a release
 
-There is no automated test runner (Node is used only to strip comments when publishing). Before shipping, in the
-browser:
+`check.mjs` opens the app in Edge or Chrome (as installed; nothing to download) and runs the checks in about a
+minute. Once, from this folder:
 
-1. The page loads with no console errors, with the icons and Geist type showing.
-2. Open every pattern from the Pattern menu, and step through its presets with ← →. Each draws, and the panel
-   shows its controls.
-3. Drag a few sliders on each pattern; nothing blanks or errors.
-4. Press the seed dice a few times on Wave Rows and on a studio pattern; results stay uniform. Press shuffle: it
+```bash
+npm install
+```
+
+Then, before every release:
+
+```bash
+npm run check -- --dist
+```
+
+It builds the published site (`build.mjs`) and checks that copy; `npm run check` alone checks the source as it is.
+To use another browser, set `CHECK_BROWSER` to its path. It checks that:
+
+1. The page loads with no console errors, asks no other site for anything, and shows Geist and Geist Mono.
+2. Every built-in preset draws, opens in its own pattern and shows its controls.
+3. Every moving preset loops without a seam (its first frame and the frame at the loop length match).
+4. No method words (Fourier, Chladni, Gibbs, vector field…) appear in any pattern's panel, tooltip or preset name.
+5. Share links and preset JSON round-trip for every preset, and a save from before the `plate` rename still opens.
+6. PNG, SVG and animated SVG exports download and parse, for every moving preset.
+7. Orbit's animated SVG (Flow, Sway, and Pulse), frozen at set moments, matches the app within 4/255 and loops
+   without a seam.
+8. The presets window opens on the current preset, with the group bar on its group.
+9. With `--dist`: the published `index.html` and `engine.js` carry no comments.
+
+It ends with "All checks passed." (exit code 0), or names each failure. Still by hand, in the browser:
+
+1. Drag a few sliders on each pattern; nothing blanks, and it still looks right.
+2. Press the seed dice a few times on Wave Rows and on a studio pattern; results stay uniform. Press shuffle: it
    opens another pattern, and one undo comes back.
-5. Export a PNG at each scale, an SVG, an animated SVG and a video; each opens.
-6. Save a preset, export the presets JSON, delete the preset, import the JSON back.
-7. Copy link, open it in a new tab: the same preset appears.
-8. After the push deploys, open the live site: no console errors, and no comments in its source.
+3. Export a video; it opens and loops.
+4. After the merge deploys, open the live site: it looks as the preview did.
 
 ## Deploy
+
+### Preview, then go live
+
+`main` is the live site: every push to it deploys within a minute. So changes go to a branch first:
+
+1. Push the work to a branch (any name but `main`). Cloudflare Pages builds a preview of it at
+   `https://<branch>.onesyntax-pattern-generator.pages.dev`, the branch name in lower case with anything but
+   letters and digits turned into hyphens (`claude/sharp-davinci-3zf2xr` →
+   `claude-sharp-davinci-3zf2xr.onesyntax-pattern-generator.pages.dev`). The link is also under **Workers & Pages →
+   onesyntax-pattern-generator → Deployments**.
+2. Run `npm run check -- --dist`, and look the preview over.
+3. Open a pull request into `main` and merge it. The live site updates within a minute.
+
+If a branch gets no preview, turn previews on under **Settings → Builds → Branch control** (preview branches: all
+non-production branches).
 
 Only the app is published, with every comment stripped: `publish.sh` installs terser (`npm install`) and runs
 `build.mjs`, which writes `index.html`, `engine.js` and `brand/` into `dist/` with HTML, CSS and JavaScript comments
@@ -98,7 +134,14 @@ wants a repository, make a new one from that folder, so it starts with no histor
 
 ### Saving changes to GitHub
 
-This folder is a Git working copy of that repository (branch `main`). After changing files, from this folder:
+This folder is a Git working copy of that repository. Changes go on a branch, so they get a preview before they go
+live (see Preview, then go live). From this folder, start a branch for the change:
+
+```bash
+git switch -c describe-the-change
+```
+
+After changing files:
 
 ```bash
 git add -A
@@ -109,7 +152,17 @@ git commit -m "Describe the change"
 ```
 
 ```bash
-git push
+git push -u origin describe-the-change
+```
+
+Check the preview, then open a pull request into `main` on GitHub and merge it. Afterwards, back on `main`:
+
+```bash
+git switch main
+```
+
+```bash
+git pull
 ```
 
 Saved presets live in each browser's storage for the address the page is served from, so a new URL starts with

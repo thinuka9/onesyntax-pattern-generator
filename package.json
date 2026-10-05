@@ -2,11 +2,13 @@
   "name": "onesyntax-pattern-generator",
   "private": true,
   "type": "module",
-  "description": "Build tooling only: the app itself needs no install.",
+  "description": "Build and check tooling only: the app itself needs no install.",
   "scripts": {
-    "build": "node build.mjs"
+    "build": "node build.mjs",
+    "check": "node check.mjs"
   },
   "devDependencies": {
+    "playwright-core": "1.56.1",
     "terser": "5.36.0"
   }
 }
