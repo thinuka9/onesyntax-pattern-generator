@@ -107,7 +107,7 @@
   const isOn = (part) => !!part && part.enabled && part.weight > 0;
   function motionCycles(params) {
     const f = params.field;
-    const cycles = [f.waveA, f.waveB, f.radial, f.chladni, f.ripples, f.logo].filter(isOn).map((part) => waveCycles(params, part));
+    const cycles = [f.waveA, f.waveB, f.radial, f.plate, f.ripples, f.logo].filter(isOn).map((part) => waveCycles(params, part));
     if (isOn(f.ripples) && f.ripples.orbit) cycles.push(roundHalf(f.ripples.orbit));  // orbit turns on its own, Speed or not
     return cycles;
   }
@@ -136,7 +136,7 @@
     const gx = Math.cos(ga), gy = Math.sin(ga);
     const gradientExtent = Math.max(1e-6, Math.abs(gx) + Math.abs(gy));
     const speed = params.motion.speed;
-    const chladni = field.chladni, ripples = field.ripples, logo = field.logo;
+    const plate = field.plate, ripples = field.ripples, logo = field.logo;
     let ap, bp, rp, nx, ny, nxEarlier = 0, nyEarlier = 0, fade = 0, turn, orbitTurn;
     if (options.directional) {
       const loop = Math.max(1e-6, options.loopSeconds || 5);
@@ -171,7 +171,7 @@
     const wn = n.enabled ? Math.max(0, n.weight) : 0;
     const wd = data.enabled ? Math.max(0, data.weight) : 0;
     const wg = field.gradient.enabled ? Math.max(0, field.gradient.weight) : 0;
-    const wc = isOn(chladni) ? chladni.weight : 0;
+    const wc = isOn(plate) ? plate.weight : 0;
     const wp = isOn(ripples) ? ripples.weight : 0;
     const wl = isOn(logo) && options.sdf ? logo.weight : 0;  // the logo needs its distance grid from the page
     const total = wa + wb + wr + wn + wd + wg + wc + wp + wl;
@@ -181,12 +181,12 @@
 
     // Chladni plate: cos(nπx)cos(mπy) and cos(mπx)cos(nπy) mixed at an angle; −45° is the classic free-edge figure.
     // Sand (value 1) collects on the nodal lines where the plate stays still.
-    const plateN = wc ? Math.PI * Math.max(1, Math.round(chladni.n)) : 0, plateM = wc ? Math.PI * Math.max(1, Math.round(chladni.m)) : 0;
+    const plateN = wc ? Math.PI * Math.max(1, Math.round(plate.n)) : 0, plateM = wc ? Math.PI * Math.max(1, Math.round(plate.m)) : 0;
     // Morph: each study sways through its own shapes on a sine of its cycle, so it eases out and back seamlessly.
     const morphing = options.directional && field.motion === 'morph', morph = clamp(field.morph);
     const sway = (part, offset = 0) => Math.sin(turn(part) + offset);
     // The plate's mix swings up to 90° either side, so the figure melts into its neighbours and back.
-    const plateAngle = !wc ? 0 : radians(chladni.mix) + (morphing ? morph * Math.PI / 2 * sway(chladni) : turn(chladni));
+    const plateAngle = !wc ? 0 : radians(plate.mix) + (morphing ? morph * Math.PI / 2 * sway(plate) : turn(plate));
     const plateA = Math.cos(plateAngle), plateB = Math.sin(plateAngle);
 
     // Ripple tank: point sources on a ring (rotating with `orbit`), each sending circular waves outward.
@@ -240,8 +240,8 @@
       if (wb) value += (wave(x * bx + y * by + bp) * 0.5 + 0.5) * wb;
       if (wr) value += (wave(Math.hypot(x - radialX, y - radialY) * radialFrequency + rp) * 0.5 + 0.5) * wr;
       if (wc) {
-        const plate = plateA * Math.cos(plateN * x) * Math.cos(plateM * y) + plateB * Math.cos(plateM * x) * Math.cos(plateN * y);
-        value += (1 - Math.min(1, Math.abs(plate) / Math.SQRT2)) * wc;
+        const height = plateA * Math.cos(plateN * x) * Math.cos(plateM * y) + plateB * Math.cos(plateM * x) * Math.cos(plateN * y);
+        value += (1 - Math.min(1, Math.abs(height) / Math.SQRT2)) * wc;
       }
       if (wp) {
         // Superposition: crests that meet add up, a crest meeting a trough cancels.
@@ -511,7 +511,7 @@
         data: { enabled: false, weight: 1, seed: 731, smoothing: 0.65, trend: 0, volatility: 0.3, axis: 'x', values: '' },
         gradient: { enabled: false, weight: 1, direction: 0 },
         // Wave studies (not in the original studio): a vibrating plate, interfering point sources and a logo distance field.
-        chladni: { enabled: false, weight: 1, n: 3, m: 7, mix: -45, speed: 0.2 },
+        plate: { enabled: false, weight: 1, n: 3, m: 7, mix: -45, speed: 0.2 },
         ripples: { enabled: false, weight: 1, sources: 3, spread: 0.2, frequency: 10, decay: 0, rotation: 90, orbit: 0, speed: 0.2 },
         // fill: 'on' solid, 'off' contours run inside too, 'empty' leaves the mark as negative space.
         // fade dims contours with distance from the outline; line > 1 thins them into fine lines.

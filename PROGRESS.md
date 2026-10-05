@@ -110,7 +110,8 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
 - **Renames (5 October):** the studio's three borrowed names are gone: Sinky Meter is Gauge, Amaya Flow is Eddy,
   RFD Stack is Stack (in the engine and the app). Saves and share links under the old names open in the new
   patterns (`PATTERN_ALIASES`), and a studio save's own name is refreshed on load, so SVG titles follow. Contour
-  Field's first preset, Vector Field (a method term), is now Schema. A session left on an old preset name (Vector
+  Field's first preset, Vector Field (a method term), is now Schema. The plate's setting key `chladni` is now
+  `plate`; older saves, sessions and links convert on load (`sanitizeState`), and all 50 presets draw identically. A session left on an old preset name (Vector
   Field, or the studio's Sinky Meter, Amaya Flow, RFD Stack) opens the renamed preset (`RENAMED_LOOKS`).
 - **Large formats (5 October):** studio sizes are pixels on the 1200 px square they were designed on; on a page
   whose shorter side is larger (A4 portrait, 2480 px) `scaledStudio` multiplies margins, gutters, mark lengths and
@@ -187,7 +188,7 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
   vector path per dash.
 - Handover: `handover.ps1` made `PLUGIN\OneSyntax-Pattern-Generator.zip` (107 KB: the page, engine, five brand
   SVGs, README.txt), byte for byte the live page, no comments. Setting keys and function names in the code still
-  carry a few method words (`chladni`); they are code, not text the app shows.
+  carried a method word (`chladni`, since renamed `plate`; see Renames).
 
 ## Verified (4 October 2026)
 - Every control on every built-in preset changes the output (564 controls checked; the exceptions are by design,
