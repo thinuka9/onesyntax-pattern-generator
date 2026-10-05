@@ -1,7 +1,7 @@
 # Build, run and deploy
 
-The app itself needs no build: it is three kinds of static file, `index.html`, `engine.js` and the SVGs in
-`brand/`, and anything that serves static files can host it. Publishing adds one step: it strips every comment.
+The app itself needs no build: it is `index.html`, `engine.js`, the SVGs in `brand/` and the fonts and libraries
+in `vendor/`, and anything that serves static files can host it. Publishing adds one step: it strips every comment.
 
 ## Run locally
 
@@ -21,7 +21,7 @@ In Claude Code, the `app` entry in `.claude/launch.json` starts the same server.
 
 - A current Chromium-based browser (Chrome, Edge, Arc) for everything, including WebGL 2 and video export.
   Firefox and Safari run the tool; video export depends on their MediaRecorder support.
-- An internet connection for Geist and Motion (see [README.md](README.md#dependencies)).
+- No internet connection: the fonts and libraries are in `vendor/` (see [README.md](README.md#dependencies)).
 
 ## Exports
 
