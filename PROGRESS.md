@@ -14,7 +14,6 @@ Live at https://onesyntax-pattern-generator.pages.dev (Cloudflare Pages, redeplo
 stripped by `build.mjs`). 15 patterns, 50 built-in presets.
 
 **Not done yet**
-- Event Queue: the reference packs its finest lines tighter along the top right than the fit does.
 
 ## Built so far
 
@@ -64,7 +63,7 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
     spacing on the reference's left edge runs 9.5 → 69 px, linear in y; fitted line for line: 73 lines,
     Crowding 1.36, Centre gap 1.4%, within 0.29 of a line spacing. Dash length 0.055 of the short side, spacing
     0.147 × (r / r_out)^0.35. Bend 0.5 chosen by eye (the reference's per-line offsets are too noisy to measure).
-    Still short: the reference packs its finest lines tighter along the top right.
+    Still short: the reference packs its finest lines tighter along the top right (parked; see MEMORY).
   - Motion: Flow slides the dashes one spacing per loop; Sway rocks the bend by ±Strength/2.
 - **Centre handle:** Orbit (each layout its own centre) and Eddy (so Refactor) show their centre on the artwork on hover: rings round
   a knob that drags it, snapping within 10 px to the edges and middle (Alt drags freely); arrow keys nudge it

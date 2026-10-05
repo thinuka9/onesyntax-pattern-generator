@@ -27,6 +27,9 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   The no-method rule covers preset names too: Contour Field's "Vector Field" became Schema (5 October). Old names
   stay in the code only as forwards (`PATTERN_ALIASES`, `RENAMED_LOOKS`), so old saves and sessions still open.
 - **Brand only.** Colours from the brand list, Geist type, the official logo files.
+- **Parked: Event Queue's top-right density.** The reference packs its finest lines tighter along the top right
+  than the fit does. Leave it exactly as it is: don't work on it, propose it or list it as a next step unless the
+  studio asks for it by name (5 October).
 
 ## Decisions
 
@@ -62,7 +65,6 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
 
 ## Open
 
-- Event Queue: the reference packs its finest lines tighter along the top right.
 - Setting keys in the code still say `chladni`; renaming them means converting old saves and links.
 - `PLUGIN\_archive\Archive.zip` (184 MB) is mostly dependencies and Mac system files; the `codex` project in it
   exists nowhere else. Repack it with just the source, or delete it.
