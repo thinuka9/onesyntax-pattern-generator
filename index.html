@@ -225,7 +225,7 @@
   /* Each choice starts at its label's width and shares out the rest, so longer labels never clip. */
   .segmented button { position: relative; z-index: 1; flex: 1 1 auto; min-width: 0; height: calc(var(--control) - 4px); padding: 0 6px; font-size: 13px; font-weight: 500; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; transition: color .25s var(--ease); }
   .segmented button:hover { color: var(--text); }
-  .segmented button[aria-checked="true"] { color: var(--chip-text); }
+  .segmented button[aria-checked="true"], .segmented button[aria-current="true"] { color: var(--chip-text); }
   .segmented .glyph { display: block; width: 26px; height: 13px; margin: 0 auto; fill: none; stroke: currentColor; stroke-width: 1.6; stroke-linejoin: round; stroke-linecap: round; }
   .segmented .glyph.solid { fill: currentColor; stroke: none; }
 
@@ -347,7 +347,16 @@
   }
   dialog#looks::backdrop { background: rgba(10,12,18,.35); -webkit-backdrop-filter: blur(4px); backdrop-filter: blur(4px); }
   /* Solid, so presets scrolling underneath never show through the title and buttons. */
-  .looks-head { position: sticky; top: 0; z-index: 2; display: flex; align-items: center; gap: 6px; padding: 20px 24px; box-shadow: inset 0 -1px 0 var(--line); background: var(--surface); }
+  .looks-head { position: sticky; top: 0; z-index: 2; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 20px 24px 16px; box-shadow: inset 0 -1px 0 var(--line); background: var(--surface); }
+  /* The group bar: a second row under the title, its highlight on the group in view. */
+  .looks-nav { flex: 1 0 100%; min-width: 0; margin-top: 10px; overflow-x: auto; scrollbar-width: none; }
+  .looks-nav::-webkit-scrollbar { display: none; }
+  /* Names never shorten: past the window's width the bar scrolls sideways instead. */
+  .looks-nav button { flex: 1 0 auto; padding: 0 12px; }
+  @media (max-width: 520px) {
+    /* Import and Export keep their icons (and tooltips) so the title row fits a phone. */
+    .looks-head .chip-button:not(.icon-only) { width: 36px; padding: 0; gap: 0; justify-content: center; font-size: 0; }
+  }
   .looks-head h2:focus { outline: none; }
   .looks-head h2 { margin: 0 auto 0 0; font-weight: 500; font-size: 26px; letter-spacing: -.04em; }
   .looks-head .chip-button { display: flex; align-items: center; gap: 7px; height: 36px; padding: 0 14px; background: var(--button); font-size: 13px; font-weight: 500; }
@@ -471,6 +480,7 @@
     <button class="chip-button" id="exportPresets" title="Download your saved presets as JSON" data-icon="export">Export</button>
     <input id="importFile" type="file" accept=".json,application/json" hidden>
     <button class="chip-button icon-only" id="closeLooks" aria-label="Close" title="Close (Esc)" data-icon="close"></button>
+    <nav class="segmented looks-nav" id="looksNav" aria-label="Jump to a group"><span class="indicator" aria-hidden="true"></span></nav>
   </div>
   <div class="looks-body" id="looksBody"></div>
 </dialog>
@@ -551,7 +561,7 @@ document.addEventListener('pointerdown', (e) => {
 function placeIndicator(group, animate) {
   const indicator = group && group.querySelector(':scope > .indicator');
   if (!indicator) return;
-  const chosen = group.querySelector(':scope > [aria-checked="true"], :scope > [aria-pressed="true"]');
+  const chosen = group.querySelector(':scope > [aria-checked="true"], :scope > [aria-pressed="true"], :scope > [aria-current="true"]');
   indicator.style.visibility = chosen ? '' : 'hidden';
   if (!chosen) return;
   indicator.classList.toggle('instant', !animate);
@@ -3104,6 +3114,7 @@ function openLooks() {
   looksDialog.showModal();
   document.getElementById('looksTitle').focus();  // not the first button, which would show a focus ring on open
   scrollLooksToCurrent();
+  spyLooksGroup(false);
   move(looksDialog, { opacity: [0, 1], y: [18, 0], scale: [0.985, 1] }, GENTLE);
   const box = looksDialog.getBoundingClientRect();
   const shown = [...looksDialog.querySelectorAll('.look-card')].filter((c) => { const r = c.getBoundingClientRect(); return r.bottom > box.top && r.top < box.bottom; });
@@ -3137,30 +3148,83 @@ function renderLooks() {
   const card = (id, entry, removable) => `<div class="look-card${id === current ? ' current' : ''}">
       <button class="pick" data-id="${escapeHtml(id)}"><canvas width="280" height="280" aria-hidden="true"></canvas><span class="name">${escapeHtml(entry.name)}</span><small>${escapeHtml(entry.pattern)}</small></button>
       ${removable ? `<button class="del" data-name="${escapeHtml(entry.name)}" aria-label="Delete ${escapeHtml(entry.name)}">${icon('close')}</button>` : ''}</div>`;
-  const group = (title, entries, prefix, removable, empty) => `<h3>${title}</h3>${entries.length
+  const group = (title, entries, prefix, removable, empty) => `<h3 data-group="${title}">${title}</h3>${entries.length
     ? `<div class="looks-grid">${entries.map((e) => card(prefix + e.name, e, removable)).join('')}</div>`
     : `<p class="looks-empty">${empty}</p>`}`;
   body.innerHTML = group('Saved', saved, 'saved:', true, 'Press Save preset to keep one here.')
     + GROUPS.map((g) => group(g, BUILT_INS.filter((b) => b.group === g), 'builtin:', false)).join('');
   document.getElementById('exportPresets').disabled = !saved.length;
+  renderLooksNav();
   const picks = [...body.querySelectorAll('.pick')];
   picks.forEach((el) => el.addEventListener('click', () => closeLooks(() => applyPreset(el.dataset.id))));
   body.querySelectorAll('.del').forEach((el) => el.addEventListener('click', () => {
     if (!el.classList.contains('confirm')) { el.classList.add('confirm'); el.textContent = 'Delete?'; return; }
     deletePreset(el.dataset.name); renderLooks();
   }));
-  // Draw thumbnails a few at a time so the dialog opens instantly.
-  let index = 0;
+  // Draw thumbnails a few at a time so the dialog opens instantly, the cards in view first (the window may open
+  // scrolled down to the current pattern, so the order is set once it has).
+  let order = null, index = 0;
   const next = () => {
-    const end = Math.min(picks.length, index + 4);
-    for (; index < end; index++) {
-      const id = picks[index].dataset.id;
-      paintThumb(picks[index].querySelector('canvas'), id, presetState(id));
+    if (!order) {
+      const box = looksDialog.getBoundingClientRect();
+      const shows = (el) => { const r = el.getBoundingClientRect(); return r.bottom > box.top && r.top < box.bottom; };
+      order = [...picks.filter(shows), ...picks.filter((el) => !shows(el))];
     }
-    if (index < picks.length) setTimeout(next, 0);
+    const end = Math.min(order.length, index + 4);
+    for (; index < end; index++) {
+      const id = order[index].dataset.id;
+      paintThumb(order[index].querySelector('canvas'), id, presetState(id));
+    }
+    if (index < order.length) setTimeout(next, 0);
   };
-  next();
+  setTimeout(next, 0);
 }
+// The group bar: each group's name jumps to it, and the highlight follows the group in view.
+const looksNav = document.getElementById('looksNav');
+let looksJump = null, looksJumpTimer = 0;
+const looksTop = (el) => el.getBoundingClientRect().top - looksDialog.getBoundingClientRect().top;  // within the window's view
+const looksHeadings = () => [...looksDialog.querySelectorAll('.looks-body h3[data-group]')];
+function renderLooksNav() {
+  looksNav.querySelectorAll('button').forEach((b) => b.remove());
+  for (const heading of looksHeadings()) {
+    const button = document.createElement('button');
+    button.type = 'button'; button.textContent = button.dataset.group = heading.dataset.group;
+    button.addEventListener('click', () => jumpToGroup(button.dataset.group));
+    looksNav.append(button);
+  }
+  if (looksDialog.open) spyLooksGroup(false);
+}
+function markLooksGroup(name, animate) {
+  let chosen = null;
+  looksNav.querySelectorAll('button').forEach((b) => { b.setAttribute('aria-current', String(b.dataset.group === name)); if (b.dataset.group === name) chosen = b; });
+  placeIndicator(looksNav, animate);
+  // On a narrow window the bar scrolls: keep the chosen name in view.
+  if (chosen && (chosen.offsetLeft < looksNav.scrollLeft || chosen.offsetLeft + chosen.offsetWidth > looksNav.scrollLeft + looksNav.clientWidth)) {
+    looksNav.scrollTo({ left: chosen.offsetLeft - (looksNav.clientWidth - chosen.offsetWidth) / 2, behavior: animate && moving() ? 'smooth' : 'auto' });
+  }
+}
+function jumpToGroup(name) {
+  const heading = looksHeadings().find((h) => h.dataset.group === name);
+  if (!heading) return;
+  const head = looksDialog.querySelector('.looks-head').offsetHeight;
+  // The bar shows where you asked to go while the window scrolls there, even if the end of the list stops it short.
+  looksJump = name; markLooksGroup(name, true);
+  clearTimeout(looksJumpTimer); looksJumpTimer = setTimeout(() => { looksJump = null; }, 900);
+  looksDialog.scrollTo({ top: Math.max(0, looksDialog.scrollTop + looksTop(heading) - head - 12), behavior: moving() ? 'smooth' : 'auto' });
+}
+/** The group in view: the last whose heading has reached the title bar, or at the very end, the last one showing. */
+function spyLooksGroup(animate) {
+  if (looksJump) return;
+  const headings = looksHeadings(), head = looksDialog.querySelector('.looks-head').offsetHeight;
+  if (!headings.length) return;
+  const atEnd = looksDialog.scrollTop + looksDialog.clientHeight >= looksDialog.scrollHeight - 2;
+  let inView = headings[0];
+  for (const heading of headings) if (looksTop(heading) <= (atEnd ? looksDialog.clientHeight - 40 : head + 48)) inView = heading;
+  markLooksGroup(inView.dataset.group, animate);
+}
+looksDialog.addEventListener('scroll', () => spyLooksGroup(true), { passive: true });
+looksDialog.addEventListener('scrollend', () => { if (looksJump) { clearTimeout(looksJumpTimer); looksJump = null; } });
+
 document.getElementById('closeLooks').addEventListener('click', () => closeLooks());
 looksDialog.addEventListener('click', (e) => { if (e.target === looksDialog) closeLooks(); });
 document.getElementById('exportPresets').addEventListener('click', exportPresets);

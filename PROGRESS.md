@@ -161,7 +161,11 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
 - Brand tooltips (inverted ink, square, shortcut chips) replace the system ones; solid presets header and thin
   scrollbars.
 - The presets window opens on the current pattern's presets: its group heading in view when the current card fits
-  below it, otherwise the current card's row just under the title bar. Only the cards in view stagger in.
+  below it, otherwise the current card's row just under the title bar. Only the cards in view stagger in, and their
+  thumbnails paint first.
+- A group bar under the presets title (Saved, Wave Rows, Studio patterns, Wave studies, Bracket): a sliding
+  segmented control whose names jump to each group and whose highlight follows the group in view. On a phone the bar
+  scrolls sideways (keeping the current name in view) and Import / Export shrink to their icons.
 - Dropdowns open a brand-styled list (groups as headings, a check on the current choice) instead of the system
   list; paired limits (Thinnest/Thickest, Min/Max) never cross; every pattern with one shared mark opacity has an
   Opacity control.
