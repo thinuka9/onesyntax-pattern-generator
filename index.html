@@ -3094,8 +3094,27 @@ function openLooks() {
   if (looksDialog.open) return;
   looksDialog.showModal();
   document.getElementById('looksTitle').focus();  // not the first button, which would show a focus ring on open
+  scrollLooksToCurrent();
   move(looksDialog, { opacity: [0, 1], y: [18, 0], scale: [0.985, 1] }, GENTLE);
-  move([...looksDialog.querySelectorAll('.look-card')].slice(0, 30), { opacity: [0, 1], y: [14, 0] }, { ...GENTLE, delay: stagger(0.018) });
+  const box = looksDialog.getBoundingClientRect();
+  const shown = [...looksDialog.querySelectorAll('.look-card')].filter((c) => { const r = c.getBoundingClientRect(); return r.bottom > box.top && r.top < box.bottom; });
+  move(shown.slice(0, 30), { opacity: [0, 1], y: [14, 0] }, { ...GENTLE, delay: stagger(0.018) });
+}
+/** Opens the picker on the current pattern's presets: its group heading in view, and the current card too. */
+function scrollLooksToCurrent() {
+  looksDialog.scrollTop = 0;
+  const cards = [...looksDialog.querySelectorAll('.look-card')];
+  const card = cards.find((c) => c.classList.contains('current'))
+    || cards.find((c) => c.querySelector('.pick').dataset.id.startsWith('builtin:') && c.querySelector('small').textContent === state.pattern);
+  if (!card) return;
+  const head = looksDialog.querySelector('.looks-head').offsetHeight;
+  const cardTop = card.getBoundingClientRect().top - looksDialog.getBoundingClientRect().top;
+  if (cardTop + card.offsetHeight <= looksDialog.clientHeight) return;  // already in view
+  const heading = card.closest('.looks-grid').previousElementSibling;
+  const headingTop = heading.getBoundingClientRect().top - looksDialog.getBoundingClientRect().top;
+  // The heading when the card still fits below it, otherwise the card's row just under the title bar.
+  const target = cardTop + card.offsetHeight - headingTop <= looksDialog.clientHeight - head - 12 ? headingTop - 12 : cardTop - 18;
+  looksDialog.scrollTop = Math.max(0, target - head);
 }
 /** Fades the picker away, then closes it (and runs `then`, e.g. loading the chosen look). */
 function closeLooks(then) {
