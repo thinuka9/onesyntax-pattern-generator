@@ -48,6 +48,8 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
 - **Presets (5 October):** every pattern has at least three; 50 in all.
 - **Large formats (5 October):** studio patterns scale with the page (A4), so marks keep their proportion.
 - **Publishing (5 October):** comments stripped on publish; handover is a zip of the live site.
+- **Orbit Pulse animated SVG (5 October):** Orbit's arcs never go mark by mark any more; Pulse rides on the dash's
+  own path as opacity and a scale (2–4 × smaller than before, as close to the app).
 - **Setting keys (5 October):** the plate's settings key is `plate`, not `chladni`. `sanitizeState` moves an old
   `field.chladni` to `field.plate`, so saves, sessions, imported JSON and share links from before still open (checked
   with a link and a preset made in the old version: identical output).

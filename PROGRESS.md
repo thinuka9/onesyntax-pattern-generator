@@ -84,8 +84,7 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
   The animated SVG for Flow (no Pulse) slides each dash along its line instead: a translate and a rotate through
   4 points per spacing, and its outline eased from its shape at the start to the shape a dash has at the end;
   every dash ends where another began, so it loops without a seam, and it opens on the first frame for design
-  tools. Event Queue 0.79 MB (was 2.6), Event Stream 0.37 MB (was 1.35). Pulse still goes mark by mark, in as
-  few pieces as each curve needs.
+  tools. Event Queue 0.79 MB (was 2.6), Event Stream 0.37 MB (was 1.35). Pulse joined it later (below).
 - **Orbit Sway animated SVG (5 October):** each dash rides its own line too, once per sway, however many sways a
   loop holds: line k's dashes rock ±k × Strength / 2 spacings, a sine in arc length on the plane.
   - Track: `animateMotion` (rotate auto) along cubics through the line, handles from its tangent, halved wherever
@@ -102,6 +101,19 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Orbit Pulse animated SVG (5 October):** every animated Orbit arcs file is now dash by dash, Still included; the
+  mark-by-mark export is left for the other patterns.
+  - The dashes are laid out with Pulse off (full colour, full size). For each dash, Pulse is read where its middle
+    is (`place` at its Flow or Sway position) at 100 moments a loop and thinned to the keyframes it needs by the
+    shared `keyframer` (lifted out of the mark-by-mark export, whose files stay byte for byte the same): the
+    shortest of even, timed or eased keys. Tolerances 0.015 opacity and 0.3 px at the dash's ends.
+  - Fade is `opacity` on the path (on the flat background, the same as the app's mix towards it). A size that never
+    changes is drawn into the outline; one that does is a `scale` about the dash's middle, `additive="sum"` on top
+    of Flow's turn or Sway's stretch, its first value written out for design tools. Dashes faded or shrunk away the
+    whole loop are left out.
+  - Pulse at 15–100% opacity and 45–125% size: Event Stream Still 0.33 MB (mark by mark 1.48), Event Queue Flow
+    1.13 MB (2.37), Event Stream Sway 1.29 MB (4.18), Event Queue Sway with a square pulse 3.7 MB (7.11). Frozen
+    frames match the still SVG to 0.6–2.0/255; every case loops without a seam and opens on its first frame.
 - **More presets (5 October):** every pattern that had one preset now has three, each drawn from the first with
   another density, wave and palette: Uptime and Benchmark (Gauge), Hash and Payload (Barcode), Bandwidth
   and Packet (Threshold Stripes), Latency and Throttle (Halftone Diagonal), Heap and Closure (Contour Field, from Schema),
