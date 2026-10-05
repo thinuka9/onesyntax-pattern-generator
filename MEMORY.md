@@ -45,20 +45,24 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
 - **Presets (5 October):** every pattern has at least three; 50 in all.
 - **Large formats (5 October):** studio patterns scale with the page (A4), so marks keep their proportion.
 - **Publishing (5 October):** comments stripped on publish; handover is a zip of the live site.
+- **Orbit Sway animated SVG (5 October):** dashes ride their lines (`animateMotion`) and stretch along and across,
+  instead of going mark by mark: half the size or less, and closer to the app. Small bend errors on tight dashes
+  are the accepted cost.
 
 ## Tried and dropped
 
 - **A bending (warp) generator** built as its own pattern to compare with Event Loop. Dropped: it read as an image
   being bent, not as lines following a path. Deleted.
 - **Arc Field**, the first Event Loop: gaps at the edges, breaks and dots at wide spacing. Patched, then replaced.
+- **Morphing the dash outline for Sway** (between its shapes at the middle and both ends, then keyed adaptively):
+  the three-shape morph was 46% of the file and still wrong mid-swing, since a dash swinging out of the distance
+  changes shape unevenly; keyed to 0.35 px it would have been larger than the old file. Replaced by a stretch.
 - **Concentric ellipses** for the reference: stroke directions off by 19° RMS against the reference, against 4.9°
   for drifting ellipses on a receding plane (see PROGRESS).
 
 ## Open
 
 - Event Queue: the reference packs its finest lines tighter along the top right.
-- The presets window could open scrolled to the current pattern.
-- A lighter animated SVG for Orbit's Sway.
 - Setting keys in the code still say `chladni`; renaming them means converting old saves and links.
 - `PLUGIN\_archive\Archive.zip` (184 MB) is mostly dependencies and Mac system files; the `codex` project in it
   exists nowhere else. Repack it with just the source, or delete it.

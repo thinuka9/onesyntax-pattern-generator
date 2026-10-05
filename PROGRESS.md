@@ -15,7 +15,6 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
 
 **Not done yet**
 - Event Queue: the reference packs its finest lines tighter along the top right than the fit does.
-- A lighter animated SVG for Orbit's Sway (Event Queue Sway is 5.8 MB; Flow is 0.79 MB).
 
 ## Built so far
 
@@ -86,8 +85,24 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
   The animated SVG for Flow (no Pulse) slides each dash along its line instead: a translate and a rotate through
   4 points per spacing, and its outline eased from its shape at the start to the shape a dash has at the end;
   every dash ends where another began, so it loops without a seam, and it opens on the first frame for design
-  tools. Event Queue 0.79 MB (was 2.6), Event Stream 0.37 MB (was 1.35). Sway and Pulse still go mark by mark,
-  in as few pieces as each curve needs (Event Queue Sway 5.8 MB, was 13.9).
+  tools. Event Queue 0.79 MB (was 2.6), Event Stream 0.37 MB (was 1.35). Pulse still goes mark by mark, in as
+  few pieces as each curve needs.
+- **Orbit Sway animated SVG (5 October):** each dash rides its own line too, once per sway, however many sways a
+  loop holds: line k's dashes rock ±k × Strength / 2 spacings, a sine in arc length on the plane.
+  - Track: `animateMotion` (rotate auto) along cubics through the line, handles from its tangent, halved wherever
+    one strays more than 0.35 px from the line (only where it can show: on the page or within a dash length).
+  - Timing: `keyPoints` are distances along the track as drawn (the browser's measure, so a rough off-page stretch
+    shifts nothing), and between keys a `keySplines` cubic matches the sine's pace at both ends (x handles at ⅓ and
+    ⅔, y = pace / span / 3), so the plane's depth, which speeds a dash up sharply as it swings out of the distance,
+    is followed exactly. Keys start at the quarters (the turning points) and are halved, to 1/256 of a sway,
+    wherever position, length or thickness strays past tolerance while the dash shows.
+  - Shape: the first-frame outline, stretched along and across (`scale`, on the same keys) by the dash's length and
+    middle thickness. A shape morph, keyed or not, cost more than the old file; bend is the residue (Event Queue:
+    median 1.1 px, 90th percentile 3.6 px, mostly the small tight dashes at the top left).
+  - The group's pose is the first frame for design tools; a frozen `translate(0 0)` clears it in browsers. One
+    sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
+  - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
+    longer grows with Speed, and it builds faster (0.4–1.9 s).
 - **More presets (5 October):** every pattern that had one preset now has three, each drawn from the first with
   another density, wave and palette: Uptime and Benchmark (Gauge), Hash and Payload (Barcode), Bandwidth
   and Packet (Threshold Stripes), Latency and Throttle (Halftone Diagonal), Heap and Closure (Contour Field, from Schema),
@@ -157,6 +172,13 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
   transparent backgrounds.
 
 ## Verified (5 October 2026)
+- Orbit Sway animated SVG, frozen at set moments against the still SVG at the same time: dash positions within
+  0.75 px on the page (Event Queue at Speed 1 and −0.5, Strength 0.3 and 0.6); pixels 0.8–1.6/255 on average for
+  Event Stream and 1.1–3.8 for Event Queue, where the mark-by-mark file it replaces measured 2.2 and 3.1–12. Loops
+  seamlessly at Speeds 1.5, 2, 3 and −1 (with a margin and at 4:5); with its animation stripped it shows the first
+  frame. Flow's animated SVG is byte for byte unchanged.
+- The presets window opens on the current pattern's presets (current, unsaved and last preset), and the stripped
+  build serves it with no comments and no console errors.
 - All 50 built-in presets loop seamlessly at 1:1 and at A4 portrait.
 - Orbit's SVG matches the app to 1–3/255 per pixel on average; its Flow animated SVG, frozen at set moments,
   matches the app.
