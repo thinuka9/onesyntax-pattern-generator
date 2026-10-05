@@ -1265,10 +1265,11 @@ function orbitGeometry(v, time, pool, outlines = null, coarse = false) {
       }
       if (any) shown++;
       // For the vector files: the dash's outline at any position along its line (`shape`), and where that is on the
-      // page (`place`); a dash that slides onto the page during an animation (`outlines.travel` spacings) counts too.
+      // page (`place`); a dash that slides onto the page during an animation (`outlines.reach(k)`: the shifts, in
+      // spacings, it passes through) counts too.
       const place = (c) => { const [x, y] = point(c); return [margin + x * unit, margin + y * unit]; };
       const onPage = (c) => { const [x, y] = point(c); return x > -len && x < spanX + len && y > -len && y < spanY + len; };
-      if (outlines && (any || (outlines.travel && onPage(centre + outlines.travel * S)))) {
+      if (outlines && (any || (outlines.reach && outlines.reach(k).some((d) => onPage(centre + d * S))))) {
         const steps = outlines.steps || Math.max(4, Math.min(12, pieces + 2));  // the animation asks for fewer
         const shape = (c) => {
           const line = [];
@@ -1278,7 +1279,7 @@ function orbitGeometry(v, time, pool, outlines = null, coarse = false) {
           }
           return line;
         };
-        outlines.push({ line: shape(centre), colour: [fr, fg, fb], shape, place, centre, S });
+        outlines.push({ line: shape(centre), colour: [fr, fg, fb], shape, place, centre, S, k });
       }
     }
   }
@@ -3676,20 +3677,30 @@ ${['track', 'fill', 'cap', 'accent'].map((name, layer) => layers[layer].length ?
   return { svg, loop, marks, samples };
 }
 
-/** Orbit's arcs flowing, as a small animated SVG. Each dash is one path: it slides along its own line (moved and
- *  turned through a few points on the way) while its outline eases from its shape where it starts to the shape a
- *  dash has where it stops, one or more spacings on. At the end of the loop every dash stands where another began,
- *  so it repeats without a seam; the file opens on the first frame, so design tools import it correctly. */
+/** Orbit's arcs flowing or swaying, as a small animated SVG. Each dash is one path. Flowing, it slides along its own
+ *  line (moved and turned through a few points on the way) while its outline eases from its shape where it starts
+ *  to the shape a dash has where it stops, one or more spacings on; at the end of the loop every dash stands where
+ *  another began, so it repeats without a seam. Swaying, it rides a track along its line out and back once a sway,
+ *  stretching as it goes. The file opens on the first frame, so design tools import it correctly. */
 function orbitAnimatedSVG(st, { transparent = false } = {}) {
-  const v = st.values, loop = loopSeconds(st), travel = Math.round(v.speed * loop / 5);
+  const v = st.values, loop = loopSeconds(st), travel = Math.round(v.speed * loop / 5), swaying = v.motion === 'sway';
+  // Sway: line k's dashes rock along it by k × Strength / 2 spacings, |travel| times a loop.
+  const amplitude = (k) => k * 0.5 * E.clamp(v.depth);
   const outlines = [];
-  outlines.travel = travel; outlines.steps = 4;
+  outlines.steps = 4;
+  outlines.reach = swaying
+    ? (k) => { const a = amplitude(k), m = Math.ceil(2 * a); return Array.from({ length: 2 * m + 1 }, (_, i) => a * (i / m - 1)); }
+    : () => [travel];
   const geo = orbitGeometry(v, 0, undefined, outlines), { width, height } = geo, round = E.clamp(v.radius);
   const n = (x) => { const s = String(Math.round(x * 10) / 10); return s === '-0' ? '0' : s; };
   const hex = (c) => '#' + c.map((x) => Math.round(E.clamp(x) * 255).toString(16).padStart(2, '0')).join('');
   const timing = `dur="${loop}s" repeatCount="indefinite"`, groups = new Map(), steps = 4 * Math.max(1, Math.abs(travel));
+  // One sway, timed to the microsecond (a third of 5 s rounded to a tenth would drift off the loop).
+  const cycle = `dur="${+(loop / Math.max(1, Math.abs(travel))).toFixed(6)}s" repeatCount="indefinite"`;
+  const f4 = (x) => String(Math.round(E.clamp(x) * 1e4) / 1e4).replace(/^0\./, '.');
+  const f5 = (x) => String(Math.round(E.clamp(x) * 1e5) / 1e5).replace(/^0\./, '.');
+  let samples = steps + 1;
   for (const o of outlines) {
-    const c0 = o.centre, c1 = o.centre + travel * o.S;
     const frame = (c) => {
       const [x, y] = o.place(c), [ax, ay] = o.place(c - o.S * 1e-3), [bx, by] = o.place(c + o.S * 1e-3);
       return [x, y, Math.atan2(by - ay, bx - ax)];
@@ -3699,16 +3710,100 @@ function orbitAnimatedSVG(st, { transparent = false } = {}) {
       const [x, y, a] = frame(c), cs = Math.cos(a), sn = Math.sin(a);
       return o.shape(c).map(([px, py, h]) => [(px - x) * cs + (py - y) * sn, -(px - x) * sn + (py - y) * cs, h]);
     };
+    const changes = (a, b) => a.some((p, i) => Math.abs(p[0] - b[i][0]) > 0.25 || Math.abs(p[1] - b[i][1]) > 0.25 || Math.abs(p[2] - b[i][2]) > 0.25);
+    const fill = hex(o.colour), list = groups.get(fill) || groups.set(fill, []).get(fill);
+    if (swaying) {
+      // The dash rides its own line between the sway's two ends, turned along it, and stretches along and across as
+      // the plane's depth changes it. The group's pose is the first frame for design tools; browsers clear it and
+      // play the ride.
+      const reach = amplitude(o.k) * o.S, c0 = o.centre, d0 = dashPath(local(c0), round, n), [x0, y0, a0] = frame(c0);
+      const pose = `translate(${n(x0)} ${n(y0)}) rotate(${n(a0 * 180 / Math.PI)})`;
+      const [ex, ey] = o.place(c0 + reach), [bx, by] = o.place(c0 - reach);
+      if (Math.hypot(ex - bx, ey - by) < 0.5) { list.push(`<path transform="${pose}" d="${d0}"/>`); continue; }
+      const tolerance = KEYFRAME_TOLERANCE.position;
+      // The dash's length and its thickness at the middle, wherever it is along its line.
+      const measure = (c) => { const line = o.shape(c); let length = 0; for (let i = 1; i < line.length; i++) length += Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1]); return [length, line[line.length >> 1][2]]; };
+      // The track: cubics with their handles along the line, halved wherever one strays from it.
+      const cubic = (ca, cb) => {
+        const ease = (cb - ca) * 1e-3, ends = [ca, cb].map((c) => {
+          const [x, y] = o.place(c), [ax, ay] = o.place(c - ease), [qx, qy] = o.place(c + ease);
+          return [x, y, (qx - ax) / (2 * ease) * (cb - ca) / 3, (qy - ay) / (2 * ease) * (cb - ca) / 3];
+        });
+        return [ends[0][0], ends[0][1], ends[0][0] + ends[0][2], ends[0][1] + ends[0][3], ends[1][0] - ends[1][2], ends[1][1] - ends[1][3], ends[1][0], ends[1][1]];
+      };
+      const bezier = ([x0, y0, x1, y1, x2, y2, x3, y3], t) => {
+        const a = (1 - t) ** 3, b = 3 * (1 - t) ** 2 * t, c = 3 * (1 - t) * t * t, d = t ** 3;
+        return [a * x0 + b * x1 + c * x2 + d * x3, a * y0 + b * y1 + c * y2 + d * y3];
+      };
+      // Accuracy only counts where it can be seen: on the page, or within a dash length of it.
+      const reachOut = Math.max(...[c0 - reach, c0, c0 + reach].map((c) => measure(c)[0]));
+      const seen = (x, y) => x > -reachOut && x < width + reachOut && y > -reachOut && y < height + reachOut;
+      let track = '';
+      const lay = (ca, cb, depth) => {
+        const B = cubic(ca, cb);
+        const checks = Array.from({ length: 15 }, (_, i) => [bezier(B, (i + 1) / 16), o.place(ca + (cb - ca) * (i + 1) / 16)]);
+        const xs = [B[0], B[2], B[4], B[6]], ys = [B[1], B[3], B[5], B[7]];  // the curve stays inside its handles' box
+        const shows = checks.some(([, [px, py]]) => seen(px, py)) || (Math.max(...xs) > -reachOut && Math.min(...xs) < width + reachOut && Math.max(...ys) > -reachOut && Math.min(...ys) < height + reachOut);
+        if (depth < 12 && shows && checks.some(([[x, y], [px, py]]) => Math.hypot(x - px, y - py) > tolerance)) {
+          lay(ca, (ca + cb) / 2, depth + 1); lay((ca + cb) / 2, cb, depth + 1); return;
+        }
+        track += `${track ? '' : `M${n(B[0])} ${n(B[1])}`}C${B.slice(2).map(n).join(' ')}`;
+        // Distances are measured along the track as drawn, as the browser measures them (off the page it may be rough).
+        for (let i = cs.length ? 1 : 0; i <= 32; i++) {
+          const [x, y] = bezier(B, i / 32);
+          ls.push(ls.length ? ls[ls.length - 1] + Math.hypot(x - lx, y - ly) : 0); cs.push(ca + (cb - ca) * i / 32); lx = x; ly = y;
+        }
+      };
+      const cs = [], ls = [];
+      let lx = 0, ly = 0;
+      lay(c0 - reach, c0, 0); lay(c0, c0 + reach, 0);
+      // How far along the track the dash is at c, how fast that grows, and the reverse.
+      const total = ls[ls.length - 1] || 1;
+      const bracket = (list, x) => { let low = 0, high = list.length - 1; while (high - low > 1) { const mid = (low + high) >> 1; if (list[mid] <= x) low = mid; else high = mid; } return low; };
+      const along = (c) => { const j = bracket(cs, c); return ls[j] + (ls[j + 1] - ls[j]) * E.clamp((c - cs[j]) / (cs[j + 1] - cs[j])); };
+      const rate = (c) => { const j = bracket(cs, c); return (ls[j + 1] - ls[j]) / (cs[j + 1] - cs[j]); };
+      const where = (L) => { const j = bracket(ls, L); return cs[j] + (cs[j + 1] - cs[j]) * E.clamp((L - ls[j]) / ((ls[j + 1] - ls[j]) || 1)); };
+      const way = v.speed < 0 ? -1 : 1, at = (u) => c0 + way * reach * Math.sin(2 * Math.PI * u);
+      const pace = (u) => rate(at(u)) * way * reach * 2 * Math.PI * Math.cos(2 * Math.PI * u);  // page distance per cycle
+      const [length0, half0] = measure(c0), scale = (u) => { const [length, half] = measure(at(u)); return [length / length0, half0 ? half / half0 : 1]; };
+      // Each stretch of time eases by a cubic matching the sine's pace at both ends; a stretch whose position or
+      // stretch strays more than the keyframe tolerance is halved (dashes swinging out of the distance speed up sharply).
+      const keyTimes = [0], keyPoints = [along(at(0))], scales = [scale(0)], splines = [];
+      const stretch = (a, b, depth) => {
+        const La = along(at(a)), Lb = along(at(b)), span = (Lb - La) / (b - a) || 1e-9, Sa = scale(a), Sb = scale(b);
+        const y1 = E.clamp(pace(a) / span / 3), y2 = E.clamp(1 - pace(b) / span / 3);
+        const checks = Array.from({ length: 15 }, (_, i) => {
+          const s = (i + 1) / 16, y = 3 * (1 - s) ** 2 * s * y1 + 3 * (1 - s) * s * s * y2 + s ** 3;
+          return [y, a + (b - a) * s];
+        });
+        const shows = checks.some(([y, u]) => seen(...o.place(at(u))) || seen(...o.place(where(La + (Lb - La) * y))));
+        const off = shows && checks.some(([y, u]) => {
+          const [sx, sy] = scale(u);
+          return Math.abs(La + (Lb - La) * y - along(at(u))) > tolerance
+            || Math.abs(Sa[0] + (Sb[0] - Sa[0]) * y - sx) * length0 / 2 > tolerance || Math.abs(Sa[1] + (Sb[1] - Sa[1]) * y - sy) * half0 > tolerance;
+        });
+        if (off && depth < 6) { stretch(a, (a + b) / 2, depth + 1); stretch((a + b) / 2, b, depth + 1); return; }
+        keyTimes.push(b); keyPoints.push(Lb); scales.push(Sb); splines.push(`.333 ${f4(y1)} .667 ${f4(y2)}`);
+      };
+      for (let i = 0; i < 4; i++) stretch(i / 4, (i + 1) / 4, 0);
+      samples = Math.max(samples, keyTimes.length);
+      const swayTiming = `${cycle} calcMode="spline" keyTimes="${keyTimes.map(f5).join(';')}" keySplines="${splines.join(';')}"`;
+      const s3 = (x) => String(Math.round(x * 1e3) / 1e3).replace(/^0\./, '.');
+      const stretches = scales.some(([sx, sy]) => Math.abs(sx - 1) * length0 / 2 > tolerance || Math.abs(sy - 1) * half0 > tolerance)
+        ? `<animateTransform attributeName="transform" type="scale" ${swayTiming} values="${scales.map(([sx, sy]) => `${s3(sx)} ${s3(sy)}`).join(';')}"/>` : '';
+      list.push(`<g transform="${pose}"><animateTransform attributeName="transform" type="translate" values="0 0" dur="1s" fill="freeze"/>`
+        + `<animateMotion ${swayTiming} rotate="auto" keyPoints="${keyPoints.map((k) => f4(k / total)).join(';')}" path="${track}"/><path d="${d0}">${stretches}</path></g>`);
+      continue;
+    }
+    const c0 = o.centre, c1 = o.centre + travel * o.S;
     const s0 = local(c0), s1 = local(c1);
     const d0 = dashPath(s0, round, n);
-    const moves = s0.some((p, i) => Math.abs(p[0] - s1[i][0]) > 0.25 || Math.abs(p[1] - s1[i][1]) > 0.25 || Math.abs(p[2] - s1[i][2]) > 0.25);
-    const morph = moves ? `<animate attributeName="d" ${timing} values="${d0};${dashPath(s1, round, n)}"/>` : '';
+    const morph = changes(s0, s1) ? `<animate attributeName="d" ${timing} values="${d0};${dashPath(s1, round, n)}"/>` : '';
     const track = [];
     for (let i = 0; i <= steps; i++) track.push(frame(c0 + (c1 - c0) * i / steps));
     for (let i = 1; i < track.length; i++) track[i][2] = track[i - 1][2] + Math.atan2(Math.sin(track[i][2] - track[i - 1][2]), Math.cos(track[i][2] - track[i - 1][2]));
     const [x0, y0, a0] = track[0], deg = (a) => n(a * 180 / Math.PI);
-    const fill = hex(o.colour);
-    (groups.get(fill) || groups.set(fill, []).get(fill)).push(`<g transform="translate(${n(x0)} ${n(y0)})"><animateTransform attributeName="transform" type="translate" ${timing} values="${track.map(([x, y]) => `${n(x)} ${n(y)}`).join(';')}"/>`
+    list.push(`<g transform="translate(${n(x0)} ${n(y0)})"><animateTransform attributeName="transform" type="translate" ${timing} values="${track.map(([x, y]) => `${n(x)} ${n(y)}`).join(';')}"/>`
       + `<path transform="rotate(${deg(a0)})" d="${d0}"><animateTransform attributeName="transform" type="rotate" ${timing} values="${track.map((t) => deg(t[2])).join(';')}"/>${morph}</path></g>`);
   }
   const escape = (s) => s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
@@ -3722,7 +3817,7 @@ ${[...groups].map(([fill, list]) => `<g fill="${fill}">\n${list.join('\n')}\n</g
 </g>
 </svg>`;
   if (svg.length > MAX_ANIMATED_SVG_BYTES) throw new Error(`This animated SVG would be ${Math.round(svg.length / 1e6)} MB. Export video instead, or use fewer lines.`);
-  return { svg, loop, marks: outlines.length, samples: steps + 1 };
+  return { svg, loop, marks: outlines.length, samples };
 }
 
 function exportAnimatedSVG() {
@@ -3731,8 +3826,8 @@ function exportAnimatedSVG() {
   // Let the message paint before the work starts.
   setTimeout(() => {
     try {
-      // Orbit's arcs flowing (and not pulsing) slide whole dashes; everything else is sampled mark by mark.
-      const v = state.values, sliding = kindOf(state) === 'orbit' && v.layout !== 'grid' && v.motion === 'flow' && !pulseActive(v.pulse);
+      // Orbit's arcs flowing or swaying (and not pulsing) slide whole dashes; everything else is sampled mark by mark.
+      const v = state.values, sliding = kindOf(state) === 'orbit' && v.layout !== 'grid' && v.motion !== 'none' && !pulseActive(v.pulse);
       const result = sliding ? orbitAnimatedSVG(state, { transparent: exportOptions.transparent }) : animatedSVG(state, { transparent: exportOptions.transparent });
       download(new Blob([result.svg], { type: 'image/svg+xml' }), `${fileBase()}_${result.loop}s-loop.svg`);
       const size = result.svg.length < 1e6 ? `${Math.round(result.svg.length / 1e3)} KB` : `${(result.svg.length / 1e6).toFixed(1)} MB`;
