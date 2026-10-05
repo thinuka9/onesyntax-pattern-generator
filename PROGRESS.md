@@ -15,7 +15,6 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
 
 **Not done yet**
 - Event Queue: the reference packs its finest lines tighter along the top right than the fit does.
-- The presets window could open scrolled to the current pattern's presets.
 - A lighter animated SVG for Orbit's Sway (Event Queue Sway is 5.8 MB; Flow is 0.79 MB).
 
 ## Built so far
@@ -146,6 +145,8 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
   left on an old name follows it to the new one.
 - Brand tooltips (inverted ink, square, shortcut chips) replace the system ones; solid presets header and thin
   scrollbars.
+- The presets window opens on the current pattern's presets: its group heading in view when the current card fits
+  below it, otherwise the current card's row just under the title bar. Only the cards in view stagger in.
 - Dropdowns open a brand-styled list (groups as headings, a check on the current choice) instead of the system
   list; paired limits (Thinnest/Thickest, Min/Max) never cross; every pattern with one shared mark opacity has an
   Opacity control.
