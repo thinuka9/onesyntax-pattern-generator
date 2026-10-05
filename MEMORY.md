@@ -71,7 +71,9 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
 ## Open
 
 - `PLUGIN\_archive\Archive.zip` (184 MB) is mostly dependencies and Mac system files; the `codex` project in it
-  exists nowhere else. Repack it with just the source, or delete it.
+  exists nowhere else. `repack-archive.ps1` (handed to the studio on 5 October, not kept here) writes
+  `Archive-source.zip` beside it without node_modules, Mac files or caches, and never touches the original: run it,
+  check the new zip, then delete the old one.
 
 ## Where things are
 
