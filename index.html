@@ -1442,8 +1442,8 @@ const PATTERNS = [
   { name: 'Cymatics', group: 'Wave studies', noShape: true,
     description: 'Symmetric figures traced in dots, shifting from one mode to the next.',
     sections: [
-      ['Plate', [range('field.chladni.n', 'Mode n', 1, 12, 1, int), range('field.chladni.m', 'Mode m', 1, 12, 1, int),
-        range('field.chladni.mix', 'Mix', -180, 180, 1, deg), range('shaping.gamma', 'Line sharpness', 0.5, 12, 0.1, f2)],
+      ['Plate', [range('field.plate.n', 'Mode n', 1, 12, 1, int), range('field.plate.m', 'Mode m', 1, 12, 1, int),
+        range('field.plate.mix', 'Mix', -180, 180, 1, deg), range('shaping.gamma', 'Line sharpness', 0.5, 12, 0.1, f2)],
         'Equal modes cancel out at −45°, so pick two different ones.'],
       ['Motion', studyMotion(), 'Morph melts the figure into its neighbours and back; Flow keeps turning the mix one way.'],
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Dots across', 8, 140, 1, int),
@@ -1531,7 +1531,7 @@ function setPath(o, path, value) {
 
 /** Studio presets switch parts off with `enabled: false`; here a weight of 0 does that, so one slider controls each part. */
 function normaliseStudio(p) {
-  for (const key of ['waveA', 'waveB', 'radial', 'noise', 'data', 'gradient', 'chladni', 'ripples', 'logo']) {
+  for (const key of ['waveA', 'waveB', 'radial', 'noise', 'data', 'gradient', 'plate', 'ripples', 'logo']) {
     const part = p.field[key];
     if (part && !part.enabled) { part.enabled = true; part.weight = 0; }
   }
@@ -1598,7 +1598,7 @@ function study(name, look, paletteName, tune) {
 const STUDY_PRESETS = [
   study('Cymatics', 'Resonance', 'Mono Dark', (p) => {
     Object.assign(p.layout, { columns: 76, rows: 76, margin: 70 });
-    Object.assign(p.field.chladni, { enabled: true, weight: 1, n: 3, m: 7, mix: -45 });
+    Object.assign(p.field.plate, { enabled: true, weight: 1, n: 3, m: 7, mix: -45 });
     p.shaping.gamma = 4.5;
     p.marks.shape = 'Dot';
     p.mappings.thickness = mappingOf('field', 1.2, 12); p.mappings.length = mappingOf('field', 1.2, 12);
@@ -1705,9 +1705,9 @@ const MORE_PRESETS = [
     'mappings.length.min': 16, 'mappings.length.max': 150, 'field.waveA.frequency': 2.4, 'field.waveA.direction': 60, 'shaping.quantise': 5 } },
   { name: 'Register', from: 'Call Stack', palette: 'Ember', set: { 'layout.columns': 3, 'layout.rows': 20, 'layout.gutterX': 40, 'mappings.thickness.min': 10, 'mappings.thickness.max': 10,
     'mappings.length.min': 40, 'mappings.length.max': 300, 'field.waveA.frequency': 0.7, 'field.waveA.direction': 100, 'shaping.quantise': 12 } },
-  { name: 'Overflow', from: 'Resonance', palette: 'Ember', set: { 'field.chladni.n': 5, 'field.chladni.m': 2, 'field.chladni.mix': -20, 'shaping.gamma': 6,
+  { name: 'Overflow', from: 'Resonance', palette: 'Ember', set: { 'field.plate.n': 5, 'field.plate.m': 2, 'field.plate.mix': -20, 'shaping.gamma': 6,
     'layout.columns': 90, 'layout.rows': 90, 'mappings.thickness.max': 9, 'mappings.length.max': 9, 'mappings.opacity.min': 0.1 } },
-  { name: 'Daemon', from: 'Resonance', palette: 'Ice', set: { 'field.chladni.n': 6, 'field.chladni.m': 9, 'field.chladni.mix': 30, 'shaping.gamma': 3,
+  { name: 'Daemon', from: 'Resonance', palette: 'Ice', set: { 'field.plate.n': 6, 'field.plate.m': 9, 'field.plate.mix': 30, 'shaping.gamma': 3,
     'layout.columns': 110, 'layout.rows': 110, 'mappings.thickness.max': 7, 'mappings.length.max': 7, 'mappings.opacity.min': 0.25 } },
   { name: 'Cluster', from: 'Concurrency', palette: 'Mono Dark', set: { 'field.ripples.sources': 5, 'field.ripples.spread': 0.3, 'field.ripples.frequency': 14,
     'field.ripples.decay': 0.4, 'field.ripples.rotation': 0, 'shaping.contrast': 1.8, 'layout.columns': 100, 'layout.rows': 100, 'mappings.thickness.max': 8, 'mappings.length.max': 8 } },
@@ -1729,7 +1729,13 @@ function sanitizeState(st) {
   if (pattern.kind === 'rows') return { pattern: pattern.name, values: sanitizeRows(st && st.values) };
   if (pattern.kind === 'mark') return { pattern: pattern.name, values: sanitizeMark(st && st.values) };
   if (pattern.kind === 'orbit') return { pattern: pattern.name, values: sanitizeOrbit(st && st.values, st && st.pattern) };
-  const source = st && st.values;
+  let source = st && st.values;
+  // Saves and links from before 5 October keep the plate's settings under its old key, `chladni`.
+  const field = source && source.field;
+  if (field && typeof field === 'object' && field.chladni && !field.plate) {
+    const { chladni, ...rest } = field;
+    source = { ...source, field: { ...rest, plate: chladni } };
+  }
   const values = normaliseStudio(deepMerge(structuredClone(firstPreset(pattern.name).values), source));
   values.name = pattern.name;  // a save from before a rename carries the old name into its SVG title
   // Pulses saved before the on/off switch existed were on whenever they were set.
@@ -2817,7 +2823,7 @@ function remixStudio(pattern, v, base, pick, random, palette) {
     case 'Strands': v.layout.strandDisplacement = pick([48, 72, 100]); v.colour.accentEvery = pick([0, 7, 13]); break;
     case 'Cymatics': {
       const [n, m] = pick(PLATE_MODES);
-      Object.assign(f.chladni, { n, m, mix: pick([-45, 45]) }); v.shaping.gamma = pick([3.5, 4.5, 6]); break;
+      Object.assign(f.plate, { n, m, mix: pick([-45, 45]) }); v.shaping.gamma = pick([3.5, 4.5, 6]); break;
     }
     case 'Interference':
       Object.assign(f.ripples, { sources: pick([2, 3, 4, 6]), spread: pick([0.12, 0.18, 0.25]), frequency: pick([6, 8, 10, 12]), rotation: pick([0, 45, 90]), decay: 0 }); break;

@@ -48,6 +48,9 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
 - **Presets (5 October):** every pattern has at least three; 50 in all.
 - **Large formats (5 October):** studio patterns scale with the page (A4), so marks keep their proportion.
 - **Publishing (5 October):** comments stripped on publish; handover is a zip of the live site.
+- **Setting keys (5 October):** the plate's settings key is `plate`, not `chladni`. `sanitizeState` moves an old
+  `field.chladni` to `field.plate`, so saves, sessions, imported JSON and share links from before still open (checked
+  with a link and a preset made in the old version: identical output).
 - **Orbit Sway animated SVG (5 October):** dashes ride their lines (`animateMotion`) and stretch along and across,
   instead of going mark by mark: half the size or less, and closer to the app. Small bend errors on tight dashes
   are the accepted cost.
@@ -65,7 +68,6 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
 
 ## Open
 
-- Setting keys in the code still say `chladni`; renaming them means converting old saves and links.
 - `PLUGIN\_archive\Archive.zip` (184 MB) is mostly dependencies and Mac system files; the `codex` project in it
   exists nowhere else. Repack it with just the source, or delete it.
 
