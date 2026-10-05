@@ -3428,43 +3428,10 @@ function continuousColour(params, x, y) {
   return E.paletteAt(params, min + (max - min) * E.clamp(t));
 }
 
-function animatedSVG(st, { transparent = false } = {}) {
-  // Orbit's arcs go piece by piece here, as few pieces as each curve needs, to keep the file small.
-  const loop = loopSeconds(st), first = geometryFor(st, 0, undefined, true);
-  // A hundred samples a loop (20 a second over 5 s) catch every turn of the motion, and keep each keyframe time to
-  // two decimals; the keyframe pass then keeps only what is needed.
-  const samples = 100, S = samples + 1;  // plus the sample that closes the loop
-  // Each mark's samples sit in one typed array, F fields per sample.
-  const X = 0, Y = 1, W = 2, H = 3, A = 4, O = 5, RED = 6, GREEN = 7, BLUE = 8, RADIUS = 9, F = 10;
-  const byId = new Map(), tracks = [];
-  for (let k = 0; k < samples; k++) {
-    const geo = k ? geometryFor(st, k * loop / samples, undefined, true) : first;
-    const I = geo.instances, continuous = geo.params.colour.continuous;
-    for (let i = 0; i < geo.count; i++) {
-      const o = i * STRIDE, shape = I[o + 7];
-      let track = byId.get(I[o + 13]);
-      if (!track) {
-        track = { layer: Math.round(E.clamp(I[o + 12], 0, 3)), shape, skew: shape === 2 ? I[o + 6] : 0, data: new Float32Array(S * F).fill(NaN) };
-        byId.set(I[o + 13], track);
-        tracks.push(track);
-      }
-      const d = track.data, p = k * F, w = I[o + 2], h = I[o + 3];
-      const colour = continuous && track.layer < 3 ? continuousColour(geo.params, I[o], I[o + 1]) : [I[o + 8], I[o + 9], I[o + 10]];
-      d[p + X] = I[o]; d[p + Y] = I[o + 1]; d[p + W] = w; d[p + H] = h; d[p + A] = I[o + 4] * 180 / Math.PI;
-      d[p + O] = Math.min(1, I[o + 11]); d[p + RED] = colour[0]; d[p + GREEN] = colour[1]; d[p + BLUE] = colour[2];
-      d[p + RADIUS] = shape === 1 || shape === 3 ? Math.min(w, h) / 2 : E.clamp(I[o + 5], 0, Math.min(w, h) / 2);
-    }
-  }
-
-  // Short numbers: only the digits that show, no leading zero ("-.5", ".25").
-  const num = (v, digits) => {
-    const s = String(Math.round(v * 10 ** digits) / 10 ** digits);
-    return s === '-0' ? '0' : s.replace(/^(-?)0\./, '$1.');
-  };
-  const hex = (r, g, b) => '#' + [r, g, b].map((c) => Math.round(E.clamp(c) * 255).toString(16).padStart(2, '0')).join('');
-  const wrap180 = (deg) => ((deg + 90) % 180 + 180) % 180 - 90;  // every mark shape looks the same turned 180°
-  const timing = `dur="${loop}s" repeatCount="indefinite"`;
-
+/** Keyframe helpers shared by the animated SVG exports: `samples` evenly spaced samples a loop (plus one closing
+ *  it), F fields per sample in one typed array, `timing` the loop's dur and repeat, `num` the number writer. */
+function keyframer(samples, F, timing, num) {
+  const S = samples + 1;
   /**
    * The samples an animation needs, so every dropped one lies within its tolerance of the curve between kept
    * ones (Ramer–Douglas–Peucker). `eased` first keeps each turning point (a peak or trough that swings by more
@@ -3538,6 +3505,48 @@ function animatedSVG(st, { transparent = false } = {}) {
       : `<animate attributeName="${attribute}" ${best.attributes}/>`;
     return { value: best.values[0], animation: element };
   }
+
+  return { keyframes, evenStep, series };
+}
+
+function animatedSVG(st, { transparent = false } = {}) {
+  // Orbit's arcs go piece by piece here, as few pieces as each curve needs, to keep the file small.
+  const loop = loopSeconds(st), first = geometryFor(st, 0, undefined, true);
+  // A hundred samples a loop (20 a second over 5 s) catch every turn of the motion, and keep each keyframe time to
+  // two decimals; the keyframe pass then keeps only what is needed.
+  const samples = 100, S = samples + 1;  // plus the sample that closes the loop
+  // Each mark's samples sit in one typed array, F fields per sample.
+  const X = 0, Y = 1, W = 2, H = 3, A = 4, O = 5, RED = 6, GREEN = 7, BLUE = 8, RADIUS = 9, F = 10;
+  const byId = new Map(), tracks = [];
+  for (let k = 0; k < samples; k++) {
+    const geo = k ? geometryFor(st, k * loop / samples, undefined, true) : first;
+    const I = geo.instances, continuous = geo.params.colour.continuous;
+    for (let i = 0; i < geo.count; i++) {
+      const o = i * STRIDE, shape = I[o + 7];
+      let track = byId.get(I[o + 13]);
+      if (!track) {
+        track = { layer: Math.round(E.clamp(I[o + 12], 0, 3)), shape, skew: shape === 2 ? I[o + 6] : 0, data: new Float32Array(S * F).fill(NaN) };
+        byId.set(I[o + 13], track);
+        tracks.push(track);
+      }
+      const d = track.data, p = k * F, w = I[o + 2], h = I[o + 3];
+      const colour = continuous && track.layer < 3 ? continuousColour(geo.params, I[o], I[o + 1]) : [I[o + 8], I[o + 9], I[o + 10]];
+      d[p + X] = I[o]; d[p + Y] = I[o + 1]; d[p + W] = w; d[p + H] = h; d[p + A] = I[o + 4] * 180 / Math.PI;
+      d[p + O] = Math.min(1, I[o + 11]); d[p + RED] = colour[0]; d[p + GREEN] = colour[1]; d[p + BLUE] = colour[2];
+      d[p + RADIUS] = shape === 1 || shape === 3 ? Math.min(w, h) / 2 : E.clamp(I[o + 5], 0, Math.min(w, h) / 2);
+    }
+  }
+
+  // Short numbers: only the digits that show, no leading zero ("-.5", ".25").
+  const num = (v, digits) => {
+    const s = String(Math.round(v * 10 ** digits) / 10 ** digits);
+    return s === '-0' ? '0' : s.replace(/^(-?)0\./, '$1.');
+  };
+  const hex = (r, g, b) => '#' + [r, g, b].map((c) => Math.round(E.clamp(c) * 255).toString(16).padStart(2, '0')).join('');
+  const wrap180 = (deg) => ((deg + 90) % 180 + 180) % 180 - 90;  // every mark shape looks the same turned 180°
+  const timing = `dur="${loop}s" repeatCount="indefinite"`;
+
+  const { keyframes, evenStep, series } = keyframer(samples, F, timing, num);
 
   // ---- Shared motion ----
   // A mark that stays put and only fades, recolours or resizes often follows the same motion as many others,
@@ -3749,13 +3758,15 @@ ${['track', 'fill', 'cap', 'accent'].map((name, layer) => layers[layer].length ?
   return { svg, loop, marks, samples };
 }
 
-/** Orbit's arcs flowing or swaying, as a small animated SVG. Each dash is one path. Flowing, it slides along its own
- *  line (moved and turned through a few points on the way) while its outline eases from its shape where it starts
- *  to the shape a dash has where it stops, one or more spacings on; at the end of the loop every dash stands where
- *  another began, so it repeats without a seam. Swaying, it rides a track along its line out and back once a sway,
- *  stretching as it goes. The file opens on the first frame, so design tools import it correctly. */
+/** Orbit's arcs animated (still, flowing or swaying, with or without Pulse), as a small SVG. Each dash is one path.
+ *  Flowing, it slides along its own line (moved and turned through a few points on the way) while its outline eases
+ *  from its shape where it starts to the shape a dash has where it stops, one or more spacings on; at the end of the
+ *  loop every dash stands where another began, so it repeats without a seam. Swaying, it rides a track along its
+ *  line out and back once a sway, stretching as it goes. Pulse fades and sizes each dash by where it is at each
+ *  moment. The file opens on the first frame, so design tools import it correctly. */
 function orbitAnimatedSVG(st, { transparent = false } = {}) {
-  const v = st.values, loop = loopSeconds(st), travel = Math.round(v.speed * loop / 5), swaying = v.motion === 'sway';
+  const v = st.values, loop = loopSeconds(st), still = v.motion === 'none', swaying = v.motion === 'sway';
+  const travel = still ? 0 : Math.round(v.speed * loop / 5), pulsing = pulseActive(v.pulse);
   // Sway: line k's dashes rock along it by k × Strength / 2 spacings, |travel| times a loop.
   const amplitude = (k) => k * 0.5 * E.clamp(v.depth);
   const outlines = [];
@@ -3763,7 +3774,8 @@ function orbitAnimatedSVG(st, { transparent = false } = {}) {
   outlines.reach = swaying
     ? (k) => { const a = amplitude(k), m = Math.ceil(2 * a); return Array.from({ length: 2 * m + 1 }, (_, i) => a * (i / m - 1)); }
     : () => [travel];
-  const geo = orbitGeometry(v, 0, undefined, outlines), { width, height } = geo, round = E.clamp(v.radius);
+  // Pulse is read below, per dash and per moment, so the dashes are laid out without it: full colour, full size.
+  const geo = orbitGeometry(pulsing ? { ...v, pulse: { ...v.pulse, enabled: false } } : v, 0, undefined, outlines), { width, height } = geo, round = E.clamp(v.radius);
   const n = (x) => { const s = String(Math.round(x * 10) / 10); return s === '-0' ? '0' : s; };
   const hex = (c) => '#' + c.map((x) => Math.round(E.clamp(x) * 255).toString(16).padStart(2, '0')).join('');
   const timing = `dur="${loop}s" repeatCount="indefinite"`, groups = new Map(), steps = 4 * Math.max(1, Math.abs(travel));
@@ -3772,6 +3784,30 @@ function orbitAnimatedSVG(st, { transparent = false } = {}) {
   const f4 = (x) => String(Math.round(E.clamp(x) * 1e4) / 1e4).replace(/^0\./, '.');
   const f5 = (x) => String(Math.round(E.clamp(x) * 1e5) / 1e5).replace(/^0\./, '.');
   let samples = steps + 1;
+  // Pulse: a dash's fade and size, read where its middle is at a hundred moments a loop, kept as the few keyframes
+  // they need (the same pass as the mark-by-mark export). `at(u)` is where the dash is along its line u of the way
+  // through the loop; `half` half its length on the page, for the size tolerance.
+  const PULSE_SAMPLES = 100;
+  const short = (x, digits) => { const s = String(Math.round(x * 10 ** digits) / 10 ** digits); return s === '-0' ? '0' : s.replace(/^(-?)0\./, '$1.'); };
+  const pulses = pulsing ? Array.from({ length: PULSE_SAMPLES }, (_, m) => pulseField(v.pulse, m * loop / PULSE_SAMPLES)) : [];
+  const pulseKeys = pulsing ? keyframer(PULSE_SAMPLES, 2, timing, short) : null;
+  function pulseOf(o, at, half) {
+    const d = new Float32Array((PULSE_SAMPLES + 1) * 2);
+    let shown = 0;
+    for (let m = 0; m < PULSE_SAMPLES; m++) {
+      const [x, y] = o.place(at(m / PULSE_SAMPLES)), [alpha, size] = pulses[m](x / width, y / height);
+      d[2 * m] = alpha; d[2 * m + 1] = size;
+      if (size > 0.001) shown = Math.max(shown, alpha);
+    }
+    if (shown < 0.004) return null;  // faded or shrunk away the whole loop
+    d[2 * PULSE_SAMPLES] = d[0]; d[2 * PULSE_SAMPLES + 1] = d[1];  // the loop closes on its first moment
+    return {
+      fade: pulseKeys.series(d, [0], KEYFRAME_TOLERANCE.opacity, (p) => short(d[p], 3), 'opacity'),
+      size: pulseKeys.series(d, [1], KEYFRAME_TOLERANCE.size / Math.max(1, half), (p) => short(d[p + 1], 3), null, 'scale'),
+    };
+  }
+  const adding = (animation) => animation.replace('<animateTransform ', '<animateTransform additive="sum" ');
+  const pathOf = (attributes, inner) => inner ? `<path${attributes}>${inner}</path>` : `<path${attributes}/>`;
   for (const o of outlines) {
     const frame = (c) => {
       const [x, y] = o.place(c), [ax, ay] = o.place(c - o.S * 1e-3), [bx, by] = o.place(c + o.S * 1e-3);
@@ -3784,14 +3820,32 @@ function orbitAnimatedSVG(st, { transparent = false } = {}) {
     };
     const changes = (a, b) => a.some((p, i) => Math.abs(p[0] - b[i][0]) > 0.25 || Math.abs(p[1] - b[i][1]) > 0.25 || Math.abs(p[2] - b[i][2]) > 0.25);
     const fill = hex(o.colour), list = groups.get(fill) || groups.set(fill, []).get(fill);
+    const c0 = o.centre, reach = swaying ? amplitude(o.k) * o.S : 0, way = v.speed < 0 ? -1 : 1;
+    const half = o.line.reduce((sum, p, i, line) => (i ? sum + Math.hypot(p[0] - line[i - 1][0], p[1] - line[i - 1][1]) : 0), 0) / 2;
+    const pulse = pulsing ? pulseOf(o, (u) => (swaying ? c0 + way * reach * Math.sin(2 * Math.PI * Math.abs(travel) * u) : c0 + travel * o.S * u), half) : null;
+    if (pulsing && !pulse) continue;
+    // A size that never changes is drawn into the outline; one that does is a scale about the dash's middle, added
+    // onto any stretch, its first value written out for design tools.
+    const size = pulse && !pulse.size.animation ? +pulse.size.value : 1;
+    const outline = (c) => (size === 1 ? local(c) : local(c).map(([x, y, h]) => [x * size, y * size, h * size]));
+    const fade = pulse && pulse.fade.value !== '1' ? ` opacity="${pulse.fade.value}"` : '', fading = pulse ? pulse.fade.animation : '';
+    const growing = pulse ? pulse.size.animation : '', grownFrom = growing ? `scale(${pulse.size.value})` : '';
+    const standing = (pose, d0) => (growing
+      ? `<g transform="${pose}">${pathOf(` transform="${grownFrom}" d="${d0}"${fade}`, growing + fading)}</g>`
+      : pathOf(` transform="${pose}" d="${d0}"${fade}`, fading));
+    if (still) {
+      const [x0, y0, a0] = frame(c0);
+      list.push(standing(`translate(${n(x0)} ${n(y0)}) rotate(${n(a0 * 180 / Math.PI)})`, dashPath(outline(c0), round, n)));
+      continue;
+    }
     if (swaying) {
       // The dash rides its own line between the sway's two ends, turned along it, and stretches along and across as
       // the plane's depth changes it. The group's pose is the first frame for design tools; browsers clear it and
       // play the ride.
-      const reach = amplitude(o.k) * o.S, c0 = o.centre, d0 = dashPath(local(c0), round, n), [x0, y0, a0] = frame(c0);
+      const d0 = dashPath(outline(c0), round, n), [x0, y0, a0] = frame(c0);
       const pose = `translate(${n(x0)} ${n(y0)}) rotate(${n(a0 * 180 / Math.PI)})`;
       const [ex, ey] = o.place(c0 + reach), [bx, by] = o.place(c0 - reach);
-      if (Math.hypot(ex - bx, ey - by) < 0.5) { list.push(`<path transform="${pose}" d="${d0}"/>`); continue; }
+      if (Math.hypot(ex - bx, ey - by) < 0.5) { list.push(standing(pose, d0)); continue; }
       const tolerance = KEYFRAME_TOLERANCE.position;
       // The dash's length and its thickness at the middle, wherever it is along its line.
       const measure = (c) => { const line = o.shape(c); let length = 0; for (let i = 1; i < line.length; i++) length += Math.hypot(line[i][0] - line[i - 1][0], line[i][1] - line[i - 1][1]); return [length, line[line.length >> 1][2]]; };
@@ -3835,7 +3889,7 @@ function orbitAnimatedSVG(st, { transparent = false } = {}) {
       const along = (c) => { const j = bracket(cs, c); return ls[j] + (ls[j + 1] - ls[j]) * E.clamp((c - cs[j]) / (cs[j + 1] - cs[j])); };
       const rate = (c) => { const j = bracket(cs, c); return (ls[j + 1] - ls[j]) / (cs[j + 1] - cs[j]); };
       const where = (L) => { const j = bracket(ls, L); return cs[j] + (cs[j + 1] - cs[j]) * E.clamp((L - ls[j]) / ((ls[j + 1] - ls[j]) || 1)); };
-      const way = v.speed < 0 ? -1 : 1, at = (u) => c0 + way * reach * Math.sin(2 * Math.PI * u);
+      const at = (u) => c0 + way * reach * Math.sin(2 * Math.PI * u);
       const pace = (u) => rate(at(u)) * way * reach * 2 * Math.PI * Math.cos(2 * Math.PI * u);  // page distance per cycle
       const [length0, half0] = measure(c0), scale = (u) => { const [length, half] = measure(at(u)); return [length / length0, half0 ? half / half0 : 1]; };
       // Each stretch of time eases by a cubic matching the sine's pace at both ends; a stretch whose position or
@@ -3864,11 +3918,12 @@ function orbitAnimatedSVG(st, { transparent = false } = {}) {
       const stretches = scales.some(([sx, sy]) => Math.abs(sx - 1) * length0 / 2 > tolerance || Math.abs(sy - 1) * half0 > tolerance)
         ? `<animateTransform attributeName="transform" type="scale" ${swayTiming} values="${scales.map(([sx, sy]) => `${s3(sx)} ${s3(sy)}`).join(';')}"/>` : '';
       list.push(`<g transform="${pose}"><animateTransform attributeName="transform" type="translate" values="0 0" dur="1s" fill="freeze"/>`
-        + `<animateMotion ${swayTiming} rotate="auto" keyPoints="${keyPoints.map((k) => f4(k / total)).join(';')}" path="${track}"/><path d="${d0}">${stretches}</path></g>`);
+        + `<animateMotion ${swayTiming} rotate="auto" keyPoints="${keyPoints.map((k) => f4(k / total)).join(';')}" path="${track}"/>`
+        + `${pathOf(`${grownFrom ? ` transform="${grownFrom}"` : ''} d="${d0}"${fade}`, stretches + (stretches && growing ? adding(growing) : growing) + fading)}</g>`);
       continue;
     }
-    const c0 = o.centre, c1 = o.centre + travel * o.S;
-    const s0 = local(c0), s1 = local(c1);
+    const c1 = c0 + travel * o.S;
+    const s0 = outline(c0), s1 = outline(c1);
     const d0 = dashPath(s0, round, n);
     const morph = changes(s0, s1) ? `<animate attributeName="d" ${timing} values="${d0};${dashPath(s1, round, n)}"/>` : '';
     const track = [];
@@ -3876,7 +3931,7 @@ function orbitAnimatedSVG(st, { transparent = false } = {}) {
     for (let i = 1; i < track.length; i++) track[i][2] = track[i - 1][2] + Math.atan2(Math.sin(track[i][2] - track[i - 1][2]), Math.cos(track[i][2] - track[i - 1][2]));
     const [x0, y0, a0] = track[0], deg = (a) => n(a * 180 / Math.PI);
     list.push(`<g transform="translate(${n(x0)} ${n(y0)})"><animateTransform attributeName="transform" type="translate" ${timing} values="${track.map(([x, y]) => `${n(x)} ${n(y)}`).join(';')}"/>`
-      + `<path transform="rotate(${deg(a0)})" d="${d0}"><animateTransform attributeName="transform" type="rotate" ${timing} values="${track.map((t) => deg(t[2])).join(';')}"/>${morph}</path></g>`);
+      + `<path transform="rotate(${deg(a0)})${grownFrom ? ' ' + grownFrom : ''}" d="${d0}"${fade}><animateTransform attributeName="transform" type="rotate" ${timing} values="${track.map((t) => deg(t[2])).join(';')}"/>${growing ? adding(growing) : ''}${morph}${fading}</path></g>`);
   }
   const escape = (s) => s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
   const clip = geo.clip;
@@ -3898,8 +3953,8 @@ function exportAnimatedSVG() {
   // Let the message paint before the work starts.
   setTimeout(() => {
     try {
-      // Orbit's arcs flowing or swaying (and not pulsing) slide whole dashes; everything else is sampled mark by mark.
-      const v = state.values, sliding = kindOf(state) === 'orbit' && v.layout !== 'grid' && v.motion !== 'none' && !pulseActive(v.pulse);
+      // Orbit's arcs animate whole dashes (sliding, swaying, pulsing); everything else is sampled mark by mark.
+      const v = state.values, sliding = kindOf(state) === 'orbit' && v.layout !== 'grid';
       const result = sliding ? orbitAnimatedSVG(state, { transparent: exportOptions.transparent }) : animatedSVG(state, { transparent: exportOptions.transparent });
       download(new Blob([result.svg], { type: 'image/svg+xml' }), `${fileBase()}_${result.loop}s-loop.svg`);
       const size = result.svg.length < 1e6 ? `${Math.round(result.svg.length / 1e3)} KB` : `${(result.svg.length / 1e6).toFixed(1)} MB`;
