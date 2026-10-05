@@ -11,13 +11,17 @@ $parent = Split-Path $PSScriptRoot -Parent
 $folder = Join-Path ([IO.Path]::GetTempPath()) $Name
 $zip = Join-Path $parent "$Name.zip"
 if (Test-Path $folder) { Remove-Item $folder -Recurse -Force }
-New-Item -ItemType Directory -Force (Join-Path $folder 'brand') | Out-Null
+New-Item -ItemType Directory -Force $folder | Out-Null
 
-$files = @('index.html', 'engine.js') + (Get-ChildItem (Join-Path $PSScriptRoot 'brand') -File | ForEach-Object { "brand/$($_.Name)" })
+# The page, the engine, and every file in brand/ and vendor/ (fonts, libraries and their licences).
+$local = { param($dir) Get-ChildItem (Join-Path $PSScriptRoot $dir) -File -Recurse | ForEach-Object { $_.FullName.Substring($PSScriptRoot.Length + 1).Replace('\', '/') } }
+$files = @('index.html', 'engine.js') + (& $local 'brand') + (& $local 'vendor')
 foreach ($file in $files) {
   # Cloudflare answers /index.html with a 308 to /, which Windows PowerShell does not follow: ask for / directly.
   $path = if ($file -eq 'index.html') { '' } else { $file }
-  Invoke-WebRequest -UseBasicParsing -Uri "$Site/$path" -OutFile (Join-Path $folder $file)
+  $target = Join-Path $folder $file
+  New-Item -ItemType Directory -Force (Split-Path $target -Parent) | Out-Null
+  Invoke-WebRequest -UseBasicParsing -Uri "$Site/$path" -OutFile $target
 }
 # The handover must carry no notes: stop if a comment slipped through the build.
 $code = (Get-Content (Join-Path $folder 'index.html') -Raw) + (Get-Content (Join-Path $folder 'engine.js') -Raw)
@@ -26,13 +30,12 @@ if ($code -match '<!--|/\*\*') { throw 'The deployed site still has comments in 
 @"
 OneSyntax Pattern Generator
 
-A static web app: index.html, engine.js and the brand folder. It needs no build and no server code.
+A static web app: index.html, engine.js and the brand and vendor folders. It needs no build, no server code and
+no internet connection: the Geist fonts and the libraries it uses are in the vendor folder, with their licences.
 
 To host it, upload these files as they are to any static host (Cloudflare Pages, Netlify, Vercel, an S3 bucket
 or a plain web server) and open index.html from there. It must be served over http(s): opening the file straight
 from disk stops the Logo Field reading the brand marks.
-
-Video export loads one small library (mp4-muxer) from a public CDN when first used.
 "@ | Set-Content -Encoding utf8 (Join-Path $folder 'README.txt')
 
 if (Test-Path $zip) { Remove-Item $zip -Force }

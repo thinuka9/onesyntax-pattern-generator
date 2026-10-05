@@ -5,11 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Pattern Generator · OneSyntax</title>
 <link rel="icon" type="image/svg+xml" href="./brand/onesyntax-symbol-black.svg">
-<!-- OneSyntax brand type: Geist for text, Geist Mono for values. -->
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600&family=Geist+Mono:wght@400;500;600&display=swap">
+<!-- OneSyntax brand type: Geist for text, Geist Mono for values, served with the page (vendor/fonts) so it works
+     offline and from any host. -->
+<link rel="preload" href="./vendor/fonts/Geist-Variable.woff2" as="font" type="font/woff2" crossorigin>
+<link rel="preload" href="./vendor/fonts/GeistMono-Variable.woff2" as="font" type="font/woff2" crossorigin>
 <style>
+  @font-face { font-family: 'Geist'; src: url('./vendor/fonts/Geist-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
+  @font-face { font-family: 'Geist Mono'; src: url('./vendor/fonts/GeistMono-Variable.woff2') format('woff2'); font-weight: 100 900; font-style: normal; font-display: swap; }
   /* OneSyntax design system (Rebranding file): square corners, Geist set tight, solid Black / Primary Blue
      actions with sentence-case labels. Controls are filled, never outlined: choices are segments in a tinted
      track, the chosen one a solid white block; colours are square tiles. Icons are Lucide, kept inline. */
@@ -475,7 +477,7 @@
 
 <div class="swatch-pop" id="swatchPop" role="dialog" aria-label="OneSyntax brand colours" hidden></div>
 
-<script src="https://cdn.jsdelivr.net/npm/motion@12.23.12/dist/motion.js"></script>
+<script src="./vendor/motion.js"></script>
 <script src="./engine.js"></script>
 <script>
 const E = window.WaveEngine;
@@ -3854,7 +3856,7 @@ const loopSeconds = (st) => speedsOf(st).every(Number.isInteger) ? 5 : 10;
 // Fast path: WebCodecs encodes each frame as soon as it is drawn (no real-time wait, the tab may be hidden), at exact
 // frame times, and mp4-muxer (MIT, loaded on first use) packs the H.264 stream into an MP4. Where the browser lacks
 // either, or anything fails, exportVideo falls back to recordLoop below.
-const MP4_MUXER = 'https://cdn.jsdelivr.net/npm/mp4-muxer@5.2.1/build/mp4-muxer.min.js';
+const MP4_MUXER = './vendor/mp4-muxer.js';
 let muxerLoading = null;
 const loadMuxer = () => window.Mp4Muxer ? Promise.resolve(window.Mp4Muxer) : (muxerLoading ||= new Promise((resolve, reject) => {
   const script = document.createElement('script');

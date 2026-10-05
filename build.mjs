@@ -25,4 +25,6 @@ await mkdir('dist');
 await writeFile('dist/index.html', await page(await readFile('index.html', 'utf8')));
 await writeFile('dist/engine.js', await script(await readFile('engine.js', 'utf8')));
 await cp('brand', 'dist/brand', { recursive: true });
+// Fonts and libraries ship as they came from npm, licence notices included.
+await cp('vendor', 'dist/vendor', { recursive: true });
 console.log('dist/ written without comments');

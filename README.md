@@ -58,20 +58,23 @@ build.mjs           Writes the app into dist/ with every comment stripped (the p
 package.json        Build tooling only (terser); the app itself needs no install.
 handover.ps1        Downloads the live site and zips the client's copy (no notes, no history).
 brand/              Official OneSyntax logo files (from the Rebranding Figma file).
+vendor/             Geist fonts, Motion and mp4-muxer as they came from npm, with their licences.
 .claude/            Preview configuration for Claude Code.
 ```
 
 ## Dependencies
 
-Geist and Motion load from CDNs at runtime; the icons are part of the page:
+Everything ships with the app in `vendor/` (copied from npm, with each licence beside it), so it runs offline and
+makes no requests to other sites; the icons are part of the page:
 
 | Library | Version | Licence | Used for |
 |---|---|---|---|
-| [Geist / Geist Mono](https://vercel.com/font) (Google Fonts) | latest | SIL OFL 1.1 | Brand typography |
+| [Geist / Geist Mono](https://vercel.com/font) (npm `geist`) | 1.7.2 | SIL OFL 1.1 | Brand typography: the two variable fonts (`vendor/fonts`, 141 KB), preloaded |
 | [Lucide](https://lucide.dev) | 0.460.0 | ISC | Icons: the 24 the app uses are kept in the page, not loaded |
-| [Motion](https://motion.dev) | 12.23.12 | MIT | UI micro-animations |
-| [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) | 5.2.1 | MIT | Packing fast video exports into MP4 (loaded only when exporting video) |
+| [Motion](https://motion.dev) | 12.23.12 | MIT | UI micro-animations (`vendor/motion.js`) |
+| [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) | 5.2.1 | MIT | Packing fast video exports into MP4 (`vendor/mp4-muxer.js`, loaded only when exporting video) |
 
-Without the CDNs the tool still works: text falls back to the system font and animations are skipped.
+To update one, replace its file from the npm package (`npm pack <name>@<version>`) and its licence, then change the
+version here.
 
 The OneSyntax name, logo files and colours belong to OneSyntax.

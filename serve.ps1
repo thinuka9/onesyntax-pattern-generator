@@ -7,6 +7,7 @@ param([string]$Root = $PSScriptRoot, [int]$Port = 4174)
 $types = @{
   '.html' = 'text/html; charset=utf-8'; '.js' = 'text/javascript; charset=utf-8'; '.css' = 'text/css'; '.json' = 'application/json'
   '.svg' = 'image/svg+xml'; '.png' = 'image/png'; '.jpg' = 'image/jpeg'; '.md' = 'text/markdown; charset=utf-8'
+  '.woff2' = 'font/woff2'; '.txt' = 'text/plain; charset=utf-8'
 }
 $rootPath = (Resolve-Path $Root).Path
 $listener = [System.Net.HttpListener]::new()
