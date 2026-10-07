@@ -3690,7 +3690,7 @@ function animatedSVG(st, { transparent = false } = {}) {
   // Motions shared by two or more marks become one CSS animation each; the rest keep their own SMIL animations.
   const groups = new Map();
   for (const c of candidates) { const list = groups.get(c.key); if (list) list.push(c); else groups.set(c.key, [c]); }
-  const styles = [];
+  const styles = [], sharing = [];
   let scaling = false;
   for (const list of groups.values()) {
     if (list.length < 2) continue;
@@ -3707,11 +3707,13 @@ function animatedSVG(st, { transparent = false } = {}) {
     if (flags.size) need([W, H], KEYFRAME_TOLERANCE.size);
     const frames = [...stops].sort((a, b) => a - b).map((m) => {
       const p = m * F, set = [];
-      if (flags.opacity) set.push(`fill-opacity:${num(form[p + O], 2)}`);
+      // The short forms: opacity (a mark is one filled shape, so it fades the same as fill-opacity) and the scale
+      // property; this text repeats in every stop of thousands of animations.
+      if (flags.opacity) set.push(`opacity:${num(form[p + O], 2)}`);
       if (flags.colour) set.push(`fill:${hex(form[p + RED], form[p + GREEN], form[p + BLUE])}`);
       if (flags.size) {
         const sx = num(form[p + W] / widest, scaleDigits), sy = num(form[p + H] / tallest, scaleDigits);
-        set.push(`transform:scale(${sx === sy ? sx : `${sx},${sy}`})`);
+        set.push(`scale:${sx === sy ? sx : `${sx} ${sy}`}`);
       }
       return `${num(m / samples * 100, 2)}%{${set.join(';')}}`;
     });
@@ -3719,16 +3721,35 @@ function animatedSVG(st, { transparent = false } = {}) {
     scaling = scaling || flags.size;
     for (const c of list) {
       // Starting the shared motion this far back puts the mark exactly where its own motion is at time zero.
-      const delay = num(-(((N - c.shift) % N) / N) * loop, 2);
-      const tail = `${c.opacity === '1' ? '' : ` fill-opacity="${c.opacity}"`} class="${flags.size ? 'm ' : ''}${name}"${delay === '0' ? '' : ` style="animation-delay:${delay}s"`}/>`;
-      c.entry.fill = c.colour;
-      c.entry.build = (common) => {
-        const paint = c.colour !== common ? ` fill="${c.colour}"` : '';
-        return c.shape === 4
-          ? `<ellipse cx="${num(c.cx, 1)}" cy="${num(c.cy, 1)}" rx="${num(c.widest / 2, 1)}" ry="${num(c.tallest / 2, 1)}"${paint}${tail}`
-          : `<rect x="${num(c.cx - c.widest / 2, 1)}" y="${num(c.cy - c.tallest / 2, 1)}" width="${num(c.widest, 1)}" height="${num(c.tallest, 1)}"${c.radius >= 0.05 ? ` rx="${num(c.radius, 1)}"` : ''}${paint}${tail}`;
-      };
+      c.delay = num(-(((N - c.shift) % N) / N) * loop, 2);
+      c.classes = `${flags.size ? 'm ' : ''}${name}`;
+      // The animation fades the whole mark (opacity), so its first frame's fade is written the same way.
+      c.fade = flags.opacity ? 'opacity' : 'fill-opacity';
+      sharing.push(c);
     }
+  }
+  // A delay used by several marks is a class of its own (after the animations, which it must override); the rest are
+  // written on the mark.
+  const delays = new Map();
+  for (const c of sharing) if (c.delay !== '0') delays.set(c.delay, (delays.get(c.delay) || 0) + 1);
+  const delayClass = new Map();
+  for (const [delay, uses] of delays) if (uses > 2) {
+    const name = 'd' + delayClass.size.toString(36);
+    delayClass.set(delay, name);
+    styles.push(`.${name}{animation-delay:${delay}s}`);
+  }
+  for (const c of sharing) {
+    const own = delayClass.get(c.delay), late = c.delay === '0' || own ? '' : ` style="animation-delay:${c.delay}s"`;
+    const tail = `${c.opacity === '1' ? '' : ` ${c.fade}="${c.opacity}"`} class="${c.classes}${own ? ' ' + own : ''}"${late}/>`;
+    c.entry.fill = c.colour;
+    c.entry.build = (common) => {
+      const paint = c.colour !== common ? ` fill="${c.colour}"` : '';
+      if (c.shape !== 4) return `<rect x="${num(c.cx - c.widest / 2, 1)}" y="${num(c.cy - c.tallest / 2, 1)}" width="${num(c.widest, 1)}" height="${num(c.tallest, 1)}"${c.radius >= 0.05 ? ` rx="${num(c.radius, 1)}"` : ''}${paint}${tail}`;
+      const rx = num(c.widest / 2, 1), ry = num(c.tallest / 2, 1);
+      return rx === ry
+        ? `<circle cx="${num(c.cx, 1)}" cy="${num(c.cy, 1)}" r="${rx}"${paint}${tail}`
+        : `<ellipse cx="${num(c.cx, 1)}" cy="${num(c.cy, 1)}" rx="${rx}" ry="${ry}"${paint}${tail}`;
+    };
   }
   // Scaled marks grow from their own centres.
   if (scaling) styles.unshift('.m{transform-box:fill-box;transform-origin:center}');
