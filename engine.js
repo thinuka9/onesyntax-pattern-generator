@@ -350,8 +350,12 @@
     const squareSpace = square - 2 * squareMargin;
     const squareWidth = (squareSpace - (columns - 1) * clamp(layout.gutterX, 0, squareSpace / columns * 0.98)) / columns;
     const squareHeight = (squareSpace - (rows - 1) * clamp(layout.gutterY, 0, squareSpace / rows * 0.98)) / rows;
-    cells.fit = squareWidth > 0 ? cellWidth / squareWidth : 1;
-    cells.fitTall = squareHeight > 0 ? cellHeight / squareHeight : 1;
+    // With a reference cell (`fitWidth` × `fitHeight`, the preset's own cell on that square) bars follow every change
+    // to the grid too: wider margins or more columns, smaller cells, shorter and thinner bars.
+    const grow = square / 1200, referenceWidth = layout.fitWidth > 0 ? layout.fitWidth * grow : squareWidth;
+    const referenceHeight = layout.fitHeight > 0 ? layout.fitHeight * grow : squareHeight;
+    cells.fit = referenceWidth > 0 ? cellWidth / referenceWidth : 1;
+    cells.fitTall = referenceHeight > 0 ? cellHeight / referenceHeight : 1;
     cells.frame = { originX, originY, width, height };
     return cells;
   }
@@ -575,7 +579,7 @@
       },
       shaping: { warp: 0, warpScale: 3, mirror: 'none', contrast: 1, gamma: 1, quantise: 0, invert: false },
       attractor: { enabled: false, x: 0.5, y: 0.48, radius: 0.32, strength: 0.55 },
-      layout: { mode: 'Grid', columns: 28, rows: 28, margin: 100, gutterX: 0, gutterY: 0, jitter: 0, rotation: 0, fit: 0, stagger: 0.5, strandDisplacement: 90, strandSamples: 100 },
+      layout: { mode: 'Grid', columns: 28, rows: 28, margin: 100, gutterX: 0, gutterY: 0, jitter: 0, rotation: 0, fit: 0, fitWidth: 0, fitHeight: 0, stagger: 0.5, strandDisplacement: 90, strandSamples: 100 },
       marks: { shape: 'Rectangle', radius: 0, skew: 0, threshold: 0, angleMode: 'fixed', fixedAngle: 0, trackThickness: 1.5, trackOpacity: 0.25, fillThickness: 12, capSize: 8, capOffset: 32, capWave: true },
       mappings: {
         thickness: mapping('constant', 5, 5), length: mapping('constant', 26, 26),

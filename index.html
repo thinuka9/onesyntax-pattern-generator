@@ -1780,12 +1780,26 @@ const MORE_PRESETS = [
   { name: 'Webhook', from: 'Concurrency', palette: 'Coral', set: { 'field.ripples.sources': 2, 'field.ripples.spread': 0.35, 'field.ripples.frequency': 7,
     'field.ripples.decay': 0, 'field.ripples.rotation': 45, 'shaping.contrast': 1.2, 'layout.columns': 70, 'layout.rows': 70, 'mappings.thickness.max': 12, 'mappings.length.max': 12 } },
 ];
+/** A grid's cell on the 1200 px square, unturned: the reference that bars sized to their space (`layout.fit`) scale from. */
+function fitReference(layout) {
+  const columns = layout.mode === 'Rows' || layout.mode === 'Hairlines' ? 1 : Math.max(1, Math.round(layout.columns));
+  const rows = layout.mode === 'Columns' || layout.mode === 'Strands' ? 1 : Math.max(1, Math.round(layout.rows));
+  const space = 1200 - 2 * Math.min(layout.margin, 599.5);
+  return [(space - (columns - 1) * E.clamp(layout.gutterX, 0, space / columns * 0.98)) / columns,
+    (space - (rows - 1) * E.clamp(layout.gutterY, 0, space / rows * 0.98)) / rows];
+}
+const fixFitReference = (values) => {
+  if (values.layout && values.layout.fit && !(values.layout.fitWidth > 0)) [values.layout.fitWidth, values.layout.fitHeight] = fitReference(values.layout);
+  return values;
+};
 for (const p of MORE_PRESETS) {
   const source = BUILT_INS.find((b) => b.name === p.from), values = studioPalette(structuredClone(source.values), p.palette);
   for (const [key, value] of Object.entries(p.set)) setPath(values, key, value);
   if (values.colour.source === 'constant') values.colour.stop2 = values.colour.stop1;
   BUILT_INS.splice(BUILT_INS.findLastIndex((b) => b.pattern === source.pattern) + 1, 0, { name: p.name, group: source.group, pattern: source.pattern, values });
 }
+// Each preset whose bars follow their space measures its own cell as their reference (see fitReference).
+for (const b of BUILT_INS) if (b.values.layout) fixFitReference(b.values);
 const firstPreset = (pattern) => BUILT_INS.find((b) => b.pattern === pattern);
 const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, orbit: ORBIT_DEFAULTS };
 const defaultsFor = (pattern) => FLAT_DEFAULTS[patternOf(pattern).kind] || firstPreset(pattern).values;
@@ -1809,6 +1823,8 @@ function sanitizePattern(st) {
     source = { ...source, field: { ...rest, plate: chladni } };
   }
   let values = normaliseStudio(deepMerge(structuredClone(firstPreset(pattern.name).values), source));
+  // A save from before reference cells existed takes its own grid's cell as the reference.
+  if (source && source.layout && !(source.layout.fitWidth > 0)) { values.layout.fitWidth = 0; fixFitReference(values); }
   // A retired look shares nothing with today's pattern but its colours and format, so it opens as the pattern's
   // first preset in those: Gauge (meters, now Barcode) and Strands before its 7 October rework (wavy strands).
   if (values.marks.shape === 'Meter' || (pattern.name === 'Strands' && values.layout.mode !== 'Hairlines')) {
@@ -2591,7 +2607,11 @@ function control(c) {
 
   if (c.type === 'range') {
     const keys = keysOf(c);
-    row.innerHTML = `<label for="${id}">${c.label}</label><div class="slider"><input type="range" id="${id}" data-key="${keys[0]}" min="${c.min}" max="${c.max}" step="${c.step}"><span class="chip"></span></div>`;
+    // A preset (or a typed value) may sit past the slider's usual range: the slider stretches to include it and the
+    // preset's own value, so touching it never snaps the value back inside and it can always return to the preset.
+    const here = [getPath(state.values, keys[0]), baseline.pattern === state.pattern ? getPath(baseline.values, keys[0]) : undefined].filter(Number.isFinite);
+    const min = Math.min(c.min, ...here), max = Math.max(c.max, ...here);
+    row.innerHTML = `<label for="${id}">${c.label}</label><div class="slider"><input type="range" id="${id}" data-key="${keys[0]}" min="${min}" max="${max}" step="${c.step}"><span class="chip"></span></div>`;
     const slider = row.querySelector('.slider'), input = slider.querySelector('input'), chip = slider.querySelector('.chip');
     // A slider that shows or hides other controls (Columns reveals Gap) rebuilds the panel once it is let go.
     if (c.rebuild) input.addEventListener('change', () => {
@@ -2600,7 +2620,7 @@ function control(c) {
       document.querySelector(`#panelScroll input[data-key="${keys[0]}"]`)?.focus();
     });
     const value = () => getPath(state.values, keys[0]);
-    const paint = (x) => { chip.textContent = c.fmt(x); slider.style.setProperty('--p', E.clamp((x - c.min) / (c.max - c.min))); };
+    const paint = (x) => { chip.textContent = c.fmt(x); slider.style.setProperty('--p', E.clamp((x - min) / (max - min))); };
     const show = () => { input.value = value(); paint(value()); };
     input.refresh = show;
     // Paired limits (Thinnest and Thickest, Min and Max opacity…) never cross: dragging one past the other carries it along.
@@ -2631,8 +2651,11 @@ function control(c) {
         if (finished) return;
         finished = true;
         const typed = parseFloat(field.value);
-        if (commit && Number.isFinite(typed)) { set(E.clamp(typed / c.typeScale, c.min, c.max)); edit(); }
+        // A typed value may go past the slider's top (up to ten times it), never below its bottom; the panel rebuilds
+        // to fit it.
+        if (commit && Number.isFinite(typed)) { set(E.clamp(typed / c.typeScale, min, c.max > 0 ? Math.max(max, c.max * 10) : max)); edit(); }
         field.remove(); show();
+        if (commit && (value() < min || value() > max)) buildPanel();
       };
       field.addEventListener('keydown', (e) => { if (e.key === 'Enter') finish(true); else if (e.key === 'Escape') finish(false); });
       field.addEventListener('blur', () => finish(true));
