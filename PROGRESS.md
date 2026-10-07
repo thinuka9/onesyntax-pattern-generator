@@ -109,8 +109,10 @@ stripped by `build.mjs`). 13 patterns, 45 built-in presets (7 October: Gauge, Ba
 - **Silhouette (7 October, replaced Threshold Stripes), after Vonyes and One Grove:** stripes across (or down) the
   page that break round a shape, each stripe cut where it crosses the shape so the edge steps; inside, the stripes
   become bars in the second colour, shift half a stripe (stairs) or leave a gap. Shapes: the symbol's base (the
-  sticker's cut-corner square), V, steps, diamond, circle. Motion breathes or drifts the shape. Presets Interface,
-  Merge (Vonyes), Branch (One Grove).
+  sticker's cut-corner square), steps, diamond, circle (the V was dropped). Swell thickens the stripes gradually
+  towards the shape's middle and thins them away from it, the Vonyes poster's width illusion that lifts the shape.
+  Motion breathes or drifts the shape. Presets Interface, Merge (swelling stripes round the symbol's base), Branch
+  (One Grove).
 - **Stack (7 October):** Deploy leads it; Call Stack, Buffer and Register are gone; Release and Cache follow the two
   violet slanted-bar references (shaded across the grid; dense and see-through). Strands is removed.
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
