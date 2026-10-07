@@ -101,6 +101,12 @@ stripped by `build.mjs`). 14 patterns, 47 built-in presets (Gauge and its three 
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Strands reworked (7 October), after the AlphaSense card:** the engine's new `Hairlines` layout draws each row as a
+  thin line only where the field reaches the threshold (Edge), each unbroken run one mark coloured and faded by its
+  mean value, so lines start and break along the field's contour. A slope (gradient) plus a long low wave across the
+  rows makes the wavy edge; a fine second wave across the rows staggers each line's start (Breaks). Rotation turns
+  it (Threads at −35°, Protocol −45°, Socket 90°). Saves of the old wavy strands open as Threads in their own
+  colours and format.
 - **Kaleido Pixels moves (7 October):** its three presets were still (Speed 0), so nothing happened; Recursion and
   Mutex now move at 0.5 and Kernel at 1, the mirrored waves folding into a turning kaleidoscope, and Kernel is in
   Coral instead of Ember's orange and grey. Every control was checked to change the picture.
