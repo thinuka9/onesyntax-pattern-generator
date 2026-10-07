@@ -1387,7 +1387,7 @@ const PATTERNS = [
         range('field.gradient.direction', 'Direction', -180, 180, 1, deg), range('field.waveA.weight', 'Ripple', 0, 3, 0.01, f2), animate]],
     ], look: studioLook() },
   { name: 'Barcode', sections: [
-      ['Grid', [columns('Bars', 200), rowsCount('Rows', 40), margin]],
+      ['Grid', [columns('Bars', 200), rowsCount('Rows', 40), margin, turnControl]],
       ['Bars', [range('mappings.thickness.min', 'Thinnest', 0.2, 60, 0.1, px), range('mappings.thickness.max', 'Thickest', 0.2, 60, 0.1, px),
         range(both('mappings.length'), 'Height', 2, 600, 1, px), range('marks.threshold', 'Gaps', 0, 1, 0.01, pct)]],
       ['Wave', [waveFrequency, waveDirection, secondWave, contrast, animate]],
@@ -1702,6 +1702,20 @@ const MORE_PRESETS = [
     'field.waveA.frequency': 0.8, 'field.waveA.weight': 0.6, 'field.waveB.weight': 0.08 } },
   { name: 'Socket', from: 'Threads', palette: 'Coral', set: { 'layout.rows': 36, 'layout.rotation': 90, 'mappings.thickness.min': 3.5, 'mappings.thickness.max': 3.5,
     'field.waveA.frequency': 1.6, 'field.waveA.weight': 0.35, 'field.waveB.weight': 0.3, 'field.waveB.frequency': 2.4, 'marks.threshold': 0.46 } },
+  // After a lanyard badge: columns of slanted bars (parallelograms stood on end, so their sides stay upright and
+  // their tops slope), the lowest ones dropping away.
+  { name: 'Deploy', from: 'Call Stack', palette: 'Coral', set: { 'layout.columns': 7, 'layout.rows': 9, 'layout.margin': 150, 'layout.gutterX': 14,
+    'marks.shape': 'Parallelogram', 'marks.skew': 0.42, 'marks.angleMode': 'fixed', 'marks.fixedAngle': 90, 'marks.threshold': 0,
+    'mappings.offsetY.source': 'x', 'mappings.offsetY.min': 36, 'mappings.offsetY.max': -36,
+    'mappings.length.source': 'constant', 'mappings.length.min': 74, 'mappings.length.max': 74, 'mappings.thickness.min': 112, 'mappings.thickness.max': 112,
+    'field.waveA.frequency': 0.5, 'field.waveA.direction': 90, 'field.waveB.weight': 0.5, 'field.waveB.frequency': 2.3, 'field.waveB.direction': 0, 'shaping.quantise': 0,
+    'colour.background': '#FF5620', 'colour.stop1': '#FCFCFC', 'colour.stop2': '#FCFCFC' } },
+  // After the One Grove card: thick stripes with a stepped gap down the middle.
+  { name: 'Branch', from: 'Threads', palette: 'Mono Dark', set: { 'layout.rows': 8, 'layout.rotation': 0, 'layout.margin': 150, 'shaping.mirror': 'X',
+    'mappings.thickness.min': 62, 'mappings.thickness.max': 62, 'mappings.opacity.min': 1, 'mappings.opacity.max': 1, 'marks.threshold': 0.14,
+    'field.gradient.direction': 0, 'field.gradient.weight': 1, 'field.waveA.weight': 0.3, 'field.waveA.frequency': 0.5, 'field.waveA.direction': 90, 'field.waveA.phase': 180, 'field.waveB.weight': 0,
+    'shaping.quantise': 0,
+    'colour.background': '#3D3A36', 'colour.stop1': '#E6E4DF', 'colour.stop2': '#E6E4DF' } },
   { name: 'Kernel', from: 'Recursion', palette: 'Coral', set: { 'motion.speed': 1, 'layout.columns': 24, 'layout.rows': 24, 'mappings.thickness.min': 40, 'mappings.thickness.max': 40,
     'mappings.length.min': 40, 'mappings.length.max': 40, 'field.waveA.frequency': 1.4, 'field.waveB.frequency': 3.2, 'field.noise.weight': 0.1, 'shaping.mirror': 'X', 'shaping.quantise': 4 } },
   { name: 'Mutex', from: 'Recursion', palette: 'Violet', set: { 'motion.speed': 0.5, 'layout.columns': 64, 'layout.rows': 64, 'mappings.thickness.min': 16, 'mappings.thickness.max': 16,

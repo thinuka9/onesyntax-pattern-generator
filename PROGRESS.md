@@ -11,7 +11,7 @@ exported proofs and the earlier "classic" page. `PLUGIN\_archive\Archive.zip` ho
 (claude-generator, codex) as they came off the Mac.
 
 Live at https://onesyntax-pattern-generator.pages.dev (Cloudflare Pages, redeployed on every push to `main`, comments
-stripped by `build.mjs`). 14 patterns, 47 built-in presets (Gauge and its three presets removed 7 October; its saves open as Barcode).
+stripped by `build.mjs`). 14 patterns, 49 built-in presets (Gauge and its three presets removed 7 October; its saves open as Barcode).
 
 **Not done yet**
 
@@ -101,6 +101,12 @@ stripped by `build.mjs`). 14 patterns, 47 built-in presets (Gauge and its three 
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Reference presets (7 October):** Deploy (Stack, after a lanyard badge: seven columns of slanted bars in Coral's
+  orange and white; Parallelogram marks stood on end so their sides stay upright, columns stepped by an x offset) and
+  Branch (Strands, after the One Grove card: eight thick square-ended bars mirrored about the middle, a stepped
+  notch down the centre). `layout.fit` now grows a bar's length along its own direction and its thickness across it,
+  so upright bars widen with wider cells too. Hairlines take Roundness (square ends by default). Barcode gets
+  Rotation.
 - **Strands reworked (7 October), after the AlphaSense card:** the engine's new `Hairlines` layout draws each row as a
   thin line only where the field reaches the threshold (Edge), each unbroken run one mark coloured and faded by its
   mean value, so lines start and break along the field's contour. A slope (gradient) plus a long low wave across the

@@ -347,8 +347,11 @@
     }
     // The same grid on the square the presets were tuned on (scaled up with the page, as the app scales sizes).
     const square = Math.max(1200, Math.min(canvasWidth, canvasHeight)), squareMargin = Math.min(layout.margin, square / 2 - 0.5);
-    const squareCell = (square - 2 * squareMargin - (columns - 1) * clamp(layout.gutterX, 0, (square - 2 * squareMargin) / columns * 0.98)) / columns;
-    cells.fit = squareCell > 0 ? cellWidth / squareCell : 1;
+    const squareSpace = square - 2 * squareMargin;
+    const squareWidth = (squareSpace - (columns - 1) * clamp(layout.gutterX, 0, squareSpace / columns * 0.98)) / columns;
+    const squareHeight = (squareSpace - (rows - 1) * clamp(layout.gutterY, 0, squareSpace / rows * 0.98)) / rows;
+    cells.fit = squareWidth > 0 ? cellWidth / squareWidth : 1;
+    cells.fitTall = squareHeight > 0 ? cellHeight / squareHeight : 1;
     cells.frame = { originX, originY, width, height };
     return cells;
   }
@@ -453,7 +456,9 @@
             const accent = isAccent(cell, index), thickness = mapped(mappings.thickness, mean, u, v);
             setColor(mean, u, v, index, accent);
             const before = count;
-            append(middle, cell.y, x1 - x0 + thickness, thickness, 0, thickness / 2, 0, 3, mapped(mappings.opacity, mean, u, v), accent ? 3 : 1, index);
+            // Square ends unless Roundness rounds them (a round end reaches out half the thickness).
+            const round = Math.min(Math.max(0, marks.radius), thickness / 2);
+            append(middle, cell.y, x1 - x0 + 2 * round, thickness, 0, round, 0, 0, mapped(mappings.opacity, mean, u, v), accent ? 3 : 1, index);
             if (count > before) markCount++;
           }
           start = -1;
@@ -520,7 +525,11 @@
           const capOffset = clamp(height / 2 - height * capValue - marks.capOffset, -height / 2, height / 2);
           append(x - capOffset * sn, y + capOffset * cs, marks.fillThickness * 1.4, marks.capSize, angle, marks.radius, 0, 0, opacity, accent ? 3 : 2, cell.index * 3 + 2);
         } else {
-          append(x, y, mapped(mappings.length, value, u, v) * (layout.fit ? cells.fit : 1), mapped(mappings.thickness, value, u, v), angle, marks.radius, (marks.shape === 'Parallelogram' ? marks.skew : 0) + mapped(mappings.skew, value, u, v), shapeIds[marks.shape], opacity, accent ? 3 : 1, cell.index);
+          // With `fit`, a bar grows as its cell does: its length along the bar's own direction, its thickness across it
+          // (a wider cell makes level bars longer and upright bars wider).
+          const along = Math.abs(Math.cos(angle)), across = Math.abs(Math.sin(angle));
+          const fit = layout.fit ? along * cells.fit + across * cells.fitTall : 1, fitAcross = layout.fit ? across * cells.fit + along * cells.fitTall : 1;
+          append(x, y, mapped(mappings.length, value, u, v) * fit, mapped(mappings.thickness, value, u, v) * fitAcross, angle, marks.radius, (marks.shape === 'Parallelogram' ? marks.skew : 0) + mapped(mappings.skew, value, u, v), shapeIds[marks.shape], opacity, accent ? 3 : 1, cell.index);
         }
         if (count > before) markCount++;
       }
