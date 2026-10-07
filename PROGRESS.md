@@ -101,6 +101,9 @@ stripped by `build.mjs`). 14 patterns, 47 built-in presets (Gauge and its three 
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Kaleido Pixels moves (7 October):** its three presets were still (Speed 0), so nothing happened; Recursion and
+  Mutex now move at 0.5 and Kernel at 1, the mirrored waves folding into a turning kaleidoscope, and Kernel is in
+  Coral instead of Ember's orange and grey. Every control was checked to change the picture.
 - **Rotation and fit (7 October):** Threshold Stripes and Stack have a Rotation control. The engine lays the grid
   out in a frame turned by `layout.rotation` about the centre and sized to cover the page once turned (at 90° a
   16:9 page lays out as 9:16), so a turned pattern fills every format; at 0° the frame is the page, so every other

@@ -608,6 +608,8 @@
       p.field.noise.enabled = true; p.field.noise.weight = 0.2; p.shaping.mirror = 'XY'; p.shaping.quantise = 6; p.shaping.warp = 0;
       p.mappings.thickness = mapping('constant', 27, 27); p.mappings.length = mapping('constant', 27, 27);
       p.colour.stops = 3; p.colour.stop1 = '#082A6F'; p.colour.stop2 = '#1B98FE'; p.colour.stop3 = '#A2D5FF';
+      // It moves: the waves travel and the mirrors fold them into a turning kaleidoscope.
+      p.motion.playing = true; p.motion.speed = 0.5;
     }),
     preset('Stack', 'Night', (p) => {
       p.layout.mode = 'Grid'; p.layout.columns = 4; p.layout.rows = 31; p.layout.margin = 95; p.layout.gutterX = 30; p.layout.fit = 1;
