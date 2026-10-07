@@ -101,6 +101,11 @@ stripped by `build.mjs`). 15 patterns, 50 built-in presets.
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Shorter shared animations (7 October):** the mark-by-mark export's shared CSS animations write `opacity` and the
+  `scale` property instead of `fill-opacity` and `transform:scale()` (a mark is one filled shape, so they look the
+  same), a start delay used by three or more marks is a class, and round dots are `<circle>`. 24–36% smaller on the
+  CSS-animated presets (Overflow 4.2 → 2.7 MB, Daemon 5.5 → 3.6, Webhook 6.4 → 4.6, Resonance 1.3 → 0.85); frames
+  unchanged. Concurrency and Cluster (SMIL per dot, no two dots alike) stay at 7.1 and 4.5 MB: video suits them.
 - **Orbit Pulse animated SVG (5 October):** every animated Orbit arcs file is now dash by dash, Still included; the
   mark-by-mark export is left for the other patterns.
   - The dashes are laid out with Pulse off (full colour, full size). For each dash, Pulse is read where its middle
