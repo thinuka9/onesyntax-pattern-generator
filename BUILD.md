@@ -30,6 +30,7 @@ In Claude Code, the `app` entry in `.claude/launch.json` starts the same server.
 | PNG 1× / 2× / 4× / 6× | Optional transparent background. Sizes below. |
 | SVG | Vector; the editable layers are `background`, `track`, `fill`, `cap`, `accent`. Orbit's arcs export each dash as one closed curve, grouped by colour. Margins clip every export to the frame. |
 | Animated SVG | Built for the web: resolution-free, loops seamlessly, plays in browsers and `<img>` tags. Marks sharing a motion share one CSS animation; the rest keep only the keyframes they need. Most presets export at 15–400 KB. Orbit's arcs animate whole dashes (sliding with Flow, riding with Sway, fading and sizing with Pulse): Flow, Event Stream 0.37 MB and Event Queue 0.79 MB; Sway, Event Stream 0.71 MB and Event Queue 2.9 MB; with Pulse, 0.3–3.7 MB. Patterns with thousands of independently moving marks (Threads, Concurrency) stay heavy: use Video for those. Design tools import the first frame. |
+| Sticker | With the Sticker section on, every export is of the sticker: PNG and video painted, SVG and animated SVG with the pattern's own file nested in the band, the text in Geist. Transparent leaves the page round the outline empty. |
 | Video | MP4 (H.264), 30 fps, seamless 5 or 10 s loop, longest side up to 1920 px. Encoded frame by frame with WebCodecs, faster than real time and with the tab in the background (MP4 packing by mp4-muxer, MIT, loaded on first use). Browsers without it fall back to real-time recording (MP4 or WebM; keep the tab visible). |
 | Presets (JSON) | From the preset picker: Export / Import. Also imports preset JSON from the original studio. |
 | Copy link | A URL holding the exact preset. Works wherever the page is hosted. |
@@ -75,7 +76,8 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
 7. Orbit's animated SVG (Flow, Sway, and Pulse), frozen at set moments, matches the app within 4/255 and loops
    without a seam.
 8. The presets window opens on the current preset, with the group bar on its group.
-9. With `--dist`: the published `index.html` and `engine.js` carry no comments.
+9. The sticker survives a share link and exports as PNG, SVG and animated SVG.
+10. With `--dist`: the published `index.html` and `engine.js` carry no comments.
 
 It ends with "All checks passed." (exit code 0), or names each failure. Still by hand, in the browser:
 

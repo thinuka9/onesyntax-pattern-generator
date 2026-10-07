@@ -201,6 +201,20 @@ await check('Presets window opens on the current pattern, with its group bar', a
   expect(view.group === 'Wave studies' && view.groups === 5, `group bar shows ${view.group} of ${view.groups} groups`);
 });
 
+await check('Sticker: link round-trip and exports', async () => {
+  await page.evaluate(() => { applyPreset('builtin:Threads'); state.values.sticker = { ...STICKER_DEFAULTS, on: 'on', title: 'Shipped', subtitle: 'Release 142' }; requestRender(); });
+  const back = await page.evaluate(async () => { const st = await decodeLook(await encodeLook(state)); return stickerOn(st) && st.values.sticker.title === 'Shipped'; });
+  expect(back, 'the sticker did not survive a share link');
+  const png = await download(() => exportPNG(1));
+  expect(png.name.includes('sticker') && png.bytes > 10000, `the sticker PNG looks wrong (${png.name}, ${png.bytes} bytes)`);
+  const svg = await (await download(() => exportSVG())).text();
+  expect(await parses(svg) && svg.includes('id="sticker"') && svg.includes('Release 142'), 'the sticker SVG does not parse or lacks its parts');
+  await page.evaluate(() => { applyPreset('builtin:Event Stream'); state.values.motion = 'flow'; });
+  const moving = await (await download(() => exportAnimatedSVG())).text();
+  expect(await parses(moving) && /<animate/.test(moving) && moving.includes('id="sticker"'), 'the animated sticker SVG does not parse or does not move');
+  await page.evaluate(() => { state.values.sticker.on = 'off'; requestRender(); });
+});
+
 if (dist) await check('The published files carry no comments', async () => {
   const code = (await readFile(join(root, 'index.html'), 'utf8')) + (await readFile(join(root, 'engine.js'), 'utf8'));
   const found = code.match(/<!--|\/\*\*|^\s*\/\/ /m);

@@ -44,6 +44,8 @@ seamless video loops.
 - **Motion:** every animation loops seamlessly in 5 or 10 seconds. Waves flow one way; the wave studies morph,
   swaying each figure through its shapes and back (or flow, if you choose).
 - **OneSyntax brand only:** Geist type, the brand colour list and palettes, the official logo files.
+- **Sticker:** any pattern shown on the {OS} sticker (cut corners, {OS}, a live title and subtitle, the pattern
+  masked into a band), with every export, presets and links.
 - **Presets:** built-in presets, saved presets (stored in the browser; export them as JSON), share links.
 - **Exports:** PNG at 1×, 2×, 4× or 6×; SVG; animated SVG (SMIL); MP4 or WebM video loops; transparent
   backgrounds for PNG and SVG.

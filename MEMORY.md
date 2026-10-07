@@ -73,6 +73,9 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   Figma), the {OS} logo top right recolouring to suit the background, an editable title and subtitle (Geist and
   Geist Mono) updating live, and a pattern from the generator inside the sticker as a masked frame at its set height.
   Same exports (SVG, animated SVG, PNG, video, transparent outside the shape), presets, seeds.
+- **Done 7 October:** Gauge removed; Threshold Stripes, Stack and Barcode rotate and fit every format; Kaleido
+  Pixels' presets move (the "does nothing"); Strands reworked after AlphaSense (Threads, Protocol, Socket);
+  Deploy (badge) and Branch (One Grove) presets; Render redone; the Sticker section built.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

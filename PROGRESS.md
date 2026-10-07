@@ -101,6 +101,17 @@ stripped by `build.mjs`). 14 patterns, 49 built-in presets (Gauge and its three 
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Sticker (7 October):** any pattern can be shown as the {OS} sticker (Sticker section, on every pattern): the
+  square with its top-left and bottom-right corners cut (Corners, a third of the side by default, from the Figma
+  stickers), a brand colour, {OS} top right and an editable title (Geist 500) and subtitle (Geist Mono) bottom left in
+  an ink that suits the colour (dark on light, soft dark on mid greys, light on dark), and the pattern masked into a
+  band (Pattern top and height) at its own format, scaled to cover the band, on the sticker's colour or its own
+  background (Behind pattern). Settings live in `values.sticker` (`sanitizeSticker`), so saves, links and undo keep
+  them; built-in presets have none, so loading one keeps the sticker, and the sticker never counts as an edit.
+  - Preview: a 2D canvas over the pattern view, always fitted, on a neutral grey page (`STICKER_PAGE`).
+  - Exports: PNG and video paint the same way (`drawSticker`); SVG and animated SVG nest the pattern's own file as an
+    inner `<svg>` covering the band, cut to the outline and band, with the outline and text round it. Transparent
+    leaves the page round the outline empty. `check.mjs` covers the link round trip and all three file exports.
 - **Render redone (7 October):** the scan's blue sweep over grey lines was not liked; Render is now Loop's calm in the
   brand's line version: a 3 × 3 grid on Mono Dark, a slow ripple (speed 0.5) that changes size only.
 - **Reference presets (7 October):** Deploy (Stack, after a lanyard badge: seven columns of slanted bars in Coral's
