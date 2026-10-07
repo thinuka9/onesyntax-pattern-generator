@@ -15,11 +15,12 @@ seamless video loops.
 
 ## What it does
 
-- **14 pattern types in four groups**
+- **13 pattern types in four groups**
   - *Wave Rows*: rows of items whose opacity and size follow a sine wave.
-  - *Studio patterns*: Eddy, Barcode, Threshold Stripes, Halftone Diagonal, Contour Field,
-    Strands, Kaleido Pixels, Stack (ported from the original studio, where Eddy and Stack were Amaya Flow and RFD Stack; its
-    Gauge, once Sinky Meter, was removed on 7 October and its saves open as Barcode), and Orbit: dashes round nested arcs, in two
+  - *Studio patterns*: Eddy, Readout (rows of dots, dashes and bars), Silhouette (stripes breaking round a shape),
+    Halftone Diagonal, Contour Field, Kaleido Pixels, Stack (ported from the original studio, where Eddy and Stack were
+    Amaya Flow and RFD Stack; Gauge, Barcode, Threshold Stripes and Strands were retired on 7 October and their saves
+    open in Readout and Silhouette), and Orbit: dashes round nested arcs, in two
     layouts. Arcs lays curved dashes along ellipses whose centre shifts as they grow, on a plane receding towards
     the top (Event Stream, Event Queue); Grid (once the Horizon pattern) sets straight dashes on a grid, each laid
     along F(x, y) = ⟨−y, x⟩ (the rotation field, turned towards a spiral by α) on a plane receding towards
@@ -29,7 +30,7 @@ seamless video loops.
   - *Bracket*: the brand's `{ }` mark on its own Geist Pixel grid (9 × 23 cells, read from the Figma file), drawn
     as pixels, lines, dots or slashes, alone or repeated in columns and rows, with looping effects: wave, scan,
     build, glitch, ripple, sparkle.
-- **49 built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Bitstream, Stack
+- **45 built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Bitstream, Stack
   Trace, Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Render, Compile,
   Loop and more; every pattern has at least three. Refactor (Eddy) twists a bar grid round a quiet centre; Event
   Stream, Event Queue and Event Loop are Orbit.

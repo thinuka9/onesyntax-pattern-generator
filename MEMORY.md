@@ -76,6 +76,10 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
 - **Done 7 October:** Gauge removed; Threshold Stripes, Stack and Barcode rotate and fit every format; Kaleido
   Pixels' presets move (the "does nothing"); Strands reworked after AlphaSense (Threads, Protocol, Socket);
   Deploy (badge) and Branch (One Grove) presets; Render redone; the Sticker section built.
+- **Second round, 7 October:** Strands removed for good ("not a pattern"); Barcode replaced by Readout (RFD cards) and
+  Threshold Stripes by Silhouette (Vonyes; One Grove as Branch; the symbol's base as a shape); Stack keeps only Deploy
+  plus Release and Cache; the sticker is fixed to the Figma frame (shape, type, band) with its five colour schemes and
+  a dice for them. Kaleido Pixels is liked now.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

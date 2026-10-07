@@ -11,7 +11,7 @@ exported proofs and the earlier "classic" page. `PLUGIN\_archive\Archive.zip` ho
 (claude-generator, codex) as they came off the Mac.
 
 Live at https://onesyntax-pattern-generator.pages.dev (Cloudflare Pages, redeployed on every push to `main`, comments
-stripped by `build.mjs`). 14 patterns, 49 built-in presets (Gauge and its three presets removed 7 October; its saves open as Barcode).
+stripped by `build.mjs`). 13 patterns, 45 built-in presets (7 October: Gauge, Barcode, Threshold Stripes and Strands retired; Readout and Silhouette added; old saves of the retired ones open in their replacements).
 
 **Not done yet**
 
@@ -101,6 +101,21 @@ stripped by `build.mjs`). 14 patterns, 49 built-in presets (Gauge and its three 
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Readout (7 October, replaced Barcode), after the RFD cards:** rows of cells, each a glyph by its level in a
+  field: nothing, a dot, a dash, a double dash or a solid bar (bars run together into blocks), or pixel digits (a 1,
+  a 0 or a dot). The level is a slope across the grid plus a wave down it plus a seeded grain, through Contrast;
+  Mirror folds it about the middle; Speed sends the wave through. Presets Query, Binary, Topology, Minibar (brand
+  colours, so violet and blue rather than the cards' green).
+- **Silhouette (7 October, replaced Threshold Stripes), after Vonyes and One Grove:** stripes across (or down) the
+  page that break round a shape, each stripe cut where it crosses the shape so the edge steps; inside, the stripes
+  become bars in the second colour, shift half a stripe (stairs) or leave a gap. Shapes: the symbol's base (the
+  sticker's cut-corner square), V, steps, diamond, circle. Motion breathes or drifts the shape. Presets Interface,
+  Merge (Vonyes), Branch (One Grove).
+- **Stack (7 October):** Deploy leads it; Call Stack, Buffer and Register are gone; Release and Cache follow the two
+  violet slanted-bar references (shaded across the grid; dense and see-through). Strands is removed.
+- **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
+  margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
+  current and preset values, so a value past the usual range no longer snaps back.
 - **Sticker, matched to Figma (7 October):** the outline, band and type now come from the Figma "Sticker" frame
   (421 units): corners cut 142.52 (33.86%), 32 margins, the brand {OS} monogram file 39 tall top right, title Geist
   Medium 40 at −4% and subtitle Geist Mono 32 at −4% and 64% in 125% line boxes (baselines measured from the fonts),
