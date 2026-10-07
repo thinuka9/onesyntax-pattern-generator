@@ -11,7 +11,7 @@ exported proofs and the earlier "classic" page. `PLUGIN\_archive\Archive.zip` ho
 (claude-generator, codex) as they came off the Mac.
 
 Live at https://onesyntax-pattern-generator.pages.dev (Cloudflare Pages, redeployed on every push to `main`, comments
-stripped by `build.mjs`). 15 patterns, 50 built-in presets.
+stripped by `build.mjs`). 14 patterns, 47 built-in presets (Gauge and its three presets removed 7 October; its saves open as Barcode).
 
 **Not done yet**
 

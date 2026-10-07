@@ -15,10 +15,11 @@ seamless video loops.
 
 ## What it does
 
-- **15 pattern types in four groups**
+- **14 pattern types in four groups**
   - *Wave Rows*: rows of items whose opacity and size follow a sine wave.
-  - *Studio patterns*: Gauge, Eddy, Barcode, Threshold Stripes, Halftone Diagonal, Contour Field,
-    Strands, Kaleido Pixels, Stack (ported from the original studio, where Gauge, Eddy and Stack were Sinky Meter, Amaya Flow and RFD Stack), and Orbit: dashes round nested arcs, in two
+  - *Studio patterns*: Eddy, Barcode, Threshold Stripes, Halftone Diagonal, Contour Field,
+    Strands, Kaleido Pixels, Stack (ported from the original studio, where Eddy and Stack were Amaya Flow and RFD Stack; its
+    Gauge, once Sinky Meter, was removed on 7 October and its saves open as Barcode), and Orbit: dashes round nested arcs, in two
     layouts. Arcs lays curved dashes along ellipses whose centre shifts as they grow, on a plane receding towards
     the top (Event Stream, Event Queue); Grid (once the Horizon pattern) sets straight dashes on a grid, each laid
     along F(x, y) = ⟨−y, x⟩ (the rotation field, turned towards a spiral by α) on a plane receding towards
@@ -28,7 +29,7 @@ seamless video loops.
   - *Bracket*: the brand's `{ }` mark on its own Geist Pixel grid (9 × 23 cells, read from the Figma file), drawn
     as pixels, lines, dots or slashes, alone or repeated in columns and rows, with looping effects: wave, scan,
     build, glitch, ripple, sparkle.
-- **50 built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Telemetry, Bitstream, Stack
+- **47 built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Bitstream, Stack
   Trace, Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Render, Compile,
   Loop and more; every pattern has at least three. Refactor (Eddy) twists a bar grid round a quiet centre; Event
   Stream, Event Queue and Event Loop are Orbit.
