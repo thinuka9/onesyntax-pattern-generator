@@ -699,7 +699,7 @@ const RENAMED_LOOKS = {
 // The studio patterns keep their geometry and move onto the closest brand palette.
 const STUDIO_PALETTES = {
   'Eddy': 'Ice', Barcode: 'Mono Light', 'Threshold Stripes': 'Midnight', 'Halftone Diagonal': 'Blue on White',
-  'Contour Field': 'Blueprint', Strands: 'Mono Light', 'Kaleido Pixels': 'Ocean', 'Stack': 'Midnight',
+  'Contour Field': 'Blueprint', Strands: 'Primary', 'Kaleido Pixels': 'Ocean', 'Stack': 'Midnight',
 };
 
 function rowWave(v, u, r, time, wave) {
@@ -1414,11 +1414,13 @@ const PATTERNS = [
         range('shaping.warp', 'Warp', 0, 0.75, 0.01, f2), animate]],
     ], look: studioLook() },
   { name: 'Strands', sizeMode: 'thickness', sections: [
-      ['Grid', [columns('Strands', 200), margin]],
-      ['Lines', [range('mappings.thickness.min', 'Thinnest', 0.2, 20, 0.1, px), range('mappings.thickness.max', 'Thickest', 0.2, 20, 0.1, px),
-        range('layout.strandDisplacement', 'Swing', 0, 400, 1, px), range('layout.strandSamples', 'Smoothness', 8, 300, 1, int)]],
-      ['Wave', [waveFrequency, waveDirection, secondWave, range('colour.accentEvery', 'Accent every', 0, 60, 1, (v) => v ? int(v) : 'off'), animate]],
-    ], look: studioLook(colour('colour.accent', 'Accent')) },
+      ['Grid', [rowsCount('Lines', 300), margin, turnControl]],
+      ['Lines', [range(both('mappings.thickness'), 'Thickness', 0.2, 12, 0.1, px), range(both('mappings.opacity'), 'Opacity', 0, 1, 0.01, pct),
+        range('marks.threshold', 'Edge', 0, 1, 0.01, pct), range('layout.strandSamples', 'Detail', 8, 600, 1, int)]],
+      ['Edge', [range('field.gradient.weight', 'Slope', 0, 3, 0.01, f2), range('field.gradient.direction', 'Slope direction', -180, 180, 1, deg),
+        range('field.waveA.weight', 'Wave', 0, 3, 0.01, f2), waveFrequency, waveDirection,
+        range('field.waveB.weight', 'Breaks', 0, 3, 0.01, f2), range('field.waveB.frequency', 'Break size', 0, 12, 0.05, times), animate]],
+    ], look: studioLook() },
   { name: 'Kaleido Pixels', sections: [
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Pixels across', 2, 120, 1, int),
         range([...both('mappings.thickness'), ...both('mappings.length')], 'Pixel size', 1, 80, 0.5, px), margin]],
@@ -1696,10 +1698,10 @@ const MORE_PRESETS = [
     'mappings.thickness.min': 3.6, 'mappings.thickness.max': 3.6, 'field.waveA.frequency': 2.4, 'field.waveA.direction': 120, 'field.waveB.weight': 0.9, 'field.radial.weight': 0.5, 'shaping.warp': 0.12 } },
   { name: 'Closure', from: 'Schema', palette: 'Grape', set: { 'layout.columns': 30, 'layout.rows': 30, 'mappings.length.min': 10, 'mappings.length.max': 34,
     'mappings.thickness.min': 4, 'mappings.thickness.max': 4, 'field.waveA.frequency': 0.8, 'field.waveA.direction': 10, 'field.waveB.weight': 0.3, 'field.radial.weight': 0.1, 'shaping.warp': 0.04 } },
-  { name: 'Protocol', from: 'Threads', palette: 'Midnight', set: { 'layout.columns': 90, 'mappings.thickness.min': 0.6, 'mappings.thickness.max': 2,
-    'layout.strandDisplacement': 120, 'layout.strandSamples': 160, 'field.waveA.frequency': 2.1, 'field.waveA.direction': 20, 'field.waveB.weight': 0.6, 'colour.accentEvery': 0 } },
-  { name: 'Socket', from: 'Threads', palette: 'Ember', set: { 'layout.columns': 36, 'mappings.thickness.min': 1.5, 'mappings.thickness.max': 5,
-    'layout.strandDisplacement': 40, 'field.waveA.frequency': 0.9, 'field.waveA.direction': 90, 'field.waveB.weight': 0.2, 'colour.accentEvery': 7, 'colour.accent': '#FCFCFC' } },
+  { name: 'Protocol', from: 'Threads', palette: 'Mono Dark', set: { 'layout.rows': 96, 'layout.rotation': -45, 'mappings.thickness.min': 1, 'mappings.thickness.max': 1,
+    'field.waveA.frequency': 0.8, 'field.waveA.weight': 0.6, 'field.waveB.weight': 0.08 } },
+  { name: 'Socket', from: 'Threads', palette: 'Coral', set: { 'layout.rows': 36, 'layout.rotation': 90, 'mappings.thickness.min': 3.5, 'mappings.thickness.max': 3.5,
+    'field.waveA.frequency': 1.6, 'field.waveA.weight': 0.35, 'field.waveB.weight': 0.3, 'field.waveB.frequency': 2.4, 'marks.threshold': 0.46 } },
   { name: 'Kernel', from: 'Recursion', palette: 'Coral', set: { 'motion.speed': 1, 'layout.columns': 24, 'layout.rows': 24, 'mappings.thickness.min': 40, 'mappings.thickness.max': 40,
     'mappings.length.min': 40, 'mappings.length.max': 40, 'field.waveA.frequency': 1.4, 'field.waveB.frequency': 3.2, 'field.noise.weight': 0.1, 'shaping.mirror': 'X', 'shaping.quantise': 4 } },
   { name: 'Mutex', from: 'Recursion', palette: 'Violet', set: { 'motion.speed': 0.5, 'layout.columns': 64, 'layout.rows': 64, 'mappings.thickness.min': 16, 'mappings.thickness.max': 16,
@@ -1740,9 +1742,9 @@ function sanitizeState(st) {
     source = { ...source, field: { ...rest, plate: chladni } };
   }
   let values = normaliseStudio(deepMerge(structuredClone(firstPreset(pattern.name).values), source));
-  // A Gauge save (meters) shares nothing with Barcode but its colours and format, so it opens as Barcode's first
-  // preset in those.
-  if (values.marks.shape === 'Meter') {
+  // A retired look shares nothing with today's pattern but its colours and format, so it opens as the pattern's
+  // first preset in those: Gauge (meters, now Barcode) and Strands before its 7 October rework (wavy strands).
+  if (values.marks.shape === 'Meter' || (pattern.name === 'Strands' && values.layout.mode !== 'Hairlines')) {
     const { colour, canvas } = values;
     values = structuredClone(firstPreset(pattern.name).values);
     Object.assign(values.colour, colour); values.canvas.format = canvas.format;
@@ -2801,7 +2803,7 @@ const PLATE_MODES = [[1, 2], [2, 3], [2, 5], [3, 4], [3, 5], [3, 7], [4, 5], [4,
 function remixStudio(pattern, v, base, pick, random, palette) {
   const f = v.field, scale = pick([0.75, 1, 1, 1.25, 1.5]);
   const even = (n) => Math.max(2, Math.round(n * scale / 2) * 2);
-  const single = { Strands: 'rows', 'Threshold Stripes': 'columns' }[pattern];
+  const single = { Strands: 'columns', 'Threshold Stripes': 'columns' }[pattern];
   if (single !== 'columns') v.layout.columns = even(base.layout.columns);
   if (single !== 'rows') v.layout.rows = pattern === 'Kaleido Pixels' ? v.layout.columns : even(base.layout.rows);
   // Marks shrink as the grid gets finer, so density stays even.
@@ -2829,7 +2831,7 @@ function remixStudio(pattern, v, base, pick, random, palette) {
       Object.assign(v.attractor, { x: 0.5, y: 0.5 }); break;
     case 'Halftone Diagonal':
       f.gradient.direction = pick([0, 45, 90, 135, 180]); v.marks.fixedAngle = pick([-45, 45, 0, 90]); v.shaping.gamma = pick([1, 1.35, 1.8]); break;
-    case 'Strands': v.layout.strandDisplacement = pick([48, 72, 100]); v.colour.accentEvery = pick([0, 7, 13]); break;
+    case 'Strands': v.layout.rotation = pick([0, 0, -45, 45, 90]); v.marks.threshold = pick([0.44, 0.5, 0.56]); f.waveA.direction = pick([80, 90, 100]); break;
     case 'Cymatics': {
       const [n, m] = pick(PLATE_MODES);
       Object.assign(f.plate, { n, m, mix: pick([-45, 45]) }); v.shaping.gamma = pick([3.5, 4.5, 6]); break;

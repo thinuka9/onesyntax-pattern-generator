@@ -327,7 +327,7 @@
     const originX = (canvasWidth - width) / 2, originY = (canvasHeight - height) / 2;
     const margin = Math.max(0, Math.min(layout.margin, Math.min(width, height) / 2 - 0.5));
     const availableWidth = width - 2 * margin, availableHeight = height - 2 * margin;
-    const columns = layout.mode === 'Rows' ? 1 : Math.max(1, Math.min(1000, Math.round(layout.columns)));
+    const columns = layout.mode === 'Rows' || layout.mode === 'Hairlines' ? 1 : Math.max(1, Math.min(1000, Math.round(layout.columns)));
     const rows = layout.mode === 'Columns' || layout.mode === 'Strands' ? 1 : Math.max(1, Math.min(1000, Math.round(layout.rows)));
     const gutterX = clamp(layout.gutterX, 0, availableWidth / columns * 0.98);
     const gutterY = clamp(layout.gutterY, 0, availableHeight / rows * 0.98);
@@ -389,9 +389,9 @@
   function buildGeometry(params, time, options = {}) {
     const cells = buildLayout(params), frame = cells.frame, field = createField(params, time, options);
     const { mappings, marks, layout, canvas, colour } = params;
-    const strands = layout.mode === 'Strands';
+    const strands = layout.mode === 'Strands', hairlines = layout.mode === 'Hairlines';
     const strandSamples = Math.max(2, Math.min(2048, Math.round(layout.strandSamples)));
-    const capacity = cells.length * (strands ? strandSamples - 1 : marks.shape === 'Meter' ? 3 : 1);
+    const capacity = cells.length * (strands ? strandSamples - 1 : hairlines ? Math.ceil((strandSamples + 1) / 2) : marks.shape === 'Meter' ? 3 : 1);
     const instances = instanceBuffer(options.pool, capacity * STRIDE);
     const globalAngle = radians(layout.rotation), gc = Math.cos(globalAngle), gs = Math.sin(globalAngle);
     const centerX = canvas.width / 2, centerY = canvas.height / 2;
@@ -439,7 +439,35 @@
       return (n + 1) % accentEvery === 0;
     };
 
-    if (strands) {
+    if (hairlines) {
+      // Hairlines: each row is a thin line, drawn only where the field reaches the threshold, so the lines break and
+      // end along the field's contour. Each unbroken run is one mark, coloured and faded by its mean value.
+      const last = strandSamples - 1;
+      for (const cell of cells) {
+        const left = cell.x - cell.width / 2, v = cell.v;
+        let start = -1, sum = 0, parts = 0;
+        const emit = (end) => {
+          if (end > start) {
+            const x0 = left + cell.width * start / last, x1 = left + cell.width * end / last, mean = sum / parts;
+            const middle = (x0 + x1) / 2, u = (middle - frame.originX) / frame.width, index = cell.index * strandSamples + start;
+            const accent = isAccent(cell, index), thickness = mapped(mappings.thickness, mean, u, v);
+            setColor(mean, u, v, index, accent);
+            const before = count;
+            append(middle, cell.y, x1 - x0 + thickness, thickness, 0, thickness / 2, 0, 3, mapped(mappings.opacity, mean, u, v), accent ? 3 : 1, index);
+            if (count > before) markCount++;
+          }
+          start = -1;
+        };
+        for (let j = 0; j <= last; j++) {
+          const value = field.sample((left + cell.width * j / last - frame.originX) / frame.width, v);
+          if (value >= marks.threshold) {
+            if (start < 0) { start = j; sum = 0; parts = 0; }
+            sum += value; parts++;
+          } else if (start >= 0) emit(j - 1);
+        }
+        if (start >= 0) emit(last);
+      }
+    } else if (strands) {
       for (const cell of cells) {
         const top = cell.y - cell.height / 2;
         let previousX = 0, previousY = 0, previousValue = 0;
@@ -596,11 +624,14 @@
       p.marks.shape = 'Pill'; p.marks.angleMode = 'flow'; p.marks.radius = 3;
       p.mappings.thickness = mapping('constant', 2.5, 2.5); p.mappings.length = mapping('field', 8, 22);
     }),
+    // Strands (reworked 7 October): close hairlines that run from a wavy edge, breaking as the field dips.
     preset('Strands', 'Signal', (p) => {
-      p.layout.mode = 'Strands'; p.layout.columns = 56; p.layout.rows = 1; p.layout.margin = 110; p.layout.strandDisplacement = 72; p.layout.strandSamples = 140;
-      p.field.waveA.frequency = 1.4; p.field.waveA.direction = 65; p.field.waveB.enabled = true; p.field.waveB.frequency = 0.8; p.field.waveB.direction = 110; p.field.waveB.weight = 0.4;
-      p.marks.shape = 'Line'; p.mappings.thickness = mapping('field', 1.1, 3.2);
-      p.colour.accentEvery = 13; p.colour.accentAxis = 'column';
+      p.layout.mode = 'Hairlines'; p.layout.columns = 1; p.layout.rows = 64; p.layout.margin = 90; p.layout.strandSamples = 240; p.layout.rotation = -35;
+      p.field.waveA.frequency = 0.7; p.field.waveA.direction = 90; p.field.waveA.weight = 0.22;
+      p.field.waveB.enabled = true; p.field.waveB.frequency = 11; p.field.waveB.direction = 87; p.field.waveB.weight = 0.16;
+      p.field.gradient.enabled = true; p.field.gradient.direction = 25; p.field.gradient.weight = 1;
+      p.marks.shape = 'Line'; p.marks.threshold = 0.47; p.mappings.thickness = mapping('constant', 1.4, 1.4); p.mappings.opacity = mapping('constant', 0.55, 0.55);
+      p.colour.source = 'constant';
     }),
     preset('Kaleido Pixels', 'Azure', (p) => {
       p.layout.columns = 40; p.layout.rows = 40; p.layout.margin = 60;
