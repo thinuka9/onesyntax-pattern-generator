@@ -101,6 +101,14 @@ stripped by `build.mjs`). 14 patterns, 49 built-in presets (Gauge and its three 
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Sticker, matched to Figma (7 October):** the outline, band and type now come from the Figma "Sticker" frame
+  (421 units): corners cut 142.52 (33.86%), 32 margins, the brand {OS} monogram file 39 tall top right, title Geist
+  Medium 40 at −4% and subtitle Geist Mono 32 at −4% and 64% in 125% line boxes (baselines measured from the fonts),
+  and a fixed band at y 143, 135 tall, the pattern edge to edge in it (no margin of its own). Colours are the file's
+  five stickers (Blue, Violet, Grey, Black, White), each with its fill, inks and the colour the pattern is drawn in
+  (`stickerState`); Shuffle colours and the header dice roll one. Pattern on/off makes plain stickers. The adjustable
+  band, corners and free sticker colour are gone. Fixed: turning the sticker off left its canvas covering the pattern
+  (`display: block` beat `hidden`).
 - **Sticker (7 October):** any pattern can be shown as the {OS} sticker (Sticker section, on every pattern): the
   square with its top-left and bottom-right corners cut (Corners, a third of the side by default, from the Figma
   stickers), a brand colour, {OS} top right and an editable title (Geist 500) and subtitle (Geist Mono) bottom left in

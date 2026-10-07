@@ -69,6 +69,7 @@
 
   /* ---------- Artwork and overlays ---------- */
   #canvas, #stickerCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  #canvas[hidden], #stickerCanvas[hidden] { display: none; }  /* display: block above would otherwise keep a hidden canvas showing */
   .frame { position: fixed; pointer-events: none; box-shadow: 0 18px 50px rgba(0,0,0,.2); }
   /* The centre handle: rings round a knob, shown over the artwork; difference blending keeps it visible on any colour. */
   .centre-handle { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 3; pointer-events: none; }
@@ -253,6 +254,9 @@
   .listbox .icon { width: 15px; height: 15px; }
   .listbox.previews button { grid-template-columns: 36px 1fr 15px; height: 46px; padding: 0 10px 0 5px; }
   .listbox.previews canvas { width: 36px; height: 36px; display: block; box-shadow: inset 0 0 0 1px var(--line); }
+  .action-field { display: flex; align-items: center; gap: 8px; cursor: pointer; text-align: left; }
+  .action-field .icon { width: 16px; height: 16px; flex: none; }
+  .action-field:hover { background: var(--button-hover); }
   .text-field { width: 100%; height: var(--control); padding: 0 11px; background: var(--track); color: var(--text); font: inherit; font-size: 14px; font-weight: 500; transition: background .2s var(--ease); }
   .text-field:hover { background: var(--track-hover); }
 
@@ -604,35 +608,44 @@ const gradient = (label) => ({ type: 'gradient', label });
 const PALETTE = { type: 'palette' }, FORMAT = { type: 'format' };
 
 // ---------- Sticker ----------
-// Any pattern can be shown as the {OS} sticker: a square with its top-left and bottom-right corners cut off, the
-// {OS} mark top right and a title and subtitle bottom left (in an ink that suits the sticker's colour), and the
-// pattern masked into a band across it, scaled to cover the band. The settings ride along in `values.sticker`, so
-// saves, links and undo keep them; built-in presets have none, and loading one keeps the sticker as it is.
-const STICKER_SIZE = 1200;
-const STICKER_DEFAULTS = { on: 'off', fill: '#0A89FF', title: 'Shipped', subtitle: 'Release 142', top: 0.335, height: 0.385, band: 'sticker', cut: 0.335, mark: 'on' };
+// Any pattern can be shown as the {OS} sticker from the Figma file (Brand Identity & Applications, "Sticker"),
+// measured on its 421-unit frame: the square with its top-left and bottom-right corners cut 142.52 in (33.86%), the
+// {OS} monogram 39 tall top right and the title (Geist Medium 40, −4%) and subtitle (Geist Mono 32, −4%, 64%) bottom
+// left, all 32 in from the edges, and the pattern masked into a fixed band (y 143, 135 tall). Each colour scheme is one
+// of the file's stickers: its fill, inks and the colour the pattern is drawn in. The settings ride along in
+// `values.sticker`, so saves, links and undo keep them; built-in presets have none, and loading one keeps the sticker.
+const STICKER_SIZE = 1200, STICKER_UNIT = STICKER_SIZE / 421;
+const STICKER_SCHEMES = {
+  blue: { label: 'Blue', fill: '#0082FD', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FFFFFF', art: '#95CBFE' },
+  violet: { label: 'Violet', fill: '#6426D2', title: '#FAFAFA', subtitle: '#FCFCFC', mark: '#FAFAFA', art: '#FFD036' },
+  grey: { label: 'Grey', fill: '#D5D5D5', title: '#545454', subtitle: '#151515', mark: '#545454', art: '#FAFAFA' },
+  black: { label: 'Black', fill: '#0F0F0F', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FFFFFF', art: '#FCFCFC' },
+  white: { label: 'White', fill: '#FCFCFC', title: '#151515', subtitle: '#151515', mark: '#151515', art: '#151515' },
+};
+const STICKER_DEFAULTS = { on: 'off', scheme: 'blue', pattern: 'on', title: 'Shipped', subtitle: 'Release 142' };
 function sanitizeSticker(s) {
   if (!s || typeof s !== 'object') return undefined;
   const v = { ...STICKER_DEFAULTS };
   for (const key of ['title', 'subtitle']) if (typeof s[key] === 'string') v[key] = s[key].slice(0, 40);
-  if (typeof s.fill === 'string' && /^#[0-9a-f]{6}$/i.test(s.fill)) v.fill = s.fill.toUpperCase();
-  for (const [key, low, high] of [['top', 0, 0.95], ['height', 0.02, 1], ['cut', 0, 0.5]]) if (Number.isFinite(+s[key])) v[key] = E.clamp(+s[key], low, high);
+  if (STICKER_SCHEMES[s.scheme]) v.scheme = s.scheme;
   if (s.on === 'on' || s.on === 'off') v.on = s.on;
-  if (s.band === 'sticker' || s.band === 'pattern') v.band = s.band;
-  if (s.mark === 'on' || s.mark === 'off') v.mark = s.mark;
+  if (s.pattern === 'on' || s.pattern === 'off') v.pattern = s.pattern;
   return v;
 }
 const stickerOn = (st) => !!(st.values.sticker && st.values.sticker.on === 'on');
 const stickerShown = (v) => !!(v.sticker && v.sticker.on === 'on');
+/** A different scheme at random (the sticker's dice). */
+function shuffleStickerScheme() {
+  const others = Object.keys(STICKER_SCHEMES).filter((k) => k !== state.values.sticker.scheme);
+  state.values.sticker.scheme = others[Math.floor(Math.random() * others.length)];
+}
 const STICKER_CONTROLS = [
   { ...choice('sticker.on', 'Sticker', [['Off', 'off'], ['On', 'on']]), rebuild: true },
-  { ...colour('sticker.fill', 'Sticker colour'), when: stickerShown },
+  { ...choice('sticker.scheme', 'Colours', Object.entries(STICKER_SCHEMES).map(([k, x]) => [x.label, k])), when: stickerShown },
+  { type: 'action', label: '', text: 'Shuffle colours', icon: 'dice', run: () => shuffleStickerScheme(), rebuild: true, when: stickerShown },
+  { ...choice('sticker.pattern', 'Pattern', [['On', 'on'], ['Off', 'off']]), when: stickerShown },
   { ...textInput('sticker.title', 'Title'), when: stickerShown },
   { ...textInput('sticker.subtitle', 'Subtitle'), when: stickerShown },
-  { ...range('sticker.top', 'Pattern top', 0, 0.95, 0.005, pct), when: stickerShown },
-  { ...range('sticker.height', 'Pattern height', 0.02, 1, 0.005, pct), when: stickerShown },
-  { ...choice('sticker.band', 'Behind pattern', [['Sticker', 'sticker'], ['Pattern', 'pattern']]), when: stickerShown },
-  { ...range('sticker.cut', 'Corners', 0, 0.5, 0.005, pct), when: stickerShown },
-  { ...choice('sticker.mark', '{OS}', [['On', 'on'], ['Off', 'off']]), when: stickerShown },
 ];
 const both = (key) => [key + '.min', key + '.max'];
 
@@ -2101,50 +2114,85 @@ try { gpu = new E.Renderer(canvas); } catch { gpu = null; }
 const ctx = gpu ? null : canvas.getContext('2d');
 
 /** Where the artwork sits: covering the whole window, or fitted beside the panel at its exact proportions. */
-// The sticker's parts, on its STICKER_SIZE square: the outline (top-left and bottom-right corners cut), the band
-// the pattern shows through, the side margin, and the inks for its text (dark on light stickers, light on dark).
+// The sticker's parts on its STICKER_SIZE square, from the Figma frame's 421 units (see the Sticker section above).
 function stickerParts(s) {
-  const S = STICKER_SIZE, c = s.cut * S, m = 0.075 * S;
-  const [r, g, b] = E.colourRGB(s.fill), light = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  const u = STICKER_UNIT, cut = 142.524 * u, S = STICKER_SIZE;
   return {
-    S, m, outline: `M${c} 0H${S}V${S - c}L${S - c} ${S}H0V${c}Z`, band: [m, s.top * S, S - 2 * m, s.height * S],
-    ink: light > 0.55 ? '#151515' : '#FCFCFC', strength: light > 0.55 && light < 0.9 ? 0.72 : 1,  // a mid grey softens the dark ink
-    title: { size: 0.094 * S, y: 0.8 * S }, subtitle: { size: 0.066 * S, y: 0.885 * S }, mark: { size: 0.085 * S, y: 0.155 * S },
+    S, u, scheme: STICKER_SCHEMES[s.scheme] || STICKER_SCHEMES.blue, margin: 32 * u,
+    outline: `M${cut} 0H${S}V${S - cut}L${S - cut} ${S}H0V${cut}Z`,
+    band: [32 * u, 143 * u, 357 * u, 135 * u],
+    mark: { height: 39 * u, right: 389 * u, top: 32 * u },
+    // Each line box is 125% of its type size; the title's box starts at 300, the subtitle's right under it.
+    title: { size: 40 * u, top: 300 * u, box: 50 * u, tracking: -0.04 * 40 * u },
+    subtitle: { size: 32 * u, top: 350 * u, box: 40 * u, tracking: -0.04 * 32 * u, alpha: 0.64 },
   };
+}
+/** The pattern recoloured for the sticker: every mark in the scheme's pattern colour, on the sticker's own fill. */
+function stickerState(st) {
+  const scheme = STICKER_SCHEMES[st.values.sticker.scheme] || STICKER_SCHEMES.blue, art = scheme.art, out = structuredClone(st), v = out.values;
+  // The band is the frame, so the pattern runs edge to edge in it: no margin of its own.
+  if (isRows(out)) Object.assign(v, { ink: art, background: scheme.fill, margin: 0 });
+  else if (isMark(out)) Object.assign(v, { ink: art, ink2: art, highlight: art, background: scheme.fill, margin: 0 });
+  else if (kindOf(out) === 'orbit') { Object.assign(v, { ink: art, ink2: art, background: scheme.fill, margin: 0 }); v.grid.margin = 0; }
+  else { Object.assign(v.colour, { stop1: art, stop2: art, stop3: art, accent: art, background: scheme.fill }); v.layout.margin = 0; }
+  return out;
 }
 /** How the pattern covers the band: its scale and top-left corner, on the sticker. */
 function stickerCover(parts, geo) {
   const [bx, by, bw, bh] = parts.band, k = Math.max(bw / geo.width, bh / geo.height);
   return { k, x: bx + (bw - geo.width * k) / 2, y: by + (bh - geo.height * k) / 2 };
 }
-/** Paints the sticker with `geo` in its band at `scale`, offset by (ox, oy); `page` is the colour round it, or none. */
+// The {OS} monogram, from the brand file, recoloured per ink (its paths are drawn white).
+const MONOGRAM_SRC = './brand/onesyntax-os-monogram.svg', monogramByInk = new Map();
+let monogramText = null;
+fetch(MONOGRAM_SRC).then((r) => r.text()).then((text) => { monogramText = text; requestRender(); }).catch(() => {});
+const monogramSVG = (ink) => monogramText && monogramText.replace(/fill="white"/g, `fill="${ink}"`);
+function monogramImage(ink) {
+  if (!monogramText) return null;
+  let image = monogramByInk.get(ink);
+  if (!image) {
+    image = new Image();
+    image.onload = () => requestRender();
+    image.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(monogramSVG(ink));
+    monogramByInk.set(ink, image);
+  }
+  return image.complete && image.naturalWidth ? image : null;
+}
+const MONOGRAM_ASPECT = 633.616 / 272.482;
+/** Where a line of type sits so its 125% line box starts at `top`, measured from the font itself. */
+function stickerBaseline(target, line) {
+  const m = target.measureText('Hg'), ascent = m.fontBoundingBoxAscent || line.size * 0.93, descent = m.fontBoundingBoxDescent || line.size * 0.22;
+  return line.top + (line.box - ascent - descent) / 2 + ascent;
+}
+/** Paints the sticker (its scheme already applied to `geo`) at `scale`, offset by (ox, oy); `page` colours the rest. */
 function drawSticker(target, st, geo, scale, { ox = 0, oy = 0, page = null } = {}) {
-  const s = st.values.sticker, parts = stickerParts(s), { S, m } = parts, outline = new Path2D(parts.outline);
+  const s = st.values.sticker, parts = stickerParts(s), { S, scheme } = parts, outline = new Path2D(parts.outline);
   target.setTransform(scale, 0, 0, scale, ox, oy);
   target.globalAlpha = 1;
   if (page) { target.fillStyle = page; target.fillRect(0, 0, S, S); }
-  target.fillStyle = s.fill; target.fill(outline);
-  target.save();
-  target.clip(outline);
-  const [bx, by, bw, bh] = parts.band;
-  target.beginPath(); target.rect(bx, by, bw, bh); target.clip();
-  const cover = stickerCover(parts, geo);
-  draw(target, geo, scale * cover.k, { ox: ox + cover.x * scale, oy: oy + cover.y * scale, background: s.band === 'pattern' });
-  target.restore();
-  target.setTransform(scale, 0, 0, scale, ox, oy);
-  target.fillStyle = parts.ink; target.textBaseline = 'alphabetic';
-  if ('letterSpacing' in target) target.letterSpacing = '0px';
-  if (s.mark === 'on') {
-    target.globalAlpha = parts.strength; target.textAlign = 'right'; target.font = `400 ${parts.mark.size}px Geist, system-ui, sans-serif`;
-    target.fillText('{OS}', S - m, parts.mark.y);
+  target.fillStyle = scheme.fill; target.fill(outline);
+  if (s.pattern === 'on') {
+    target.save();
+    target.clip(outline);
+    const [bx, by, bw, bh] = parts.band;
+    target.beginPath(); target.rect(bx, by, bw, bh); target.clip();
+    const cover = stickerCover(parts, geo);
+    draw(target, geo, scale * cover.k, { ox: ox + cover.x * scale, oy: oy + cover.y * scale, background: false });
+    target.restore();
+    target.setTransform(scale, 0, 0, scale, ox, oy);
   }
-  target.textAlign = 'left';
-  target.globalAlpha = parts.strength; target.font = `500 ${parts.title.size}px Geist, system-ui, sans-serif`;
-  if ('letterSpacing' in target) target.letterSpacing = `${-0.02 * parts.title.size}px`;
-  target.fillText(s.title, m, parts.title.y);
+  const mark = monogramImage(scheme.mark);
+  if (mark) { const w = parts.mark.height * MONOGRAM_ASPECT; target.drawImage(mark, parts.mark.right - w, parts.mark.top, w, parts.mark.height); }
+  target.textAlign = 'left'; target.textBaseline = 'alphabetic';
+  for (const [line, text, font, ink, alpha] of [
+    [parts.title, s.title, `500 ${parts.title.size}px Geist, system-ui, sans-serif`, scheme.title, 1],
+    [parts.subtitle, s.subtitle, `400 ${parts.subtitle.size}px "Geist Mono", ui-monospace, monospace`, scheme.subtitle, parts.subtitle.alpha],
+  ]) {
+    target.font = font; target.fillStyle = ink; target.globalAlpha = alpha;
+    if ('letterSpacing' in target) target.letterSpacing = `${line.tracking}px`;
+    target.fillText(text, parts.margin, stickerBaseline(target, line));
+  }
   if ('letterSpacing' in target) target.letterSpacing = '0px';
-  target.globalAlpha = parts.strength * 0.65; target.font = `400 ${parts.subtitle.size}px "Geist Mono", ui-monospace, monospace`;
-  target.fillText(s.subtitle, m, parts.subtitle.y);
   target.globalAlpha = 1;
 }
 // The sticker preview sits on a neutral grey, as on a design canvas.
@@ -2191,7 +2239,7 @@ const framePool = {};
 function render() {
   const geo = geometryFor(state, time, framePool);
   const vw = window.innerWidth, vh = window.innerHeight;
-  if (stickerOn(state)) { renderSticker(geo, vw, vh); return; }
+  if (stickerOn(state)) { renderSticker(geometryFor(stickerState(state), time, framePool), vw, vh); return; }
   if (!stickerCanvas.hidden) { stickerCanvas.hidden = true; canvas.hidden = false; }
   const place = artPlacement(geo, vw, vh);
   artPlace = { ...place, width: geo.width, height: geo.height };
@@ -2490,7 +2538,11 @@ function buildPicker() {
     applySeed((state.values.seed + Number(step.dataset.step) + MAX_SEED + 1) % (MAX_SEED + 1));
     document.querySelector(`.step[data-step="${step.dataset.step}"]`).focus();
   });
-  wrap.querySelector('#seedDice').addEventListener('click', () => { newVariation(); document.getElementById('seedDice').focus(); });
+  // On a sticker the dice also rolls one of the sticker's colour schemes.
+  wrap.querySelector('#seedDice').addEventListener('click', () => {
+    if (stickerOn(state)) shuffleStickerScheme();
+    newVariation(); document.getElementById('seedDice').focus();
+  });
   return wrap;
 }
 
@@ -2605,6 +2657,9 @@ function control(c) {
     const select = row.querySelector('select');
     select.value = getPath(v, c.key);
     select.addEventListener('change', () => { setPath(state.values, c.key, select.value); edit(); if (c.rebuild) buildPanel(); });
+  } else if (c.type === 'action') {
+    row.innerHTML = `<label>${c.label}</label><button type="button" class="text-field action-field">${icon(c.icon)}<span>${c.text}</span></button>`;
+    row.querySelector('button').addEventListener('click', () => { c.run(); edit(); if (c.rebuild) buildPanel(); });
   } else if (c.type === 'text') {
     row.innerHTML = `<label for="${id}">${c.label}</label><input class="text-field" id="${id}" type="text" maxlength="24" spellcheck="false" autocomplete="off">`;
     const input = row.querySelector('input');
@@ -3450,7 +3505,7 @@ function exportPNG(requested = 2) {
 }
 /** The sticker as a PNG: transparent round its outline when Transparent is on, on the sticker page's grey if not. */
 function exportStickerPNG(requested) {
-  const geo = geometryFor(state, time), scale = Math.min(requested, MAX_PNG_SIDE / STICKER_SIZE), off = document.createElement('canvas');
+  const geo = geometryFor(stickerState(state), time), scale = Math.min(requested, MAX_PNG_SIDE / STICKER_SIZE), off = document.createElement('canvas');
   off.width = off.height = Math.round(STICKER_SIZE * scale);
   notify(`Rendering a ${off.width} × ${off.height} PNG…`, { stay: true });
   setTimeout(() => {
@@ -3464,13 +3519,13 @@ function exportStickerPNG(requested) {
 }
 
 function exportSVG() {
-  // On a sticker, the pattern drops its own background when the sticker's colour shows behind it.
-  const sticker = stickerOn(state), transparent = sticker ? state.values.sticker.band === 'sticker' : exportOptions.transparent;
-  const geo = geometryFor(state, time);
+  // On a sticker the pattern is drawn in the scheme's colour with no background of its own (the sticker shows through).
+  const sticker = stickerOn(state), st = sticker ? stickerState(state) : state, transparent = sticker || exportOptions.transparent;
+  const geo = geometryFor(st, time);
   // Orbit's arcs export as one closed path per dash; everything else as its marks.
-  const svg = kindOf(state) === 'orbit' && state.values.layout !== 'grid'
-    ? orbitSVG(state, time, { transparent })
-    : E.toSVG(geo, geo.params, state, { transparent });
+  const svg = kindOf(st) === 'orbit' && st.values.layout !== 'grid'
+    ? orbitSVG(st, time, { transparent })
+    : E.toSVG(geo, geo.params, st, { transparent });
   download(new Blob([sticker ? stickerSVG(svg, geo) : svg], { type: 'image/svg+xml' }), fileBase() + (sticker ? '_sticker' : '') + '.svg');
 }
 
@@ -3480,26 +3535,28 @@ function exportSVG() {
  * text in Geist. Transparent leaves the page round the sticker empty; otherwise it is the sticker page's grey.
  */
 function stickerSVG(patternSVG, geo) {
-  const s = state.values.sticker, parts = stickerParts(s), { S, m } = parts, cover = stickerCover(parts, geo), [bx, by, bw, bh] = parts.band;
-  const n = (x) => String(Math.round(x * 10) / 10);
+  const s = state.values.sticker, parts = stickerParts(s), { S, scheme } = parts, cover = stickerCover(parts, geo), [bx, by, bw, bh] = parts.band;
+  const n = (x) => String(Math.round(x * 100) / 100);
   const escape = (text) => text.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
   const inner = patternSVG
     .replace(/^<\?xml[^>]*\?>\s*/, '')  // a declaration may only open a file
     .replace(/<title>[\s\S]*?<\/title>\n?|<desc>[\s\S]*?<\/desc>\n?|<metadata[\s\S]*?<\/metadata>\n?/g, '')
     .replace(/^<svg\b[^>]*>/, `<svg x="${n(cover.x)}" y="${n(cover.y)}" width="${n(geo.width * cover.k)}" height="${n(geo.height * cover.k)}" viewBox="0 0 ${geo.width} ${geo.height}">`);
-  const soft = (alpha) => alpha < 1 ? ` fill-opacity="${Math.round(alpha * 100) / 100}"` : '';
+  // The type sits exactly where the canvas puts it: measured from the same fonts.
+  const measure = document.createElement('canvas').getContext('2d');
+  const baseline = (line, font) => { measure.font = font; return stickerBaseline(measure, line); };
+  const titleY = baseline(parts.title, `500 ${parts.title.size}px Geist, system-ui, sans-serif`);
+  const subtitleY = baseline(parts.subtitle, `400 ${parts.subtitle.size}px "Geist Mono", ui-monospace, monospace`);
+  const markWidth = parts.mark.height * MONOGRAM_ASPECT, monogram = monogramSVG(scheme.mark);
+  const mark = monogram ? monogram.replace(/^<svg\b[^>]*>/, `<svg id="monogram" x="${n(parts.mark.right - markWidth)}" y="${n(parts.mark.top)}" width="${n(markWidth)}" height="${n(parts.mark.height)}" viewBox="0 0 633.616 272.482" fill="none">`) : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">
 <title>${escape(s.title)} · OneSyntax sticker</title>
 <metadata id="onesyntax-preset">${escape(JSON.stringify(state))}</metadata>
 <defs><clipPath id="sticker-outline"><path d="${parts.outline}"/></clipPath><clipPath id="sticker-band"><rect x="${n(bx)}" y="${n(by)}" width="${n(bw)}" height="${n(bh)}"/></clipPath></defs>
-${exportOptions.transparent ? '' : `<rect id="page" width="${S}" height="${S}" fill="${STICKER_PAGE}"/>\n`}<path id="sticker" d="${parts.outline}" fill="${s.fill}"/>
-<g id="pattern" clip-path="url(#sticker-outline)"><g clip-path="url(#sticker-band)">
-${inner}
-</g></g>
-<g id="text" fill="${parts.ink}" font-family="Geist, system-ui, sans-serif">
-${s.mark === 'on' ? `<text x="${n(S - m)}" y="${n(parts.mark.y)}" font-size="${n(parts.mark.size)}" text-anchor="end"${soft(parts.strength)}>{OS}</text>\n` : ''}<text x="${n(m)}" y="${n(parts.title.y)}" font-size="${n(parts.title.size)}" font-weight="500" letter-spacing="${n(-0.02 * parts.title.size)}"${soft(parts.strength)}>${escape(s.title)}</text>
-<text x="${n(m)}" y="${n(parts.subtitle.y)}" font-size="${n(parts.subtitle.size)}" font-family="'Geist Mono', ui-monospace, monospace"${soft(parts.strength * 0.65)}>${escape(s.subtitle)}</text>
-</g>
+${exportOptions.transparent ? '' : `<rect id="page" width="${S}" height="${S}" fill="${STICKER_PAGE}"/>\n`}<path id="sticker" d="${parts.outline}" fill="${scheme.fill}"/>
+${s.pattern === 'on' ? `<g id="pattern" clip-path="url(#sticker-outline)"><g clip-path="url(#sticker-band)">\n${inner}\n</g></g>\n` : ''}${mark}
+<text id="title" x="${n(parts.margin)}" y="${n(titleY)}" fill="${scheme.title}" font-family="Geist, system-ui, sans-serif" font-size="${n(parts.title.size)}" font-weight="500" letter-spacing="${n(parts.title.tracking)}">${escape(s.title)}</text>
+<text id="subtitle" x="${n(parts.margin)}" y="${n(subtitleY)}" fill="${scheme.subtitle}" fill-opacity="${parts.subtitle.alpha}" font-family="'Geist Mono', ui-monospace, monospace" font-size="${n(parts.subtitle.size)}" letter-spacing="${n(parts.subtitle.tracking)}">${escape(s.subtitle)}</text>
 </svg>`;
 }
 
@@ -4156,9 +4213,9 @@ function exportAnimatedSVG() {
     try {
       // Orbit's arcs animate whole dashes (sliding, swaying, pulsing); everything else is sampled mark by mark.
       const v = state.values, sliding = kindOf(state) === 'orbit' && v.layout !== 'grid';
-      const sticker = stickerOn(state), transparent = sticker ? v.sticker.band === 'sticker' : exportOptions.transparent;
-      const result = sliding ? orbitAnimatedSVG(state, { transparent }) : animatedSVG(state, { transparent });
-      if (sticker) result.svg = stickerSVG(result.svg, geometryFor(state, 0));
+      const sticker = stickerOn(state), st = sticker ? stickerState(state) : state, transparent = sticker || exportOptions.transparent;
+      const result = sliding ? orbitAnimatedSVG(st, { transparent }) : animatedSVG(st, { transparent });
+      if (sticker) result.svg = stickerSVG(result.svg, geometryFor(st, 0));
       download(new Blob([result.svg], { type: 'image/svg+xml' }), `${fileBase()}${sticker ? '_sticker' : ''}_${result.loop}s-loop.svg`);
       const size = result.svg.length < 1e6 ? `${Math.round(result.svg.length / 1e3)} KB` : `${(result.svg.length / 1e6).toFixed(1)} MB`;
       // Thousands of animated marks play heavily in a browser; past that, video is the smoother web format.
@@ -4221,12 +4278,12 @@ async function encodeLoop(onProgress) {
   let renderer = null;
   // A sticker is painted in 2D (its text and outline are not marks).
   try { renderer = stickerOn(snap) ? null : new E.Renderer(out); } catch { renderer = null; }
-  const context = renderer ? null : out.getContext('2d'), pool = {};
+  const context = renderer ? null : out.getContext('2d'), pool = {}, drawn = stickerOn(snap) ? stickerState(snap) : snap;
   try {
     const frames = fps * duration, step = Math.round(1e6 / fps);
     for (let k = 0; k < frames; k++) {
       if (failure) throw failure;
-      const geo = geometryFor(snap, k / fps, pool);
+      const geo = geometryFor(drawn, k / fps, pool);
       if (renderer) renderer.render(geo, geo.params, width, height);
       else if (stickerOn(snap)) drawSticker(context, snap, geo, width / STICKER_SIZE, { page: STICKER_PAGE });
       else draw(context, geo, width / geo.width);
@@ -4260,8 +4317,9 @@ async function recordLoop(onProgress) {
   try { renderer = stickerOn(snap) ? null : new E.Renderer(out); } catch { renderer = null; }
   const context = renderer ? null : out.getContext('2d');
   const pool = {};  // each recorded frame reuses one buffer
+  const drawn = stickerOn(snap) ? stickerState(snap) : snap;
   const paint = (t) => {
-    const geo = geometryFor(snap, t, pool);
+    const geo = geometryFor(drawn, t, pool);
     if (renderer) renderer.render(geo, geo.params, width, height);
     else if (stickerOn(snap)) drawSticker(context, snap, geo, width / STICKER_SIZE, { page: STICKER_PAGE });
     else draw(context, geo, width / geo.width);
