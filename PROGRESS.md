@@ -101,6 +101,11 @@ stripped by `build.mjs`). 14 patterns, 47 built-in presets (Gauge and its three 
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Rotation and fit (7 October):** Threshold Stripes and Stack have a Rotation control. The engine lays the grid
+  out in a frame turned by `layout.rotation` about the centre and sized to cover the page once turned (at 90° a
+  16:9 page lays out as 9:16), so a turned pattern fills every format; at 0° the frame is the page, so every other
+  pattern draws as before. With `layout.fit` (on for both patterns' presets) bar lengths scale with the cell's width
+  against the 1200 px square they were tuned on, so a wide page gets wide bars.
 - **Shorter shared animations (7 October):** the mark-by-mark export's shared CSS animations write `opacity` and the
   `scale` property instead of `fill-opacity` and `transform:scale()` (a mark is one filled shape, so they look the
   same), a start delay used by three or more marks is a class, and round dots are `<circle>`. 24–36% smaller on the

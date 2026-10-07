@@ -313,9 +313,18 @@
   }
 
   // ---------- layout.ts ----------
+  /**
+   * The grid is laid out in a frame turned by `layout.rotation` about the canvas centre and sized to cover the
+   * canvas once turned (at 90° a 16:9 page lays out as 9:16), so a turned pattern still fills every format; at 0°
+   * the frame is the canvas. `cells.fit` is how much wider a cell is than on the 1200 px square the presets were
+   * tuned on, for patterns whose bar lengths follow their space (`layout.fit`).
+   */
   function buildLayout(params) {
     const { layout, canvas } = params;
-    const width = Math.max(1, canvas.width), height = Math.max(1, canvas.height);
+    const turn = radians(layout.rotation || 0), across = Math.abs(Math.cos(turn)), along = Math.abs(Math.sin(turn));
+    const canvasWidth = Math.max(1, canvas.width), canvasHeight = Math.max(1, canvas.height);
+    const width = canvasWidth * across + canvasHeight * along, height = canvasWidth * along + canvasHeight * across;
+    const originX = (canvasWidth - width) / 2, originY = (canvasHeight - height) / 2;
     const margin = Math.max(0, Math.min(layout.margin, Math.min(width, height) / 2 - 0.5));
     const availableWidth = width - 2 * margin, availableHeight = height - 2 * margin;
     const columns = layout.mode === 'Rows' ? 1 : Math.max(1, Math.min(1000, Math.round(layout.columns)));
@@ -333,9 +342,14 @@
         const index = row * columns + column;
         const x = margin + cellWidth / 2 + column * stepX + shift + (hash01(params.seed + 137, index) - 0.5) * cellWidth * jitter;
         const y = margin + cellHeight / 2 + row * stepY + (hash01(params.seed + 541, index) - 0.5) * cellHeight * jitter;
-        cells[index] = { x, y, width: cellWidth, height: cellHeight, column, row, index, u: x / width, v: y / height };
+        cells[index] = { x: originX + x, y: originY + y, width: cellWidth, height: cellHeight, column, row, index, u: x / width, v: y / height };
       }
     }
+    // The same grid on the square the presets were tuned on (scaled up with the page, as the app scales sizes).
+    const square = Math.max(1200, Math.min(canvasWidth, canvasHeight)), squareMargin = Math.min(layout.margin, square / 2 - 0.5);
+    const squareCell = (square - 2 * squareMargin - (columns - 1) * clamp(layout.gutterX, 0, (square - 2 * squareMargin) / columns * 0.98)) / columns;
+    cells.fit = squareCell > 0 ? cellWidth / squareCell : 1;
+    cells.frame = { originX, originY, width, height };
     return cells;
   }
 
@@ -373,7 +387,7 @@
 
   /** Slot 13 of each instance holds a mark id that stays the same from frame to frame. `options.pool`: see instanceBuffer. */
   function buildGeometry(params, time, options = {}) {
-    const cells = buildLayout(params), field = createField(params, time, options);
+    const cells = buildLayout(params), frame = cells.frame, field = createField(params, time, options);
     const { mappings, marks, layout, canvas, colour } = params;
     const strands = layout.mode === 'Strands';
     const strandSamples = Math.max(2, Math.min(2048, Math.round(layout.strandSamples)));
@@ -431,14 +445,14 @@
         let previousX = 0, previousY = 0, previousValue = 0;
         for (let j = 0; j < strandSamples; j++) {
           const baseY = top + cell.height * j / (strandSamples - 1);
-          const u = cell.x / canvas.width, v = baseY / canvas.height;
+          const u = (cell.x - frame.originX) / frame.width, v = (baseY - frame.originY) / frame.height;
           const value = field.sample(u, v);
           const x = cell.x + (value - 0.5) * layout.strandDisplacement * 2 + mapped(mappings.offsetX, value, u, v);
           const y = baseY + mapped(mappings.offsetY, value, u, v);
           if (j) {
             // A segment takes the mean of its two ends rather than sampling the field again: one sample per point.
             const middleX = (x + previousX) / 2, middleY = (y + previousY) / 2;
-            const mu = middleX / canvas.width, mv = middleY / canvas.height, middleValue = (value + previousValue) / 2;
+            const mu = (middleX - frame.originX) / frame.width, mv = (middleY - frame.originY) / frame.height, middleValue = (value + previousValue) / 2;
             if (middleValue >= marks.threshold) {
               const index = cell.index * (strandSamples - 1) + j - 1;
               const accent = isAccent(cell, index), thickness = mapped(mappings.thickness, middleValue, mu, mv);
@@ -478,7 +492,7 @@
           const capOffset = clamp(height / 2 - height * capValue - marks.capOffset, -height / 2, height / 2);
           append(x - capOffset * sn, y + capOffset * cs, marks.fillThickness * 1.4, marks.capSize, angle, marks.radius, 0, 0, opacity, accent ? 3 : 2, cell.index * 3 + 2);
         } else {
-          append(x, y, mapped(mappings.length, value, u, v), mapped(mappings.thickness, value, u, v), angle, marks.radius, (marks.shape === 'Parallelogram' ? marks.skew : 0) + mapped(mappings.skew, value, u, v), shapeIds[marks.shape], opacity, accent ? 3 : 1, cell.index);
+          append(x, y, mapped(mappings.length, value, u, v) * (layout.fit ? cells.fit : 1), mapped(mappings.thickness, value, u, v), angle, marks.radius, (marks.shape === 'Parallelogram' ? marks.skew : 0) + mapped(mappings.skew, value, u, v), shapeIds[marks.shape], opacity, accent ? 3 : 1, cell.index);
         }
         if (count > before) markCount++;
       }
@@ -524,7 +538,7 @@
       },
       shaping: { warp: 0, warpScale: 3, mirror: 'none', contrast: 1, gamma: 1, quantise: 0, invert: false },
       attractor: { enabled: false, x: 0.5, y: 0.48, radius: 0.32, strength: 0.55 },
-      layout: { mode: 'Grid', columns: 28, rows: 28, margin: 100, gutterX: 0, gutterY: 0, jitter: 0, rotation: 0, stagger: 0.5, strandDisplacement: 90, strandSamples: 100 },
+      layout: { mode: 'Grid', columns: 28, rows: 28, margin: 100, gutterX: 0, gutterY: 0, jitter: 0, rotation: 0, fit: 0, stagger: 0.5, strandDisplacement: 90, strandSamples: 100 },
       marks: { shape: 'Rectangle', radius: 0, skew: 0, threshold: 0, angleMode: 'fixed', fixedAngle: 0, trackThickness: 1.5, trackOpacity: 0.25, fillThickness: 12, capSize: 8, capOffset: 32, capWave: true },
       mappings: {
         thickness: mapping('constant', 5, 5), length: mapping('constant', 26, 26),
@@ -563,7 +577,7 @@
       p.mappings.thickness = mapping('field', 1.8, 14.4); p.mappings.length = mapping('constant', 108, 108);
     }),
     preset('Threshold Stripes', 'Night', (p) => {
-      p.layout.mode = 'Rows'; p.layout.rows = 44; p.layout.columns = 1; p.layout.margin = 80;
+      p.layout.mode = 'Rows'; p.layout.rows = 44; p.layout.columns = 1; p.layout.margin = 80; p.layout.fit = 1;
       p.field.waveA.frequency = 1.2; p.field.waveA.direction = 90; p.field.waveB.enabled = true; p.field.waveB.frequency = 2.7; p.field.waveB.weight = 0.2;
       p.shaping.contrast = 1.55; p.shaping.gamma = 0.8; p.shaping.quantise = 7;
       p.mappings.thickness = mapping('field', 2, 20); p.mappings.length = mapping('field', 230, 1040);
@@ -596,7 +610,7 @@
       p.colour.stops = 3; p.colour.stop1 = '#082A6F'; p.colour.stop2 = '#1B98FE'; p.colour.stop3 = '#A2D5FF';
     }),
     preset('Stack', 'Night', (p) => {
-      p.layout.mode = 'Grid'; p.layout.columns = 4; p.layout.rows = 31; p.layout.margin = 95; p.layout.gutterX = 30;
+      p.layout.mode = 'Grid'; p.layout.columns = 4; p.layout.rows = 31; p.layout.margin = 95; p.layout.gutterX = 30; p.layout.fit = 1;
       p.field.waveA.frequency = 1.2; p.field.waveA.direction = 83; p.field.waveB.enabled = true; p.field.waveB.frequency = 1.4; p.field.waveB.direction = 0; p.field.waveB.weight = 0.4;
       p.shaping.quantise = 8; p.mappings.thickness = mapping('constant', 6, 6); p.mappings.length = mapping('field', 28, 206);
       p.colour.stop1 = '#A2D5FF'; p.colour.stop2 = '#A2D5FF';
