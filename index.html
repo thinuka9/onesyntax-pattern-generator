@@ -684,19 +684,21 @@ const ROW_PRESETS = [
 ];
 // Each studio pattern's built-in look, by pattern name.
 const STUDIO_LOOKS = {
-  'Gauge': 'Telemetry', 'Eddy': 'Data Flow', Barcode: 'Bitstream', 'Threshold Stripes': 'Stack Trace',
+  'Eddy': 'Data Flow', Barcode: 'Bitstream', 'Threshold Stripes': 'Stack Trace',
   'Halftone Diagonal': 'Gradient Descent', 'Contour Field': 'Schema', Strands: 'Threads', 'Kaleido Pixels': 'Recursion', 'Stack': 'Call Stack',
 };
 // Looks renamed in the brand vocabulary; a session left on an old name follows it to the new one.
 const RENAMED_LOOKS = {
   'Soft Wave': 'Hello World', 'Meter Rows': 'Throughput', 'Barcode Rows': 'Checksum', 'Threshold Rows': 'Pipeline', 'Halftone Dots': 'Dot Notation',
   'Azure Drift': 'Async', 'Night Tide': 'Night Build', 'Pulse Dots': 'Heartbeat', 'RFD Rows': 'Stdout',
-  'Sinky Meter': 'Telemetry', 'Amaya Flow': 'Data Flow', 'RFD Stack': 'Call Stack', 'Vector Field': 'Schema',
+  'Sinky Meter': 'Bitstream', 'Amaya Flow': 'Data Flow', 'RFD Stack': 'Call Stack', 'Vector Field': 'Schema',
   ...STUDIO_LOOKS, Cymatics: 'Resonance', Interference: 'Concurrency', 'Logo Field': 'Source',
+  // Gauge was removed on 7 October; a session left on it or its presets opens Barcode's first.
+  Gauge: 'Bitstream', Telemetry: 'Bitstream', Uptime: 'Bitstream', Benchmark: 'Bitstream',
 };
 // The studio patterns keep their geometry and move onto the closest brand palette.
 const STUDIO_PALETTES = {
-  'Gauge': 'Ember', 'Eddy': 'Ice', Barcode: 'Mono Light', 'Threshold Stripes': 'Midnight', 'Halftone Diagonal': 'Blue on White',
+  'Eddy': 'Ice', Barcode: 'Mono Light', 'Threshold Stripes': 'Midnight', 'Halftone Diagonal': 'Blue on White',
   'Contour Field': 'Blueprint', Strands: 'Mono Light', 'Kaleido Pixels': 'Ocean', 'Stack': 'Midnight',
 };
 
@@ -1374,14 +1376,6 @@ const PATTERNS = [
         range('sharpness', 'Sharpness', 0.2, 6, 0.05, f2), ...shapeControls(''), range('speed', 'Speed', -3, 3, 0.5, offOr)]],
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Item colour'), FORMAT] },
-  { name: 'Gauge', sizeMode: 'width', sections: [
-      ['Grid', [columns('Meters', 80), margin]],
-      ['Meter', [range('marks.fillThickness', 'Fill width', 1, 50, 0.5, px), range('marks.trackOpacity', 'Track', 0, 1, 0.01, pct),
-        range('marks.capSize', 'Cap size', 0.5, 40, 0.5, px), range('marks.capOffset', 'Cap offset', -200, 200, 1, px)]],
-      ['Signal', [dataInput('field.data.values', 'Your data'), range('field.data.smoothing', 'Smoothing', 0, 1, 0.01, pct),
-        range('field.waveB.weight', 'Wave', 0, 3, 0.01, f2), range('field.waveB.frequency', 'Frequency', 0, 12, 0.05, times),
-        range('shaping.gamma', 'Bias', 0.1, 4, 0.01, f2), animate]],
-    ], look: studioLook() },
   { name: 'Eddy', sections: [
       ['Grid', [columns(), rowsCount(), margin]],
       ['Dashes', [range(both('mappings.length'), 'Length', 2, 160, 1, px), range(both('mappings.thickness'), 'Thickness', 0.5, 60, 0.5, px),
@@ -1523,7 +1517,8 @@ const PATTERN_GROUPS = GROUPS.map((g) => [g, PATTERNS.filter((p) => p.group === 
 // ---------- Values ----------
 // Patterns renamed since their first release still open from saved presets and share links (the first three came
 // from the original studio).
-const PATTERN_ALIASES = { 'Sinky Meter': 'Gauge', 'Amaya Flow': 'Eddy', 'RFD Stack': 'Stack', 'Vector Field': 'Orbit', Horizon: 'Orbit' };
+// Gauge (once Sinky Meter) was removed on 7 October: its saves and links open as Barcode.
+const PATTERN_ALIASES = { 'Sinky Meter': 'Barcode', Gauge: 'Barcode', 'Amaya Flow': 'Eddy', 'RFD Stack': 'Stack', 'Vector Field': 'Orbit', Horizon: 'Orbit' };
 const patternOf = (name) => PATTERNS.find((p) => p.name === (PATTERN_ALIASES[name] || name)) || PATTERNS[0];
 const kindOf = (st) => patternOf(st.pattern).kind;
 const isRows = (st) => kindOf(st) === 'rows';
@@ -1663,7 +1658,7 @@ const ORBIT_PRESETS = [
 
 const BUILT_INS = [
   ...ROW_PRESETS.map((p) => ({ name: p.name, group: 'Wave Rows', pattern: 'Wave Rows', values: sanitizeRows(p.params) })),
-  ...E.PRESETS.map((p) => {
+  ...E.PRESETS.filter((p) => p.name !== 'Gauge').map((p) => {
     const values = studioPalette(normaliseStudio(structuredClone(p)), STUDIO_PALETTES[p.name]);
     // A light ripple over the gradient, so Speed and the ripple controls do something from the start.
     if (p.name === 'Halftone Diagonal') values.field.waveA.weight = 0.15;
@@ -1683,10 +1678,6 @@ const BUILT_INS = [
 // Two more presets for each pattern that had one, each drawn from that pattern's first: another density, wave
 // and palette, set just after it, so the arrows step through all three.
 const MORE_PRESETS = [
-  { name: 'Uptime', from: 'Telemetry', palette: 'Midnight', set: { 'layout.columns': 48, 'marks.fillThickness': 7, 'marks.capSize': 5, 'marks.capOffset': 40,
-    'field.data.values': '12,18,26,31,38,44,52,57,63,70,74,81', 'field.data.smoothing': 0.5, 'field.waveB.weight': 0.2, 'field.waveB.frequency': 1.4 } },
-  { name: 'Benchmark', from: 'Telemetry', palette: 'Mono Light', set: { 'layout.columns': 24, 'marks.fillThickness': 16, 'marks.trackOpacity': 0.15,
-    'marks.capSize': 12, 'marks.capOffset': 0, 'field.data.values': '22,35,48,44,61,73,68,82,77,90,84,95', 'field.data.smoothing': 0.3, 'shaping.gamma': 1 } },
   { name: 'Hash', from: 'Bitstream', palette: 'Mono Dark', set: { 'layout.columns': 140, 'layout.rows': 14, 'mappings.thickness.min': 0.8, 'mappings.thickness.max': 8,
     'mappings.length.min': 60, 'mappings.length.max': 60, 'marks.threshold': 0.25, 'field.waveA.frequency': 4.1, 'field.waveA.direction': -30, 'shaping.contrast': 2.4 } },
   { name: 'Payload', from: 'Bitstream', palette: 'Ember', set: { 'layout.columns': 64, 'layout.rows': 5, 'mappings.thickness.min': 3, 'mappings.thickness.max': 22,
@@ -1746,7 +1737,14 @@ function sanitizeState(st) {
     const { chladni, ...rest } = field;
     source = { ...source, field: { ...rest, plate: chladni } };
   }
-  const values = normaliseStudio(deepMerge(structuredClone(firstPreset(pattern.name).values), source));
+  let values = normaliseStudio(deepMerge(structuredClone(firstPreset(pattern.name).values), source));
+  // A Gauge save (meters) shares nothing with Barcode but its colours and format, so it opens as Barcode's first
+  // preset in those.
+  if (values.marks.shape === 'Meter') {
+    const { colour, canvas } = values;
+    values = structuredClone(firstPreset(pattern.name).values);
+    Object.assign(values.colour, colour); values.canvas.format = canvas.format;
+  }
   values.name = pattern.name;  // a save from before a rename carries the old name into its SVG title
   // Pulses saved before the on/off switch existed were on whenever they were set.
   if (source && source.pulse && typeof source.pulse.enabled !== 'boolean') values.pulse.enabled = !pulseNeutral(values.pulse);
@@ -1760,7 +1758,7 @@ function sanitizeState(st) {
 /** Picks the closest pattern for JSON exported from the main studio. */
 function guessPattern(p) {
   if (PATTERNS.some((x) => x.kind === 'studio' && x.name === p.name)) return p.name;
-  if (p.marks && p.marks.shape === 'Meter') return 'Gauge';
+  if (p.marks && p.marks.shape === 'Meter') return 'Barcode';
   if (p.layout && p.layout.mode === 'Strands') return 'Strands';
   if (p.layout && p.layout.mode === 'Rows') return 'Threshold Stripes';
   if (p.shaping && p.shaping.mirror && p.shaping.mirror !== 'none') return 'Kaleido Pixels';
@@ -2801,7 +2799,7 @@ const PLATE_MODES = [[1, 2], [2, 3], [2, 5], [3, 4], [3, 5], [3, 7], [4, 5], [4,
 function remixStudio(pattern, v, base, pick, random, palette) {
   const f = v.field, scale = pick([0.75, 1, 1, 1.25, 1.5]);
   const even = (n) => Math.max(2, Math.round(n * scale / 2) * 2);
-  const single = { 'Gauge': 'rows', Strands: 'rows', 'Threshold Stripes': 'columns' }[pattern];
+  const single = { Strands: 'rows', 'Threshold Stripes': 'columns' }[pattern];
   if (single !== 'columns') v.layout.columns = even(base.layout.columns);
   if (single !== 'rows') v.layout.rows = pattern === 'Kaleido Pixels' ? v.layout.columns : even(base.layout.rows);
   // Marks shrink as the grid gets finer, so density stays even.
@@ -2824,7 +2822,6 @@ function remixStudio(pattern, v, base, pick, random, palette) {
   f.harmonics = pick([3, 5, 7]);
 
   switch (pattern) {
-    case 'Gauge': f.waveB.frequency = pick([0.5, 0.8, 1.2]); v.shaping.gamma = pick([1, 1.25, 1.6]); break;
     case 'Eddy':
       v.attractor.strength = pick([0.4, 0.6, -0.4]); f.gradient.direction = pick([0, 45, 90, 135]);
       Object.assign(v.attractor, { x: 0.5, y: 0.5 }); break;
