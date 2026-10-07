@@ -741,6 +741,10 @@ const RENAMED_LOOKS = {
   ...STUDIO_LOOKS, Cymatics: 'Resonance', Interference: 'Concurrency', 'Logo Field': 'Source',
   // Gauge was removed on 7 October; a session left on it or its presets opens Barcode's first.
   Gauge: 'Bitstream', Telemetry: 'Bitstream', Uptime: 'Bitstream', Benchmark: 'Bitstream',
+  // 7 October: the retired patterns' presets open the first of the pattern that took them over.
+  ...Object.fromEntries(['Barcode', 'Bitstream', 'Hash', 'Payload', 'Telemetry', 'Uptime', 'Benchmark', 'Gauge'].map((n) => [n, 'Query'])),
+  ...Object.fromEntries(['Threshold Stripes', 'Stack Trace', 'Bandwidth', 'Packet', 'Strands', 'Threads', 'Protocol', 'Socket'].map((n) => [n, 'Interface'])),
+  'Call Stack': 'Deploy', Buffer: 'Deploy', Register: 'Deploy', 'Sinky Meter': 'Query',
 };
 // The studio patterns keep their geometry and move onto the closest brand palette.
 const STUDIO_PALETTES = {
@@ -1412,6 +1416,140 @@ const ORBIT_GRID_SECTIONS = [
     'Ripple sends a wave out from the centre, Sweep sends it round, and Twist lets the arcs breathe in and out of a spiral.'],
 ];
 
+// ---------- Silhouette (7 October; replaced Threshold Stripes) ----------
+// After the Vonyes and One Grove references: stripes run across the page and break round a shape in the middle; inside
+// the shape the bars change (thicker, in the second colour, or shifted half a stripe so they step like stairs), so
+// the shape shows through the stripes. Shapes are the brand's: the symbol's base (the square with its top-left and
+// bottom-right corners cut a third in, as on the {OS} sticker), a V, steps, a diamond and a circle. Each stripe is
+// cut where it crosses the shape, so a stripe steps rather than slopes. Motion breathes the shape or drifts it.
+const SILHOUETTE_DEFAULTS = {
+  lines: 18, margin: 0.08, weight: 0.32, shape: 'symbol', size: 0.56, x: 0.5, y: 0.5, gap: 0.03, inside: 'bars', innerWeight: 0.6,
+  direction: 'across', motion: 'none', speed: 1, depth: 0.3,
+  palette: 'Midnight', background: '#001931', ink: '#0A89FF', ink2: '#BDDFFF', format: '1:1', seed: 1,
+};
+const SILHOUETTE_SHAPES = {
+  // The symbol's base: the square with its top-left and bottom-right corners cut 33.86% in.
+  symbol: (u, v) => u >= 0 && u <= 1 && v >= 0 && v <= 1 && u + v >= 0.3386 && 2 - u - v >= 0.3386,
+  v: (u, v) => v >= 0 && v <= 1 && Math.abs(u - 0.5) <= 0.5 * (1 - v),
+  steps: (u, v) => v >= 0 && v <= 1 && Math.abs(u - 0.5) <= 0.5 * v,
+  diamond: (u, v) => Math.abs(u - 0.5) + Math.abs(v - 0.5) <= 0.5,
+  circle: (u, v) => (u - 0.5) ** 2 + (v - 0.5) ** 2 <= 0.25,
+};
+function silhouetteGeometry(v, time, pool) {
+  const [width, height] = FORMATS[v.format] || FORMATS['1:1'], down = v.direction === 'down';
+  // Upright stripes are laid out across the page turned a quarter (its width and height swapped), then turned back.
+  const W = down ? height : width, H = down ? width : height, side = Math.min(W, H), margin = E.clamp(v.margin, 0, 0.45) * side;
+  const lines = Math.max(2, Math.min(240, Math.round(v.lines))), pitch = (H - 2 * margin) / lines;
+  const tau = v.speed * time / 5, swing = Math.sin(2 * Math.PI * tau) * E.clamp(v.depth);
+  const size = Math.max(0.02, v.size * (v.motion === 'breathe' ? 1 + 0.35 * swing : 1)) * side;
+  const cx = v.x * W + (v.motion === 'drift' ? swing * 0.25 * W : 0), cy = v.y * H;
+  const inside = SILHOUETTE_SHAPES[v.shape] || SILHOUETTE_SHAPES.symbol;
+  const gap = Math.max(0, v.gap) * side, left = margin, right = W - margin, samples = 480;
+  const outer = Math.max(0.2, E.clamp(v.weight, 0.02, 1) * pitch), inner = Math.max(0.2, E.clamp(v.innerWeight, 0.02, 1) * pitch);
+  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' ? v.ink2 : v.ink);
+  const instances = E.instanceBuffer(pool, lines * 8 * STRIDE);
+  let count = 0;
+  const bar = (x0, x1, y, thick, rgb, layer, id) => {
+    if (x1 - x0 < 0.5 || count >= lines * 8) return;
+    const mx = (x0 + x1) / 2;
+    if (down) putMark(instances, count++, y, mx, thick, x1 - x0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
+    else putMark(instances, count++, mx, y, x1 - x0, thick, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
+  };
+  for (let i = 0; i < lines; i++) {
+    const y = margin + (i + 0.5) * pitch, vRow = (y - (cy - size / 2)) / size;
+    // Where this stripe crosses the shape: its spans, sampled across the page.
+    const spans = [];
+    let start = -1;
+    for (let j = 0; j <= samples; j++) {
+      const x = left + (right - left) * j / samples, hit = j < samples && inside((x - (cx - size / 2)) / size, vRow);
+      if (hit && start < 0) start = x;
+      if (!hit && start >= 0) { spans.push([start, x]); start = -1; }
+    }
+    let from = left, k = 0;
+    for (const [a, b] of spans) {
+      bar(from, a - gap, y, outer, ink, 0, i * 16 + k++);
+      if (v.inside !== 'gap') bar(a, b, y + (v.inside === 'shift' ? pitch / 2 : 0), v.inside === 'shift' ? outer : inner, ink2, 1, i * 16 + 8 + k);
+      from = b + gap;
+    }
+    bar(from, right, y, outer, ink, 0, i * 16 + 15);
+  }
+  const params = { name: 'Silhouette', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
+  return { instances, count, markCount: count, width, height, params };
+}
+
+// ---------- Readout (7 October; replaced Barcode) ----------
+// After the RFD cards: rows of cells, each drawn as a glyph by its level in a wave field: nothing, a dot, a dash, a
+// double dash or a solid bar (bars run together into blocks), or as a pixel 0 or 1. A slope across the rows, a wave
+// down them and a seeded grain set the levels, so the rows ramp from dots to bars and step like a printout; Mirror
+// folds it about the middle. Motion sends the wave through.
+const READOUT_DEFAULTS = {
+  columns: 36, rows: 18, margin: 0.1, glyphs: 'ascii', slope: 0.6, slopeDirection: 0, wave: 0.7, frequency: 1.2, direction: 90,
+  grain: 0.15, contrast: 1.2, mirror: 'none', speed: 0.5,
+  palette: 'Grape', background: '#120033', ink: '#B48CFF', ink2: '#B48CFF', format: '1:1', seed: 1,
+};
+// 3 × 5 pixel digits, rows top to bottom.
+const PIXEL_DIGITS = { 0: ['111', '101', '101', '101', '111'], 1: ['010', '110', '010', '010', '111'] };
+function readoutGeometry(v, time, pool) {
+  const [width, height] = FORMATS[v.format] || FORMATS['1:1'], side = Math.min(width, height), margin = E.clamp(v.margin, 0, 0.45) * side;
+  const columns = Math.max(2, Math.min(160, Math.round(v.columns))), rows = Math.max(1, Math.min(120, Math.round(v.rows)));
+  const cw = (width - 2 * margin) / columns, ch = (height - 2 * margin) / rows, digits = v.glyphs === 'digits';
+  const random = seededRandom(v.seed * 7919 + 17), grain = Array.from({ length: columns * rows }, () => random() - 0.5);
+  const sd = v.slopeDirection * Math.PI / 180, wd = v.direction * Math.PI / 180, phase = 2 * Math.PI * v.speed * time / 5;
+  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.ink2);
+  const instances = E.instanceBuffer(pool, columns * rows * (digits ? 15 : 2) * STRIDE);
+  let count = 0;
+  for (let r = 0; r < rows; r++) for (let c = 0; c < columns; c++) {
+    let u = (c + 0.5) / columns;
+    if (v.mirror === 'x') u = Math.abs(u - 0.5) * 2;
+    const w = (r + 0.5) / rows;
+    const slope = (u - 0.5) * Math.cos(sd) + (w - 0.5) * Math.sin(sd) + 0.5;
+    const wave = 0.5 + 0.5 * Math.sin(2 * Math.PI * v.frequency * (u * Math.cos(wd) + w * Math.sin(wd)) + phase);
+    let value = (v.slope * slope + v.wave * wave) / Math.max(1e-6, v.slope + v.wave) + v.grain * grain[r * columns + c];
+    value = E.clamp((value - 0.5) * v.contrast + 0.5);
+    const level = Math.min(4, Math.floor(value * 5)), x = margin + c * cw, y = margin + r * ch, mid = y + ch / 2;
+    const rgb = level >= 4 ? ink : ink2, id = (r * columns + c) * 16;
+    if (!level) continue;
+    if (digits) {
+      // A pixel 1 for the strongest cells, a 0 for the middle, a dot for the faintest.
+      if (level === 1) { const d = ch * 0.12; putMark(instances, count++, x + cw / 2, mid + ch * 0.25, d, d, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id); continue; }
+      const glyph = PIXEL_DIGITS[level >= 3 ? 1 : 0], px = Math.min(cw / 4, ch / 6);
+      const gx = x + (cw - 3 * px) / 2, gy = y + (ch - 5 * px) / 2;
+      glyph.forEach((row, gr) => [...row].forEach((on, gc) => {
+        if (on === '1') putMark(instances, count++, gx + (gc + 0.5) * px, gy + (gr + 0.5) * px, px * 1.02, px * 1.02, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id + gr * 3 + gc);
+      }));
+      continue;
+    }
+    const line = Math.max(0.6, ch * 0.12), dash = cw * 0.72;
+    if (level === 1) putMark(instances, count++, x + cw / 2, mid + ch * 0.18, line, line, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id);
+    else if (level === 2) putMark(instances, count++, x + cw / 2, mid, dash, line, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id);
+    else if (level === 3) {
+      putMark(instances, count++, x + cw / 2, mid - line * 1.1, dash, line, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id);
+      putMark(instances, count++, x + cw / 2, mid + line * 1.1, dash, line, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id + 1);
+    } else putMark(instances, count++, x + cw / 2, mid, cw * 1.01, ch * 0.5, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id);  // bars meet their neighbours
+  }
+  const params = { name: 'Readout', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
+  return { instances, count, markCount: count, width, height, params };
+}
+
+// The flat pattern kinds added on 7 October, so each hook (sanitising, drawing, palettes, remix, motion, sticker
+// colours) handles them in one place.
+const FLAT_KINDS = {
+  silhouette: {
+    defaults: SILHOUETTE_DEFAULTS, geometry: silhouetteGeometry,
+    speeds: (v) => [v.motion !== 'none' ? v.speed : 0],
+    remix: (v, pick, palette) => Object.assign(v, orbitPalette(palette.name), {
+      shape: pick(Object.keys(SILHOUETTE_SHAPES)), lines: pick([12, 16, 18, 24, 32]), inside: pick(['bars', 'bars', 'shift', 'gap']),
+      weight: pick([0.2, 0.32, 0.5]), size: pick([0.45, 0.56, 0.66]), direction: pick(['across', 'across', 'down']) }),
+  },
+  readout: {
+    defaults: READOUT_DEFAULTS, geometry: readoutGeometry,
+    speeds: (v) => [v.speed],
+    remix: (v, pick, palette) => Object.assign(v, orbitPalette(palette.name), {
+      glyphs: pick(['ascii', 'ascii', 'digits']), mirror: pick(['none', 'none', 'x']), frequency: pick([0.5, 1, 1.5, 2]),
+      slopeDirection: pick([0, 180, 90]), direction: pick([90, 0, 45]), columns: pick([28, 36, 44]), rows: pick([14, 18, 22]) }),
+  },
+};
+
 const PATTERNS = [
   { name: 'Wave Rows', kind: 'rows', description: 'Rows of items whose opacity and size rise and fall in waves.',
     sections: [
@@ -1433,18 +1571,32 @@ const PATTERNS = [
         range('attractor.x', 'Centre X', 0, 1, 0.01, pct), range('attractor.y', 'Centre Y', 0, 1, 0.01, pct),
         range('field.gradient.direction', 'Direction', -180, 180, 1, deg), range('field.waveA.weight', 'Ripple', 0, 3, 0.01, f2), animate]],
     ], look: studioLook() },
-  { name: 'Barcode', sections: [
-      ['Grid', [columns('Bars', 200), rowsCount('Rows', 40), margin, turnControl]],
-      ['Bars', [range('mappings.thickness.min', 'Thinnest', 0.2, 60, 0.1, px), range('mappings.thickness.max', 'Thickest', 0.2, 60, 0.1, px),
-        range(both('mappings.length'), 'Height', 2, 600, 1, px), range('marks.threshold', 'Gaps', 0, 1, 0.01, pct)]],
-      ['Wave', [waveFrequency, waveDirection, secondWave, contrast, animate]],
-    ], look: studioLook() },
-  { name: 'Threshold Stripes', sections: [
-      ['Grid', [rowsCount('Stripes', 160), margin, turnControl]],
-      ['Stripes', [range('mappings.thickness.min', 'Thinnest', 0.2, 80, 0.1, px), range('mappings.thickness.max', 'Thickest', 0.2, 80, 0.1, px),
-        range('mappings.length.min', 'Shortest', 0, 2000, 1, px), range('mappings.length.max', 'Longest', 0, 2000, 1, px)]],
-      ['Wave', [waveFrequency, secondWave, steps, contrast, animate]],
-    ], look: studioLook() },
+  { name: 'Readout', kind: 'readout', group: 'Studio patterns',
+    description: 'Rows of dots, dashes and bars, like a printout of a running system.',
+    sections: [
+      ['Grid', [range('columns', 'Columns', 4, 120, 1, int), range('rows', 'Rows', 2, 80, 1, int), range('margin', 'Margin', 0, 0.45, 0.01, pct)]],
+      ['Glyphs', [choice('glyphs', 'Draw as', [['Dashes', 'ascii'], ['Digits', 'digits']]), range('contrast', 'Contrast', 0.3, 4, 0.01, f2),
+        range('grain', 'Grain', 0, 1, 0.01, pct), choice('mirror', 'Mirror', [['None', 'none'], ['Sides', 'x']])],
+        'Each cell is a dot, a dash, a double dash or a bar by its strength, or a 0 or a 1 as digits.'],
+      ['Wave', [range('slope', 'Slope', 0, 3, 0.01, f2), range('slopeDirection', 'Slope direction', -180, 180, 1, deg),
+        range('wave', 'Wave', 0, 3, 0.01, f2), range('frequency', 'Frequency', 0, 8, 0.05, times), range('direction', 'Wave direction', -180, 180, 1, deg),
+        range('speed', 'Speed', -3, 3, 0.5, offOr)]],
+    ],
+    look: [PALETTE, colour('background', 'Background'), colour('ink', 'Bar colour'), colour('ink2', 'Glyph colour'), FORMAT] },
+  { name: 'Silhouette', kind: 'silhouette', group: 'Studio patterns',
+    description: 'Stripes that break round a shape, so the shape stands out of them.',
+    sections: [
+      ['Stripes', [range('lines', 'Stripes', 2, 120, 1, int), range('weight', 'Weight', 0.02, 1, 0.01, pct),
+        choice('direction', 'Direction', [['Across', 'across'], ['Down', 'down']]), range('margin', 'Margin', 0, 0.45, 0.01, pct)]],
+      ['Shape', [choice('shape', 'Shape', [['Symbol', 'symbol'], ['V', 'v'], ['Steps', 'steps'], ['Diamond', 'diamond'], ['Circle', 'circle']]),
+        range('size', 'Size', 0.05, 1.2, 0.01, pct), range('x', 'Across', 0, 1, 0.01, pct), range('y', 'Down', 0, 1, 0.01, pct),
+        { ...choice('inside', 'Inside', [['Bars', 'bars'], ['Stairs', 'shift'], ['Gap', 'gap']]), rebuild: true },
+        { ...range('innerWeight', 'Inner weight', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'bars' }, range('gap', 'Gap', 0, 0.2, 0.005, pct)],
+        'Inside the shape the stripes become bars in the second colour, step half a stripe down, or leave a gap.'],
+      ['Motion', [{ ...choice('motion', 'Motion', [['Still', 'none'], ['Breathe', 'breathe'], ['Drift', 'drift']]), rebuild: true },
+        { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: (v) => v.motion !== 'none' }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: (v) => v.motion !== 'none' }]],
+    ],
+    look: [PALETTE, colour('background', 'Background'), colour('ink', 'Stripe colour'), colour('ink2', 'Shape colour'), FORMAT] },
   { name: 'Halftone Diagonal', sections: [
       ['Grid', [columns(), rowsCount(), margin]],
       ['Lines', [range('mappings.thickness.min', 'Thinnest', 0.2, 40, 0.1, px), range('mappings.thickness.max', 'Thickest', 0.2, 40, 0.1, px),
@@ -1459,14 +1611,6 @@ const PATTERNS = [
         range(both('mappings.thickness'), 'Thickness', 0.2, 30, 0.1, px)]],
       ['Field', [waveFrequency, waveDirection, secondWave, range('field.radial.weight', 'Ripple', 0, 3, 0.01, f2),
         range('shaping.warp', 'Warp', 0, 0.75, 0.01, f2), animate]],
-    ], look: studioLook() },
-  { name: 'Strands', sizeMode: 'thickness', sections: [
-      ['Grid', [rowsCount('Lines', 300), margin, turnControl]],
-      ['Lines', [range(both('mappings.thickness'), 'Thickness', 0.2, 12, 0.1, px), range(both('mappings.opacity'), 'Opacity', 0, 1, 0.01, pct),
-        range('marks.threshold', 'Edge', 0, 1, 0.01, pct), range('layout.strandSamples', 'Detail', 8, 600, 1, int)]],
-      ['Edge', [range('field.gradient.weight', 'Slope', 0, 3, 0.01, f2), range('field.gradient.direction', 'Slope direction', -180, 180, 1, deg),
-        range('field.waveA.weight', 'Wave', 0, 3, 0.01, f2), waveFrequency, waveDirection,
-        range('field.waveB.weight', 'Breaks', 0, 3, 0.01, f2), range('field.waveB.frequency', 'Break size', 0, 12, 0.05, times), animate]],
     ], look: studioLook() },
   { name: 'Kaleido Pixels', sections: [
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Pixels across', 2, 120, 1, int),
@@ -1569,7 +1713,8 @@ const PATTERN_GROUPS = GROUPS.map((g) => [g, PATTERNS.filter((p) => p.group === 
 // Patterns renamed since their first release still open from saved presets and share links (the first three came
 // from the original studio).
 // Gauge (once Sinky Meter) was removed on 7 October: its saves and links open as Barcode.
-const PATTERN_ALIASES = { 'Sinky Meter': 'Barcode', Gauge: 'Barcode', 'Amaya Flow': 'Eddy', 'RFD Stack': 'Stack', 'Vector Field': 'Orbit', Horizon: 'Orbit' };
+// Barcode, Threshold Stripes and Strands were retired on 7 October: Readout and Silhouette take their saves.
+const PATTERN_ALIASES = { 'Sinky Meter': 'Readout', Gauge: 'Readout', Barcode: 'Readout', 'Threshold Stripes': 'Silhouette', Strands: 'Silhouette', 'Amaya Flow': 'Eddy', 'RFD Stack': 'Stack', 'Vector Field': 'Orbit', Horizon: 'Orbit' };
 const patternOf = (name) => PATTERNS.find((p) => p.name === (PATTERN_ALIASES[name] || name)) || PATTERNS[0];
 const kindOf = (st) => patternOf(st.pattern).kind;
 const isRows = (st) => kindOf(st) === 'rows';
@@ -1707,9 +1852,24 @@ const ORBIT_PRESETS = [
     grid: { spiral: 0, centreX: 0, centreY: 0, columns: 12, rows: 34, gapX: 0.45, gapY: 0.865, overlap: 0.15, core: 2, radius: 1, perspective: 0.86, ellipse: 2.2 } } },
 ];
 
+// Readout, after the four RFD cards (in brand colours).
+const READOUT_PRESETS = [
+  { name: 'Query', params: { columns: 34, rows: 16, glyphs: 'ascii', slope: 0.9, slopeDirection: 90, wave: 0.7, frequency: 1.4, direction: 0, grain: 0.12, contrast: 1.4, speed: 0.5, ...orbitPalette('Grape') } },
+  { name: 'Binary', params: { columns: 30, rows: 14, glyphs: 'digits', slope: 0.2, slopeDirection: 90, wave: 1, frequency: 2.5, direction: 90, grain: 0.05, contrast: 1.6, speed: 0.5, ...orbitPalette('Midnight') } },
+  { name: 'Topology', params: { columns: 32, rows: 16, glyphs: 'ascii', slope: 1.2, slopeDirection: 180, wave: 0.6, frequency: 2, direction: 90, grain: 0.1, contrast: 1.5, speed: 0.5, ...orbitPalette('Grape') } },
+  { name: 'Minibar', params: { columns: 36, rows: 18, glyphs: 'ascii', mirror: 'x', slope: 1, slopeDirection: 0, wave: 0.8, frequency: 1, direction: 90, grain: 0.08, contrast: 1.5, speed: 0.5, ...orbitPalette('Blueprint') } },
+];
+// Silhouette, after Vonyes (a V of light bars in thin stripes), One Grove (Branch: thick stripes stepping down
+// round a centre) and the symbol's base.
+const SILHOUETTE_PRESETS = [
+  { name: 'Interface', params: { lines: 18, weight: 0.3, shape: 'symbol', size: 0.56, inside: 'bars', innerWeight: 0.6, gap: 0.03, motion: 'breathe', speed: 0.5, depth: 0.25, ...orbitPalette('Midnight') } },
+  { name: 'Merge', params: { lines: 24, weight: 0.14, shape: 'v', size: 0.62, y: 0.46, inside: 'bars', innerWeight: 0.55, gap: 0.025, motion: 'none', ...orbitPalette('Blueprint') } },
+  { name: 'Branch', params: { lines: 8, weight: 0.5, margin: 0.12, shape: 'steps', size: 0.5, y: 0.56, inside: 'shift', gap: 0.015, motion: 'none', ...orbitPalette('Mono Dark') } },
+];
 const BUILT_INS = [
   ...ROW_PRESETS.map((p) => ({ name: p.name, group: 'Wave Rows', pattern: 'Wave Rows', values: sanitizeRows(p.params) })),
-  ...E.PRESETS.filter((p) => p.name !== 'Gauge').map((p) => {
+  // Gauge, Barcode, Threshold Stripes and Strands were retired (Readout and Silhouette replaced two of them).
+  ...E.PRESETS.filter((p) => !['Gauge', 'Barcode', 'Threshold Stripes', 'Strands'].includes(p.name)).map((p) => {
     const values = studioPalette(normaliseStudio(structuredClone(p)), STUDIO_PALETTES[p.name]);
     // A light ripple over the gradient, so Speed and the ripple controls do something from the start.
     if (p.name === 'Halftone Diagonal') values.field.waveA.weight = 0.15;
@@ -1724,19 +1884,13 @@ const BUILT_INS = [
     return { name: x.name, group: 'Studio patterns', pattern: x.pattern, values };
   }),
   ...ORBIT_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Orbit', values: sanitizeOrbit(p.params) })),
+  ...READOUT_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Readout', values: sanitizeFlat(READOUT_DEFAULTS, p.params) })),
+  ...SILHOUETTE_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Silhouette', values: sanitizeFlat(SILHOUETTE_DEFAULTS, p.params) })),
   ...MARK_PRESETS.map((p) => ({ name: p.name, group: 'Bracket', pattern: 'Bracket', values: sanitizeMark(p.params) })),
 ];
 // Two more presets for each pattern that had one, each drawn from that pattern's first: another density, wave
 // and palette, set just after it, so the arrows step through all three.
 const MORE_PRESETS = [
-  { name: 'Hash', from: 'Bitstream', palette: 'Mono Dark', set: { 'layout.columns': 140, 'layout.rows': 14, 'mappings.thickness.min': 0.8, 'mappings.thickness.max': 8,
-    'mappings.length.min': 60, 'mappings.length.max': 60, 'marks.threshold': 0.25, 'field.waveA.frequency': 4.1, 'field.waveA.direction': -30, 'shaping.contrast': 2.4 } },
-  { name: 'Payload', from: 'Bitstream', palette: 'Ember', set: { 'layout.columns': 64, 'layout.rows': 5, 'mappings.thickness.min': 3, 'mappings.thickness.max': 22,
-    'mappings.length.min': 180, 'mappings.length.max': 180, 'marks.threshold': 0.05, 'field.waveA.frequency': 1.4, 'field.waveA.direction': 60, 'field.waveB.weight': 0.8, 'shaping.contrast': 1.3 } },
-  { name: 'Bandwidth', from: 'Stack Trace', palette: 'Mono Light', set: { 'layout.rows': 90, 'mappings.thickness.min': 1, 'mappings.thickness.max': 8,
-    'mappings.length.min': 120, 'mappings.length.max': 1040, 'field.waveA.frequency': 2.2, 'shaping.quantise': 12, 'shaping.contrast': 2 } },
-  { name: 'Packet', from: 'Stack Trace', palette: 'Ember', set: { 'layout.rows': 24, 'mappings.thickness.min': 6, 'mappings.thickness.max': 34,
-    'mappings.length.min': 300, 'mappings.length.max': 900, 'field.waveA.frequency': 0.8, 'field.waveB.weight': 0.5, 'shaping.quantise': 4 } },
   { name: 'Latency', from: 'Gradient Descent', palette: 'Primary', set: { 'layout.columns': 40, 'layout.rows': 40, 'mappings.thickness.min': 1.2, 'mappings.thickness.max': 14,
     'mappings.length.min': 20, 'mappings.length.max': 20, 'marks.fixedAngle': 45, 'field.gradient.direction': 135, 'shaping.gamma': 0.8, 'field.waveA.weight': 0.3, 'field.waveA.frequency': 2.5 } },
   { name: 'Throttle', from: 'Gradient Descent', palette: 'Coral', set: { 'layout.columns': 22, 'layout.rows': 22, 'mappings.thickness.min': 1.5, 'mappings.thickness.max': 20,
@@ -1745,12 +1899,6 @@ const MORE_PRESETS = [
     'mappings.thickness.min': 3.6, 'mappings.thickness.max': 3.6, 'field.waveA.frequency': 2.4, 'field.waveA.direction': 120, 'field.waveB.weight': 0.9, 'field.radial.weight': 0.5, 'shaping.warp': 0.12 } },
   { name: 'Closure', from: 'Schema', palette: 'Grape', set: { 'layout.columns': 30, 'layout.rows': 30, 'mappings.length.min': 10, 'mappings.length.max': 34,
     'mappings.thickness.min': 4, 'mappings.thickness.max': 4, 'field.waveA.frequency': 0.8, 'field.waveA.direction': 10, 'field.waveB.weight': 0.3, 'field.radial.weight': 0.1, 'shaping.warp': 0.04 } },
-  { name: 'Protocol', from: 'Threads', palette: 'Mono Dark', set: { 'layout.rows': 96, 'layout.rotation': -45, 'mappings.thickness.min': 1, 'mappings.thickness.max': 1,
-    'field.waveA.frequency': 0.8, 'field.waveA.weight': 0.6, 'field.waveB.weight': 0.08 } },
-  { name: 'Socket', from: 'Threads', palette: 'Coral', set: { 'layout.rows': 36, 'layout.rotation': 90, 'mappings.thickness.min': 3.5, 'mappings.thickness.max': 3.5,
-    'field.waveA.frequency': 1.6, 'field.waveA.weight': 0.35, 'field.waveB.weight': 0.3, 'field.waveB.frequency': 2.4, 'marks.threshold': 0.46 } },
-  // After a lanyard badge: columns of slanted bars (parallelograms stood on end, so their sides stay upright and
-  // their tops slope), the lowest ones dropping away.
   { name: 'Deploy', from: 'Call Stack', palette: 'Coral', set: { 'layout.columns': 7, 'layout.rows': 9, 'layout.margin': 150, 'layout.gutterX': 14,
     'marks.shape': 'Parallelogram', 'marks.skew': 0.42, 'marks.angleMode': 'fixed', 'marks.fixedAngle': 90, 'marks.threshold': 0,
     'mappings.offsetY.source': 'x', 'mappings.offsetY.min': 36, 'mappings.offsetY.max': -36,
@@ -1758,19 +1906,22 @@ const MORE_PRESETS = [
     'field.waveA.frequency': 0.5, 'field.waveA.direction': 90, 'field.waveB.weight': 0.5, 'field.waveB.frequency': 2.3, 'field.waveB.direction': 0, 'shaping.quantise': 0,
     'colour.background': '#FF5620', 'colour.stop1': '#FCFCFC', 'colour.stop2': '#FCFCFC' } },
   // After the One Grove card: thick stripes with a stepped gap down the middle.
-  { name: 'Branch', from: 'Threads', palette: 'Mono Dark', set: { 'layout.rows': 8, 'layout.rotation': 0, 'layout.margin': 150, 'shaping.mirror': 'X',
-    'mappings.thickness.min': 62, 'mappings.thickness.max': 62, 'mappings.opacity.min': 1, 'mappings.opacity.max': 1, 'marks.threshold': 0.14,
-    'field.gradient.direction': 0, 'field.gradient.weight': 1, 'field.waveA.weight': 0.3, 'field.waveA.frequency': 0.5, 'field.waveA.direction': 90, 'field.waveA.phase': 180, 'field.waveB.weight': 0,
-    'shaping.quantise': 0,
-    'colour.background': '#3D3A36', 'colour.stop1': '#E6E4DF', 'colour.stop2': '#E6E4DF' } },
+  // After two violet references: slanted bars in columns, shaded light to dark across the grid (Release), and a dense
+  // see-through version whose bars overlap into depth (Cache).
+  { name: 'Release', from: 'Deploy', palette: 'Grape', set: { 'layout.columns': 8, 'layout.rows': 10, 'layout.margin': 140, 'layout.gutterX': 10,
+    'mappings.offsetY.min': 28, 'mappings.offsetY.max': -28, 'mappings.length.min': 62, 'mappings.length.max': 62, 'mappings.thickness.min': 82, 'mappings.thickness.max': 82,
+    'field.gradient.enabled': true, 'field.gradient.weight': 1, 'field.gradient.direction': 135, 'field.waveA.weight': 0.35, 'field.waveA.frequency': 0.8, 'field.waveA.direction': 0,
+    'field.waveB.weight': 0, 'mappings.opacity.source': 'field', 'mappings.opacity.min': 0.3, 'mappings.opacity.max': 1,
+    'colour.source': 'field', 'colour.stops': 2, 'colour.background': '#120033', 'colour.stop1': '#7B33FF', 'colour.stop2': '#E9DDFF', 'motion.speed': 0.5 } },
+  { name: 'Cache', from: 'Deploy', palette: 'Grape', set: { 'layout.columns': 20, 'layout.rows': 10, 'layout.margin': 110, 'layout.gutterX': 0,
+    'mappings.offsetY.min': 20, 'mappings.offsetY.max': -20, 'mappings.length.min': 64, 'mappings.length.max': 64, 'mappings.thickness.min': 60, 'mappings.thickness.max': 60,
+    'field.gradient.enabled': true, 'field.gradient.weight': 1, 'field.gradient.direction': 45, 'field.waveA.weight': 0.5, 'field.waveA.frequency': 1.2, 'field.waveA.direction': 90,
+    'field.waveB.weight': 0, 'mappings.opacity.source': 'field', 'mappings.opacity.min': 0.25, 'mappings.opacity.max': 0.75,
+    'colour.source': 'field', 'colour.stops': 2, 'colour.background': '#120033', 'colour.stop1': '#7B33FF', 'colour.stop2': '#E9DDFF', 'motion.speed': 0.5 } },
   { name: 'Kernel', from: 'Recursion', palette: 'Coral', set: { 'motion.speed': 1, 'layout.columns': 24, 'layout.rows': 24, 'mappings.thickness.min': 40, 'mappings.thickness.max': 40,
     'mappings.length.min': 40, 'mappings.length.max': 40, 'field.waveA.frequency': 1.4, 'field.waveB.frequency': 3.2, 'field.noise.weight': 0.1, 'shaping.mirror': 'X', 'shaping.quantise': 4 } },
   { name: 'Mutex', from: 'Recursion', palette: 'Violet', set: { 'motion.speed': 0.5, 'layout.columns': 64, 'layout.rows': 64, 'mappings.thickness.min': 16, 'mappings.thickness.max': 16,
     'mappings.length.min': 16, 'mappings.length.max': 16, 'field.waveA.frequency': 3.4, 'field.waveB.frequency': 2.2, 'field.noise.weight': 0.4, 'shaping.mirror': 'XY', 'shaping.quantise': 8 } },
-  { name: 'Buffer', from: 'Call Stack', palette: 'Mono Light', set: { 'layout.columns': 8, 'layout.rows': 48, 'layout.gutterX': 16, 'mappings.thickness.min': 4, 'mappings.thickness.max': 4,
-    'mappings.length.min': 16, 'mappings.length.max': 150, 'field.waveA.frequency': 2.4, 'field.waveA.direction': 60, 'shaping.quantise': 5 } },
-  { name: 'Register', from: 'Call Stack', palette: 'Ember', set: { 'layout.columns': 3, 'layout.rows': 20, 'layout.gutterX': 40, 'mappings.thickness.min': 10, 'mappings.thickness.max': 10,
-    'mappings.length.min': 40, 'mappings.length.max': 300, 'field.waveA.frequency': 0.7, 'field.waveA.direction': 100, 'shaping.quantise': 12 } },
   { name: 'Overflow', from: 'Resonance', palette: 'Ember', set: { 'field.plate.n': 5, 'field.plate.m': 2, 'field.plate.mix': -20, 'shaping.gamma': 6,
     'layout.columns': 90, 'layout.rows': 90, 'mappings.thickness.max': 9, 'mappings.length.max': 9, 'mappings.opacity.min': 0.1 } },
   { name: 'Daemon', from: 'Resonance', palette: 'Ice', set: { 'field.plate.n': 6, 'field.plate.m': 9, 'field.plate.mix': 30, 'shaping.gamma': 3,
@@ -1798,10 +1949,12 @@ for (const p of MORE_PRESETS) {
   if (values.colour.source === 'constant') values.colour.stop2 = values.colour.stop1;
   BUILT_INS.splice(BUILT_INS.findLastIndex((b) => b.pattern === source.pattern) + 1, 0, { name: p.name, group: source.group, pattern: source.pattern, values });
 }
+// Deploy (made from Call Stack) now leads Stack; Call Stack itself is retired (7 October).
+BUILT_INS.splice(BUILT_INS.findIndex((b) => b.name === 'Call Stack'), 1);
 // Each preset whose bars follow their space measures its own cell as their reference (see fitReference).
 for (const b of BUILT_INS) if (b.values.layout) fixFitReference(b.values);
 const firstPreset = (pattern) => BUILT_INS.find((b) => b.pattern === pattern);
-const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, orbit: ORBIT_DEFAULTS };
+const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, orbit: ORBIT_DEFAULTS, silhouette: SILHOUETTE_DEFAULTS, readout: READOUT_DEFAULTS };
 const defaultsFor = (pattern) => FLAT_DEFAULTS[patternOf(pattern).kind] || firstPreset(pattern).values;
 
 /** Any save, session, link or import made safe; a sticker, when there is one, comes along. */
@@ -1815,6 +1968,15 @@ function sanitizePattern(st) {
   if (pattern.kind === 'rows') return { pattern: pattern.name, values: sanitizeRows(st && st.values) };
   if (pattern.kind === 'mark') return { pattern: pattern.name, values: sanitizeMark(st && st.values) };
   if (pattern.kind === 'orbit') return { pattern: pattern.name, values: sanitizeOrbit(st && st.values, st && st.pattern) };
+  if (FLAT_KINDS[pattern.kind]) {
+    const { defaults } = FLAT_KINDS[pattern.kind], source = st && st.values;
+    // A save of a retired studio pattern keeps only its colours and format.
+    if (source && source.field && source.colour) {
+      return { pattern: pattern.name, values: sanitizeFlat(defaults, { ...firstPreset(pattern.name).values, background: source.colour.background,
+        ink: source.colour.stop1, ink2: source.colour.stop2, palette: source.colour.palette, format: source.canvas && source.canvas.format }) };
+    }
+    return { pattern: pattern.name, values: sanitizeFlat(defaults, source) };
+  }
   let source = st && st.values;
   // Saves and links from before 5 October keep the plate's settings under its old key, `chladni`.
   const field = source && source.field;
@@ -1845,7 +2007,7 @@ function sanitizePattern(st) {
 /** Picks the closest pattern for JSON exported from the main studio. */
 function guessPattern(p) {
   if (PATTERNS.some((x) => x.kind === 'studio' && x.name === p.name)) return p.name;
-  if (p.marks && p.marks.shape === 'Meter') return 'Barcode';
+  if (p.marks && p.marks.shape === 'Meter') return 'Readout';
   if (p.layout && p.layout.mode === 'Strands') return 'Strands';
   if (p.layout && p.layout.mode === 'Rows') return 'Threshold Stripes';
   if (p.shaping && p.shaping.mirror && p.shaping.mirror !== 'none') return 'Kaleido Pixels';
@@ -1931,6 +2093,7 @@ function geometryFor(st, t, pool, coarse = false) {
   if (isRows(st)) return rowsGeometry(st.values, t, pool);
   if (isMark(st)) return markGeometry(st.values, t, pool);
   if (kindOf(st) === 'orbit') return orbitGeometry(st.values, t, pool, null, coarse);
+  if (FLAT_KINDS[kindOf(st)]) return FLAT_KINDS[kindOf(st)].geometry(st.values, t, pool);
   const p = scaledStudio(st.values);
   const geo = { ...E.buildGeometry(p, t, { directional: true, loopSeconds: loopSeconds(st), sdf: logoSdf(p), pool }), width: p.canvas.width, height: p.canvas.height, params: p };
   applyPulse(geo, p.pulse, t, patternOf(st.pattern).sizeMode);
@@ -2150,6 +2313,7 @@ function stickerState(st) {
   if (isRows(out)) Object.assign(v, { ink: art, background: scheme.fill, margin: 0 });
   else if (isMark(out)) Object.assign(v, { ink: art, ink2: art, highlight: art, background: scheme.fill, margin: 0 });
   else if (kindOf(out) === 'orbit') { Object.assign(v, { ink: art, ink2: art, background: scheme.fill, margin: 0 }); v.grid.margin = 0; }
+  else if (FLAT_KINDS[kindOf(out)]) Object.assign(v, { ink: art, ink2: art, background: scheme.fill, margin: 0 });
   else { Object.assign(v.colour, { stop1: art, stop2: art, stop3: art, accent: art, background: scheme.fill }); v.layout.margin = 0; }
   return out;
 }
@@ -2758,7 +2922,7 @@ function applyPalette(name) {
   if (!paletteNamed(name)) return;
   if (isRows(state)) Object.assign(state.values, rowsPalette(name));
   else if (isMark(state)) Object.assign(state.values, markPalette(name));
-  else if (kindOf(state) === 'orbit') Object.assign(state.values, orbitPalette(name));
+  else if (kindOf(state) === 'orbit' || FLAT_KINDS[kindOf(state)]) Object.assign(state.values, orbitPalette(name));
   else studioPalette(state.values, name);
 }
 
@@ -2929,6 +3093,7 @@ function variationOf(pattern, base, seed) {
   if (rows) return remixRows(next, pick, palette);
   if (patternOf(pattern).kind === 'mark') return remixMark(next, pick, palette);
   if (patternOf(pattern).kind === 'orbit') return remixOrbit(next, pick, palette);
+  if (FLAT_KINDS[patternOf(pattern).kind]) return FLAT_KINDS[patternOf(pattern).kind].remix(next, pick, palette);
   return remixStudio(pattern, next, base, pick, random, palette);
 }
 
@@ -4252,6 +4417,7 @@ function exportAnimatedSVG() {
 // Every moving part is measured in cycles per 5 s, in half steps: whole cycles loop in 5 s, halves in 10 s.
 const speedsOf = (st) => isRows(st) ? [st.values.speed]
   : isMark(st) ? [hasEffect(st.values) ? st.values.speed : 0]
+  : FLAT_KINDS[kindOf(st)] ? FLAT_KINDS[kindOf(st)].speeds(st.values)
   : kindOf(st) === 'orbit' ? [st.values.layout === 'grid' ? (vectorMoves(st.values.grid) ? st.values.grid.speed : 0) : orbitMoves(st.values) ? st.values.speed : 0,
     pulseActive(st.values.pulse) ? st.values.pulse.speed : 0]
   : [...E.motionCycles(st.values), pulseActive(st.values.pulse) ? st.values.pulse.speed : 0];
