@@ -1304,6 +1304,8 @@ function orbitGeometry(v, time, pool, outlines = null, coarse = false) {
 }
 
 // ---------- Studio patterns, tailored to a short list of controls ----------
+// Turns the whole pattern; it still fills the page in every format (90° lays a wide page out as a tall one).
+const turnControl = range('layout.rotation', 'Rotation', -180, 180, 1, deg);
 const waveFrequency = range('field.waveA.frequency', 'Frequency', 0, 12, 0.05, times);
 const waveDirection = range('field.waveA.direction', 'Direction', -180, 180, 1, deg);
 const secondWave = range('field.waveB.weight', 'Second wave', 0, 3, 0.01, f2);
@@ -1391,7 +1393,7 @@ const PATTERNS = [
       ['Wave', [waveFrequency, waveDirection, secondWave, contrast, animate]],
     ], look: studioLook() },
   { name: 'Threshold Stripes', sections: [
-      ['Grid', [rowsCount('Stripes', 160), margin]],
+      ['Grid', [rowsCount('Stripes', 160), margin, turnControl]],
       ['Stripes', [range('mappings.thickness.min', 'Thinnest', 0.2, 80, 0.1, px), range('mappings.thickness.max', 'Thickest', 0.2, 80, 0.1, px),
         range('mappings.length.min', 'Shortest', 0, 2000, 1, px), range('mappings.length.max', 'Longest', 0, 2000, 1, px)]],
       ['Wave', [waveFrequency, secondWave, steps, contrast, animate]],
@@ -1425,7 +1427,7 @@ const PATTERNS = [
         range('shaping.quantise', 'Colour steps', 0, 16, 1, stepsFmt), animate]],
     ], look: studioLook() },
   { name: 'Stack', sections: [
-      ['Grid', [columns('Columns', 20), rowsCount('Rows', 100), margin, range('layout.gutterX', 'Column gap', 0, 100, 1, px)]],
+      ['Grid', [columns('Columns', 20), rowsCount('Rows', 100), margin, range('layout.gutterX', 'Column gap', 0, 100, 1, px), turnControl]],
       ['Bars', [range(both('mappings.thickness'), 'Thickness', 0.5, 40, 0.5, px), range('mappings.length.min', 'Shortest', 0, 600, 1, px),
         range('mappings.length.max', 'Longest', 0, 600, 1, px)]],
       ['Wave', [waveFrequency, waveDirection, secondWave, steps, animate]],
