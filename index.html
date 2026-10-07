@@ -961,8 +961,9 @@ function markGeometry(v, time, pool) {
 const MARK_PRESETS = [
   { name: 'Scope', params: { texture: 'pixel', weight: 1, effect: 'wave', depth: 0.3, frequency: 1, direction: 90, affects: 'size',
     palette: 'Custom', background: '#67B6FF', ink: '#0082FD', ink2: '#BDDFFF', highlight: '#FCFCFC' } },
-  { name: 'Render', params: { texture: 'line', weight: 0.5, spacing: 4, effect: 'scan', depth: 0.75, direction: 90, affects: 'both',
-    ...markPalette('Mono Light'), highlight: '#0A89FF' } },
+  // Render (redone 7 October; the scan's colour sweep was not liked): Loop's calm, in the brand's line version.
+  { name: 'Render', params: { columns: 3, rows: 3, gap: 4, margin: 0.1, texture: 'line', weight: 0.7, effect: 'ripple', speed: 0.5, frequency: 1,
+    depth: 0.45, affects: 'size', ...markPalette('Mono Dark') } },
   { name: 'Compile', params: { texture: 'pixel', weight: 0.84, effect: 'build', direction: 0, depth: 1, affects: 'both', ...markPalette('Mono Dark') } },
   { name: 'Loop', params: { columns: 4, rows: 4, gap: 4, margin: 0.08, texture: 'pixel', weight: 0.82, effect: 'wave', frequency: 1.5, direction: 45,
     depth: 0.55, affects: 'size', ...markPalette('Blue on White') } },

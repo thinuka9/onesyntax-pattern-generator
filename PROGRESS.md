@@ -101,6 +101,8 @@ stripped by `build.mjs`). 14 patterns, 49 built-in presets (Gauge and its three 
     sway's `dur` keeps six decimals (10 s / 3 rounded to 3.3 s drifted off the loop).
   - Event Queue 2.9 MB (was 5.8), Event Stream 0.71 MB (was 2.27); Strength 1: 8.1 MB (was 11.5–14.6). Size no
     longer grows with Speed, and it builds faster (0.4–1.9 s).
+- **Render redone (7 October):** the scan's blue sweep over grey lines was not liked; Render is now Loop's calm in the
+  brand's line version: a 3 × 3 grid on Mono Dark, a slow ripple (speed 0.5) that changes size only.
 - **Reference presets (7 October):** Deploy (Stack, after a lanyard badge: seven columns of slanted bars in Coral's
   orange and white; Parallelogram marks stood on end so their sides stay upright, columns stepped by an x offset) and
   Branch (Strands, after the One Grove card: eight thick square-ended bars mirrored about the middle, a stepped
