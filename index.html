@@ -68,7 +68,7 @@
   }
 
   /* ---------- Artwork and overlays ---------- */
-  #canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
+  #canvas, #stickerCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
   .frame { position: fixed; pointer-events: none; box-shadow: 0 18px 50px rgba(0,0,0,.2); }
   /* The centre handle: rings round a knob, shown over the artwork; difference blending keeps it visible on any colour. */
   .centre-handle { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 3; pointer-events: none; }
@@ -401,6 +401,7 @@
 </head>
 <body data-tone="light">
 <canvas id="canvas" aria-label="Pattern preview"></canvas>
+<canvas id="stickerCanvas" aria-label="Sticker preview" hidden></canvas>
 <div class="frame" id="frame" hidden></div>
 <div class="centre-handle" id="centreHandle" hidden><button class="knob" aria-label="Centre" title="Drag to move the centre · double-click to reset"></button></div>
 
@@ -601,6 +602,38 @@ const colour = (key, label, when) => ({ type: 'color', key, label, when });
 const textInput = (key, label) => ({ type: 'text', key, label });
 const gradient = (label) => ({ type: 'gradient', label });
 const PALETTE = { type: 'palette' }, FORMAT = { type: 'format' };
+
+// ---------- Sticker ----------
+// Any pattern can be shown as the {OS} sticker: a square with its top-left and bottom-right corners cut off, the
+// {OS} mark top right and a title and subtitle bottom left (in an ink that suits the sticker's colour), and the
+// pattern masked into a band across it, scaled to cover the band. The settings ride along in `values.sticker`, so
+// saves, links and undo keep them; built-in presets have none, and loading one keeps the sticker as it is.
+const STICKER_SIZE = 1200;
+const STICKER_DEFAULTS = { on: 'off', fill: '#0A89FF', title: 'Shipped', subtitle: 'Release 142', top: 0.335, height: 0.385, band: 'sticker', cut: 0.335, mark: 'on' };
+function sanitizeSticker(s) {
+  if (!s || typeof s !== 'object') return undefined;
+  const v = { ...STICKER_DEFAULTS };
+  for (const key of ['title', 'subtitle']) if (typeof s[key] === 'string') v[key] = s[key].slice(0, 40);
+  if (typeof s.fill === 'string' && /^#[0-9a-f]{6}$/i.test(s.fill)) v.fill = s.fill.toUpperCase();
+  for (const [key, low, high] of [['top', 0, 0.95], ['height', 0.02, 1], ['cut', 0, 0.5]]) if (Number.isFinite(+s[key])) v[key] = E.clamp(+s[key], low, high);
+  if (s.on === 'on' || s.on === 'off') v.on = s.on;
+  if (s.band === 'sticker' || s.band === 'pattern') v.band = s.band;
+  if (s.mark === 'on' || s.mark === 'off') v.mark = s.mark;
+  return v;
+}
+const stickerOn = (st) => !!(st.values.sticker && st.values.sticker.on === 'on');
+const stickerShown = (v) => !!(v.sticker && v.sticker.on === 'on');
+const STICKER_CONTROLS = [
+  { ...choice('sticker.on', 'Sticker', [['Off', 'off'], ['On', 'on']]), rebuild: true },
+  { ...colour('sticker.fill', 'Sticker colour'), when: stickerShown },
+  { ...textInput('sticker.title', 'Title'), when: stickerShown },
+  { ...textInput('sticker.subtitle', 'Subtitle'), when: stickerShown },
+  { ...range('sticker.top', 'Pattern top', 0, 0.95, 0.005, pct), when: stickerShown },
+  { ...range('sticker.height', 'Pattern height', 0.02, 1, 0.005, pct), when: stickerShown },
+  { ...choice('sticker.band', 'Behind pattern', [['Sticker', 'sticker'], ['Pattern', 'pattern']]), when: stickerShown },
+  { ...range('sticker.cut', 'Corners', 0, 0.5, 0.005, pct), when: stickerShown },
+  { ...choice('sticker.mark', '{OS}', [['On', 'on'], ['Off', 'off']]), when: stickerShown },
+];
 const both = (key) => [key + '.min', key + '.max'];
 
 // ---------- OneSyntax brand ----------
@@ -1744,7 +1777,13 @@ const firstPreset = (pattern) => BUILT_INS.find((b) => b.pattern === pattern);
 const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, orbit: ORBIT_DEFAULTS };
 const defaultsFor = (pattern) => FLAT_DEFAULTS[patternOf(pattern).kind] || firstPreset(pattern).values;
 
+/** Any save, session, link or import made safe; a sticker, when there is one, comes along. */
 function sanitizeState(st) {
+  const out = sanitizePattern(st), sticker = sanitizeSticker(st && st.values && st.values.sticker);
+  if (sticker) out.values.sticker = sticker;
+  return out;
+}
+function sanitizePattern(st) {
   const pattern = patternOf(st && st.pattern);
   if (pattern.kind === 'rows') return { pattern: pattern.name, values: sanitizeRows(st && st.values) };
   if (pattern.kind === 'mark') return { pattern: pattern.name, values: sanitizeMark(st && st.values) };
@@ -1852,7 +1891,9 @@ function presetState(id) {
   const p = kind === 'builtin' ? BUILT_INS.find((b) => b.name === name) : kind === 'saved' ? saved.find((s) => s.name === name) : null;
   return p ? sanitizeState(p) : null;
 }
-const edited = () => JSON.stringify(state) !== JSON.stringify(baseline);
+// The sticker is not part of a preset's look, so turning it on or editing it does not count as an edit.
+const withoutSticker = (st) => JSON.stringify({ ...st, values: { ...st.values, sticker: undefined } });
+const edited = () => withoutSticker(state) !== withoutSticker(baseline);
 const label = (id) => id.split(':').slice(1).join(':');
 
 // ---------- Geometry & drawing ----------
@@ -2060,8 +2101,57 @@ try { gpu = new E.Renderer(canvas); } catch { gpu = null; }
 const ctx = gpu ? null : canvas.getContext('2d');
 
 /** Where the artwork sits: covering the whole window, or fitted beside the panel at its exact proportions. */
-function artPlacement(geo, vw, vh) {
-  if (viewMode === 'fill') {
+// The sticker's parts, on its STICKER_SIZE square: the outline (top-left and bottom-right corners cut), the band
+// the pattern shows through, the side margin, and the inks for its text (dark on light stickers, light on dark).
+function stickerParts(s) {
+  const S = STICKER_SIZE, c = s.cut * S, m = 0.075 * S;
+  const [r, g, b] = E.colourRGB(s.fill), light = 0.2126 * r + 0.7152 * g + 0.0722 * b;
+  return {
+    S, m, outline: `M${c} 0H${S}V${S - c}L${S - c} ${S}H0V${c}Z`, band: [m, s.top * S, S - 2 * m, s.height * S],
+    ink: light > 0.55 ? '#151515' : '#FCFCFC', strength: light > 0.55 && light < 0.9 ? 0.72 : 1,  // a mid grey softens the dark ink
+    title: { size: 0.094 * S, y: 0.8 * S }, subtitle: { size: 0.066 * S, y: 0.885 * S }, mark: { size: 0.085 * S, y: 0.155 * S },
+  };
+}
+/** How the pattern covers the band: its scale and top-left corner, on the sticker. */
+function stickerCover(parts, geo) {
+  const [bx, by, bw, bh] = parts.band, k = Math.max(bw / geo.width, bh / geo.height);
+  return { k, x: bx + (bw - geo.width * k) / 2, y: by + (bh - geo.height * k) / 2 };
+}
+/** Paints the sticker with `geo` in its band at `scale`, offset by (ox, oy); `page` is the colour round it, or none. */
+function drawSticker(target, st, geo, scale, { ox = 0, oy = 0, page = null } = {}) {
+  const s = st.values.sticker, parts = stickerParts(s), { S, m } = parts, outline = new Path2D(parts.outline);
+  target.setTransform(scale, 0, 0, scale, ox, oy);
+  target.globalAlpha = 1;
+  if (page) { target.fillStyle = page; target.fillRect(0, 0, S, S); }
+  target.fillStyle = s.fill; target.fill(outline);
+  target.save();
+  target.clip(outline);
+  const [bx, by, bw, bh] = parts.band;
+  target.beginPath(); target.rect(bx, by, bw, bh); target.clip();
+  const cover = stickerCover(parts, geo);
+  draw(target, geo, scale * cover.k, { ox: ox + cover.x * scale, oy: oy + cover.y * scale, background: s.band === 'pattern' });
+  target.restore();
+  target.setTransform(scale, 0, 0, scale, ox, oy);
+  target.fillStyle = parts.ink; target.textBaseline = 'alphabetic';
+  if ('letterSpacing' in target) target.letterSpacing = '0px';
+  if (s.mark === 'on') {
+    target.globalAlpha = parts.strength; target.textAlign = 'right'; target.font = `400 ${parts.mark.size}px Geist, system-ui, sans-serif`;
+    target.fillText('{OS}', S - m, parts.mark.y);
+  }
+  target.textAlign = 'left';
+  target.globalAlpha = parts.strength; target.font = `500 ${parts.title.size}px Geist, system-ui, sans-serif`;
+  if ('letterSpacing' in target) target.letterSpacing = `${-0.02 * parts.title.size}px`;
+  target.fillText(s.title, m, parts.title.y);
+  if ('letterSpacing' in target) target.letterSpacing = '0px';
+  target.globalAlpha = parts.strength * 0.65; target.font = `400 ${parts.subtitle.size}px "Geist Mono", ui-monospace, monospace`;
+  target.fillText(s.subtitle, m, parts.subtitle.y);
+  target.globalAlpha = 1;
+}
+// The sticker preview sits on a neutral grey, as on a design canvas.
+const STICKER_PAGE = '#2C2C2C';
+
+function artPlacement(geo, vw, vh, mode = viewMode) {
+  if (mode === 'fill') {
     const s = Math.max(vw / geo.width, vh / geo.height);
     return { s, x: (vw - geo.width * s) / 2, y: (vh - geo.height * s) / 2 };
   }
@@ -2101,6 +2191,8 @@ const framePool = {};
 function render() {
   const geo = geometryFor(state, time, framePool);
   const vw = window.innerWidth, vh = window.innerHeight;
+  if (stickerOn(state)) { renderSticker(geo, vw, vh); return; }
+  if (!stickerCanvas.hidden) { stickerCanvas.hidden = true; canvas.hidden = false; }
   const place = artPlacement(geo, vw, vh);
   artPlace = { ...place, width: geo.width, height: geo.height };
   // Supersample so hairline marks stay smooth: at least 2×, capped near 16 MP. While an animation keeps missing
@@ -2131,6 +2223,26 @@ function render() {
   frameEl.hidden = viewMode !== 'fit';
   if (viewMode === 'fit') Object.assign(frameEl.style, { left: place.x + 'px', top: place.y + 'px', width: geo.width * place.s + 'px', height: geo.height * place.s + 'px' });
   const meta = `${geo.width} × ${geo.height} · ${geo.markCount.toLocaleString()} marks${viewMode === 'fill' ? ' · filled to screen' : ''}`;
+  if (meta !== metaText) { metaText = meta; document.getElementById('meta').textContent = meta; }
+  placeHandle();
+}
+
+/** Sticker mode draws on its own 2D canvas over the pattern's: the sticker on a neutral page. */
+const stickerCanvas = document.getElementById('stickerCanvas'), stickerContext = stickerCanvas.getContext('2d');
+function renderSticker(geo, vw, vh) {
+  if (stickerCanvas.hidden) { stickerCanvas.hidden = false; canvas.hidden = true; }
+  const size = { width: STICKER_SIZE, height: STICKER_SIZE }, place = artPlacement(size, vw, vh, 'fit');  // a sticker shows whole
+  artPlace = null;  // the centre handle belongs to the pattern view
+  const dpr = Math.min(Math.max(2, window.devicePixelRatio || 1), Math.sqrt(16e6 / (vw * vh)));
+  const pw = Math.round(vw * dpr), ph = Math.round(vh * dpr);
+  if (stickerCanvas.width !== pw || stickerCanvas.height !== ph) { stickerCanvas.width = pw; stickerCanvas.height = ph; }
+  stickerContext.setTransform(1, 0, 0, 1, 0, 0);
+  stickerContext.fillStyle = STICKER_PAGE; stickerContext.fillRect(0, 0, pw, ph);
+  drawSticker(stickerContext, state, geo, place.s * dpr, { ox: place.x * dpr, oy: place.y * dpr });
+  if (STICKER_PAGE !== artBackground) { artBackground = STICKER_PAGE; document.body.style.setProperty('--art-bg', STICKER_PAGE); }
+  if (tone !== 'dark') { tone = 'dark'; document.body.dataset.tone = tone; }
+  frameEl.hidden = true;
+  const meta = `Sticker · ${STICKER_SIZE} × ${STICKER_SIZE} · ${geo.markCount.toLocaleString()} marks`;
   if (meta !== metaText) { metaText = meta; document.getElementById('meta').textContent = meta; }
   placeHandle();
 }
@@ -2294,7 +2406,8 @@ const visibleControls = () => {
   const p = patternOf(state.pattern);
   // A section can show for some settings only (Orbit's layouts): its controls count as hidden with it.
   const shown = (s) => !s[3] || s[3](state.values);
-  return [...p.sections.flatMap((s) => s[1].map((c) => [c, shown(s)])), ...p.look.map((c) => [c, true])].map(([c, on]) => on && (!c.when || c.when(state.values)) ? 1 : 0).join('');
+  return [...p.sections.flatMap((s) => s[1].map((c) => [c, shown(s)])), ...p.look.map((c) => [c, true]), ...STICKER_CONTROLS.map((c) => [c, true])]
+    .map(([c, on]) => on && (!c.when || c.when(state.values)) ? 1 : 0).join('');
 };
 
 /** Rebuilds the controls. `enter` staggers the new contents in (a new look); `reveal` springs one section open. */
@@ -2307,6 +2420,9 @@ function buildPanel({ enter = false } = {}) {
   const pattern = patternOf(state.pattern);
   for (const [title, controls, hint, when] of pattern.sections) if (!when || when(state.values)) scroll.appendChild(section(title, controls, hint));
   scroll.appendChild(section('Colour', pattern.look));
+  // The sticker's settings exist from the first time the panel shows them (off until turned on).
+  if (!state.values.sticker) { state.values.sticker = { ...STICKER_DEFAULTS }; baseline.values.sticker = { ...STICKER_DEFAULTS }; }
+  scroll.appendChild(section('Sticker', STICKER_CONTROLS, 'Shows this pattern on the {OS} sticker. Exports, presets and links include it.'));
   scroll.insertAdjacentHTML('beforeend', '<p class="tips">Double-click a slider to type a value · Alt-click to reset it · ← → to step through presets</p>');
   scroll.scrollTop = enter ? 0 : top;
   for (const group of scroll.querySelectorAll('.segmented')) placeIndicator(group, false);
@@ -2990,6 +3106,8 @@ function applyPreset(id) {
   timeline.past.push(timeline.committed); timeline.future = [];
   offerUndo = wasEdited;
   message = wasEdited ? `Loaded ${label(id)} · your edits weren't saved` : null;
+  // A built-in preset has no sticker, so the one in use stays; a saved preset brings its own.
+  if (!next.values.sticker && state.values.sticker) next.values.sticker = structuredClone(state.values.sticker);
   state = next; baseline = structuredClone(next); current = id; time = 0;
   buildPanel({ enter: true }); changed(); crossfade();
   timeline.committed = snapshot();
@@ -3313,6 +3431,7 @@ const fileBase = () => {
 // Browsers refuse very large bitmaps, so a scale past ~16k px a side or ~250 megapixels steps down to fit.
 const MAX_PNG_SIDE = 16384, MAX_PNG_PIXELS = 250e6;
 function exportPNG(requested = 2) {
+  if (stickerOn(state)) { exportStickerPNG(requested); return; }
   const geo = geometryFor(state, time);
   const scale = Math.min(requested, MAX_PNG_SIDE / Math.max(geo.width, geo.height), Math.sqrt(MAX_PNG_PIXELS / (geo.width * geo.height)));
   const off = document.createElement('canvas');
@@ -3329,14 +3448,59 @@ function exportPNG(requested = 2) {
     }, 'image/png');
   }, 30);
 }
+/** The sticker as a PNG: transparent round its outline when Transparent is on, on the sticker page's grey if not. */
+function exportStickerPNG(requested) {
+  const geo = geometryFor(state, time), scale = Math.min(requested, MAX_PNG_SIDE / STICKER_SIZE), off = document.createElement('canvas');
+  off.width = off.height = Math.round(STICKER_SIZE * scale);
+  notify(`Rendering a ${off.width} × ${off.height} PNG…`, { stay: true });
+  setTimeout(() => {
+    drawSticker(off.getContext('2d'), state, geo, scale, { page: exportOptions.transparent ? null : STICKER_PAGE });
+    off.toBlob((blob) => {
+      if (!blob) { notify('The browser couldn\'t make that PNG. Try a smaller scale.', { error: true }); return; }
+      download(blob, `${fileBase()}_sticker@${requested}x.png`);
+      notify(`Exported a ${off.width} × ${off.height} sticker PNG`);
+    }, 'image/png');
+  }, 30);
+}
+
 function exportSVG() {
-  // Orbit's arcs export as one closed path per dash; everything else as its marks.
-  if (kindOf(state) === 'orbit' && state.values.layout !== 'grid') {
-    download(new Blob([orbitSVG(state, time, { transparent: exportOptions.transparent })], { type: 'image/svg+xml' }), fileBase() + '.svg');
-    return;
-  }
+  // On a sticker, the pattern drops its own background when the sticker's colour shows behind it.
+  const sticker = stickerOn(state), transparent = sticker ? state.values.sticker.band === 'sticker' : exportOptions.transparent;
   const geo = geometryFor(state, time);
-  download(new Blob([E.toSVG(geo, geo.params, state, { transparent: exportOptions.transparent })], { type: 'image/svg+xml' }), fileBase() + '.svg');
+  // Orbit's arcs export as one closed path per dash; everything else as its marks.
+  const svg = kindOf(state) === 'orbit' && state.values.layout !== 'grid'
+    ? orbitSVG(state, time, { transparent })
+    : E.toSVG(geo, geo.params, state, { transparent });
+  download(new Blob([sticker ? stickerSVG(svg, geo) : svg], { type: 'image/svg+xml' }), fileBase() + (sticker ? '_sticker' : '') + '.svg');
+}
+
+/**
+ * The sticker as a vector file around a pattern's own SVG (still or animated): the pattern's file nests as an inner
+ * <svg> covering the band, cut to the outline and the band; the outline, {OS}, title and subtitle sit round it, the
+ * text in Geist. Transparent leaves the page round the sticker empty; otherwise it is the sticker page's grey.
+ */
+function stickerSVG(patternSVG, geo) {
+  const s = state.values.sticker, parts = stickerParts(s), { S, m } = parts, cover = stickerCover(parts, geo), [bx, by, bw, bh] = parts.band;
+  const n = (x) => String(Math.round(x * 10) / 10);
+  const escape = (text) => text.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
+  const inner = patternSVG
+    .replace(/^<\?xml[^>]*\?>\s*/, '')  // a declaration may only open a file
+    .replace(/<title>[\s\S]*?<\/title>\n?|<desc>[\s\S]*?<\/desc>\n?|<metadata[\s\S]*?<\/metadata>\n?/g, '')
+    .replace(/^<svg\b[^>]*>/, `<svg x="${n(cover.x)}" y="${n(cover.y)}" width="${n(geo.width * cover.k)}" height="${n(geo.height * cover.k)}" viewBox="0 0 ${geo.width} ${geo.height}">`);
+  const soft = (alpha) => alpha < 1 ? ` fill-opacity="${Math.round(alpha * 100) / 100}"` : '';
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">
+<title>${escape(s.title)} · OneSyntax sticker</title>
+<metadata id="onesyntax-preset">${escape(JSON.stringify(state))}</metadata>
+<defs><clipPath id="sticker-outline"><path d="${parts.outline}"/></clipPath><clipPath id="sticker-band"><rect x="${n(bx)}" y="${n(by)}" width="${n(bw)}" height="${n(bh)}"/></clipPath></defs>
+${exportOptions.transparent ? '' : `<rect id="page" width="${S}" height="${S}" fill="${STICKER_PAGE}"/>\n`}<path id="sticker" d="${parts.outline}" fill="${s.fill}"/>
+<g id="pattern" clip-path="url(#sticker-outline)"><g clip-path="url(#sticker-band)">
+${inner}
+</g></g>
+<g id="text" fill="${parts.ink}" font-family="Geist, system-ui, sans-serif">
+${s.mark === 'on' ? `<text x="${n(S - m)}" y="${n(parts.mark.y)}" font-size="${n(parts.mark.size)}" text-anchor="end"${soft(parts.strength)}>{OS}</text>\n` : ''}<text x="${n(m)}" y="${n(parts.title.y)}" font-size="${n(parts.title.size)}" font-weight="500" letter-spacing="${n(-0.02 * parts.title.size)}"${soft(parts.strength)}>${escape(s.title)}</text>
+<text x="${n(m)}" y="${n(parts.subtitle.y)}" font-size="${n(parts.subtitle.size)}" font-family="'Geist Mono', ui-monospace, monospace"${soft(parts.strength * 0.65)}>${escape(s.subtitle)}</text>
+</g>
+</svg>`;
 }
 
 /** One dash as a closed path: its two edges are smooth curves through the offset points (Catmull–Rom, written as
@@ -3992,8 +4156,10 @@ function exportAnimatedSVG() {
     try {
       // Orbit's arcs animate whole dashes (sliding, swaying, pulsing); everything else is sampled mark by mark.
       const v = state.values, sliding = kindOf(state) === 'orbit' && v.layout !== 'grid';
-      const result = sliding ? orbitAnimatedSVG(state, { transparent: exportOptions.transparent }) : animatedSVG(state, { transparent: exportOptions.transparent });
-      download(new Blob([result.svg], { type: 'image/svg+xml' }), `${fileBase()}_${result.loop}s-loop.svg`);
+      const sticker = stickerOn(state), transparent = sticker ? v.sticker.band === 'sticker' : exportOptions.transparent;
+      const result = sliding ? orbitAnimatedSVG(state, { transparent }) : animatedSVG(state, { transparent });
+      if (sticker) result.svg = stickerSVG(result.svg, geometryFor(state, 0));
+      download(new Blob([result.svg], { type: 'image/svg+xml' }), `${fileBase()}${sticker ? '_sticker' : ''}_${result.loop}s-loop.svg`);
       const size = result.svg.length < 1e6 ? `${Math.round(result.svg.length / 1e3)} KB` : `${(result.svg.length / 1e6).toFixed(1)} MB`;
       // Thousands of animated marks play heavily in a browser; past that, video is the smoother web format.
       const heavy = result.svg.length > HEAVY_ANIMATED_SVG_BYTES || result.marks > HEAVY_ANIMATED_SVG_MARKS;
@@ -4030,6 +4196,7 @@ const loadMuxer = () => window.Mp4Muxer ? Promise.resolve(window.Mp4Muxer) : (mu
 
 /** Frame size for video: the artwork scaled to fit 1920 px, in even numbers as H.264 needs. */
 function videoSize(st) {
+  if (stickerOn(st)) return [STICKER_SIZE, STICKER_SIZE];
   const first = geometryFor(st, 0), fit = Math.min(1, 1920 / Math.max(first.width, first.height));
   return [Math.round(first.width * fit / 2) * 2, Math.round(first.height * fit / 2) * 2];
 }
@@ -4052,14 +4219,17 @@ async function encodeLoop(onProgress) {
   const out = document.createElement('canvas');
   out.width = width; out.height = height;
   let renderer = null;
-  try { renderer = new E.Renderer(out); } catch { renderer = null; }
+  // A sticker is painted in 2D (its text and outline are not marks).
+  try { renderer = stickerOn(snap) ? null : new E.Renderer(out); } catch { renderer = null; }
   const context = renderer ? null : out.getContext('2d'), pool = {};
   try {
     const frames = fps * duration, step = Math.round(1e6 / fps);
     for (let k = 0; k < frames; k++) {
       if (failure) throw failure;
       const geo = geometryFor(snap, k / fps, pool);
-      if (renderer) renderer.render(geo, geo.params, width, height); else draw(context, geo, width / geo.width);
+      if (renderer) renderer.render(geo, geo.params, width, height);
+      else if (stickerOn(snap)) drawSticker(context, snap, geo, width / STICKER_SIZE, { page: STICKER_PAGE });
+      else draw(context, geo, width / geo.width);
       const frame = new VideoFrame(out, { timestamp: k * step, duration: step });
       encoder.encode(frame, { keyFrame: k % (fps * 2) === 0 });  // a keyframe every 2 s keeps seeking quick
       frame.close();
@@ -4083,16 +4253,19 @@ async function recordLoop(onProgress) {
   const probe = document.createElement('canvas');
   if (!mimeType || !probe.captureStream) throw new Error('Video recording isn\'t available in this browser. Try Chrome or Edge.');
   const snap = structuredClone(state), fps = 30, duration = loopSeconds(snap);
-  const first = geometryFor(snap, 0);
-  const fit = Math.min(1, 1920 / Math.max(first.width, first.height));
-  const width = Math.round(first.width * fit / 2) * 2, height = Math.round(first.height * fit / 2) * 2;
+  const [width, height] = videoSize(snap);
   const out = document.createElement('canvas');
   out.width = width; out.height = height;
   let renderer = null;
-  try { renderer = new E.Renderer(out); } catch { renderer = null; }
+  try { renderer = stickerOn(snap) ? null : new E.Renderer(out); } catch { renderer = null; }
   const context = renderer ? null : out.getContext('2d');
   const pool = {};  // each recorded frame reuses one buffer
-  const paint = (t) => { const geo = geometryFor(snap, t, pool); if (renderer) renderer.render(geo, geo.params, width, height); else draw(context, geo, width / geo.width); };
+  const paint = (t) => {
+    const geo = geometryFor(snap, t, pool);
+    if (renderer) renderer.render(geo, geo.params, width, height);
+    else if (stickerOn(snap)) drawSticker(context, snap, geo, width / STICKER_SIZE, { page: STICKER_PAGE });
+    else draw(context, geo, width / geo.width);
+  };
   paint(0);
   let stream = out.captureStream(0), track = stream.getVideoTracks()[0];
   const manualFrames = typeof track.requestFrame === 'function';
