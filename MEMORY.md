@@ -57,6 +57,24 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   instead of going mark by mark: half the size or less, and closer to the app. Small bend errors on tight dashes
   are the accepted cost.
 
+## Studio feedback, 7 October (to work through)
+
+- **Gauge:** not wanted; remove it completely (old saves and links must still open in another pattern).
+- **Barcode:** keep, improve.
+- **Threshold Stripes, Stack, Strands:** not liked as they are. Threshold Stripes and Stack must turn horizontal (any
+  angle) and adapt to every format, as Eddy (Refactor) already does. Strands: try something better.
+- **Kaleido Pixels:** a control does nothing visible and it reads weakly as a pattern (the note was unclear: ask).
+- **Interference:** good as it is.
+- **Bracket:** Loop is liked (keep, polish only if asked). Render's default animation and colours are not liked.
+- **References for new presets:** a lanyard badge (columns of slanted parallelogram bars), AlphaSense business card
+  (diagonal hairlines of varying length forming a wave edge), One Grove card (horizontal bars with a stepped gap down
+  the middle). Achieve them from the existing patterns where possible.
+- **New section, Stickers:** the {OS} sticker (a square with two cut corners, top left and bottom right, refined in
+  Figma), the {OS} logo top right recolouring to suit the background, an editable title and subtitle (Geist and
+  Geist Mono) updating live, and a pattern from the generator inside the sticker as a masked frame at its set height.
+  Same exports (SVG, animated SVG, PNG, video, transparent outside the shape), presets, seeds.
+- **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
+
 ## Tried and dropped
 
 - **A bending (warp) generator** built as its own pattern to compare with Event Loop. Dropped: it read as an image
