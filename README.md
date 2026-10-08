@@ -42,7 +42,8 @@ seamless video loops.
 - **Shuffle and dice:** shuffle jumps to another pattern at random, one of its presets, with new colours and
   settings (one undo comes back). The seed dice composes a new, uniform variation of the current pattern from its
   seed; the same preset and seed always give the same result.
-- **Motion:** every animation loops seamlessly in 5 or 10 seconds. Waves flow one way; the wave studies morph,
+- **Motion:** every animation loops seamlessly in 5 or 10 seconds. The waves switch in the panel's header (or M)
+  turns a look's motion off and on. Waves flow one way; the wave studies morph,
   swaying each figure through its shapes and back (or flow, if you choose).
 - **OneSyntax brand only:** Geist type, the brand colour list and palettes, the official logo files.
 - **Sticker:** any pattern shown on the {OS} sticker (cut corners, {OS}, a live title and subtitle, the pattern

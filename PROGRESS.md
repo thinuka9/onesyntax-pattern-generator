@@ -135,6 +135,25 @@ stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouett
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **Motion switch (8 October):** "an icon toggle for motion on and off instead of scrolling down; perfect UX and
+  logic". Waves in the panel's header, beside undo (M on the keyboard). Off sets every speed in the look to nothing:
+  it holds its first frame and its exports turn still. On brings back what moved before; for a look that never
+  moved, the motion its preset keeps for it, else its pattern's own at the slowest speed; switching a still preset
+  on and off again leaves it the preset. A look with nothing that could move (Deploy, Refactor with no ripple) shows
+  it unavailable and says why. An edit like any other (undo, edited); turning motion on unpauses a paused preview.
+  The pause button under the art still only pauses the preview. A release check runs it on every preset.
+- **Centre knob drags from where the centre is (8 October):** "as soon as I touch the centre knob it changed".
+  Pressing set the centre to the pointer, and for a centre off the art (Event Queue) the knob shows at the edge,
+  so a touch moved it. Now a drag moves the centre by as far as the pointer goes, a click changes nothing, and the
+  knob follows the pointer while dragging. In the release check.
+- **Silhouette, no slivers or specks in any mode (8 October):** "that issue again" (Stairs on the S mark, upright):
+  splitting a still stripe along the shape's edge left hairlines, and stripes grazing the S's curves left dots.
+  Still stripes now follow their middle line only; a moving stripe crosses an edge in one piece (Fold thickens or
+  thins in place, Bars thickens, a one-sided stripe thins and goes before it is a hairline); a piece shorter than
+  three quarters of a stripe's spacing between two of the other side, or any bar shorter than it is thick, joins
+  the side round it. Stairs draws the inside on its own stripes half a stripe on, each cut where it crosses the
+  shape, so the S sits where the mark has it ("make sure S is aligned, I see them shifted"). The release check
+  covers every inside, shape, direction and motion.
 - **Cache spaced out (8 October):** its bars overlapped (18% of their area within 3 px of another); now 16 columns,
   10 px apart, a little narrower, so no two come within 2 px in any format. A release check holds every Stack
   preset to that (the old Cache fails it at 12.5%).

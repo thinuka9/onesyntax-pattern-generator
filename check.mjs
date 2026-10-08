@@ -314,22 +314,31 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
     return [m, sorted[sorted.length - 1] / sorted[Math.floor(sorted.length / 2)]];
   }));
   for (const [m, jump] of smooth) expect(jump < 1.7, `${m}: a frame jumps ${jump.toFixed(2)} times the typical change`);
-  // No slivers: every piece of a moving stripe sits centred on that stripe, unless the frame's edge cuts it.
-  const loose = await page.evaluate(() => ['roll', 'drift'].flatMap((m) => {
-    const st = structuredClone(presetState('builtin:Merge')); st.values.motion = m;
-    const L = loopSeconds(st), out = [], v = st.values, H = FORMATS[v.format][1], margin = v.margin * Math.min(...FORMATS[v.format]);
-    for (let k = 0; k < 40; k++) {
-      const g = geometryFor(st, k / 40 * L), I = g.instances, middles = new Map();
-      for (let n = 0; n < g.count; n++) {
-        const o = n * STRIDE, y = I[o + 1], h = I[o + 3];
-        if (y - h / 2 <= margin + 0.01 || y + h / 2 >= H - margin - 0.01) continue;  // cut by the frame
-        const stripe = Math.floor(I[o + 13] / 48);
-        if (!middles.has(stripe)) middles.set(stripe, y);
-        else if (Math.abs(middles.get(stripe) - y) > 0.01) { out.push(`${m} at ${(k / 40 * L).toFixed(2)} s: a piece ${Math.abs(middles.get(stripe) - y).toFixed(1)} px off its stripe`); break; }
+  // No slivers or specks, in every way of drawing the inside, shape and direction, still or moving: every piece sits
+  // centred on a stripe of its own set (or is cut by the frame's edge), none is a hairline, and none is a dot.
+  const loose = await page.evaluate(() => {
+    const out = [];
+    for (const inside of ['fold', 'bars', 'shift', 'gap']) for (const shape of ['symbol', 'mark', 'monogram']) for (const direction of ['across', 'down']) for (const motion of ['none', 'roll', 'drift']) {
+      const st = structuredClone(presetState('builtin:Merge'));
+      Object.assign(st.values, { inside, shape, direction, motion, lines: 26, weight: inside === 'fold' ? 0.12 : 0.3 });
+      const v = st.values, side = Math.min(...FORMATS[v.format]), margin = v.margin * side, span = FORMATS[v.format][direction === 'down' ? 0 : 1];
+      const pitch = (span - 2 * margin) / 26, thin = Math.min(0.96, v.weight) * pitch, L = loopSeconds(st);
+      for (const t of motion === 'none' ? [0] : [0.13, 0.41, 0.77].map((f) => f * L)) {
+        const g = geometryFor(st, t), I = g.instances, middles = new Map(), label = `${inside} ${shape} ${direction} ${motion} at ${t.toFixed(2)} s`;
+        for (let n = 0; n < g.count; n++) {
+          const o = n * STRIDE, across = direction === 'down' ? I[o] : I[o + 1], width = direction === 'down' ? I[o + 2] : I[o + 3], length = direction === 'down' ? I[o + 3] : I[o + 2];
+          const cut = across - width / 2 <= margin + 0.01 || across + width / 2 >= span - margin - 0.01;
+          if (cut) continue;
+          if (width < 0.4 * thin) { out.push(`${label}: a hairline ${width.toFixed(1)} px thick`); break; }
+          if (length < width * 0.99) { out.push(`${label}: a dot ${length.toFixed(1)} px long`); break; }
+          const stripe = Math.floor(I[o + 13] / 48);
+          if (!middles.has(stripe)) middles.set(stripe, across);
+          else if (Math.abs(middles.get(stripe) - across) > 0.01) { out.push(`${label}: a piece ${Math.abs(middles.get(stripe) - across).toFixed(1)} px off its stripe`); break; }
+        }
       }
     }
-    return out.slice(0, 3);
-  }));
+    return out.slice(0, 12);
+  });
   expect(!loose.length, loose.join('\n'));
 });
 
@@ -470,7 +479,7 @@ await check('A returning session opens untouched presets as they are now, and ke
 
 await check('The centre knob shows where it can be grabbed, and moves the centre', async () => {
   const wrong = [];
-  for (const [name, view] of [['Event Stream', 'fill'], ['Event Stream', 'fit'], ['Event Loop', 'fill'], ['Data Flow', 'fill'], ['Refactor', 'fit'], ['Merge', 'fill'], ['Merge', 'fit']]) {
+  for (const [name, view] of [['Event Stream', 'fill'], ['Event Stream', 'fit'], ['Event Queue', 'fit'], ['Event Loop', 'fill'], ['Data Flow', 'fill'], ['Refactor', 'fit'], ['Merge', 'fill'], ['Merge', 'fit']]) {
     await page.evaluate((n) => applyPreset('builtin:' + n), name);
     await page.click(`[data-view="${view}"]`);
     await page.waitForTimeout(500);
@@ -481,6 +490,10 @@ await check('The centre knob shows where it can be grabbed, and moves the centre
     });
     if (!knob.shown || !knob.top) { wrong.push(`${name} (${view}): the knob is ${knob.shown ? 'covered' : 'not shown'} at ${Math.round(knob.x)}, ${Math.round(knob.y)}`); continue; }
     const before = await page.evaluate(() => { const c = centreOf(); return c.keys.map((k) => getPath(state.values, k)); });
+    // A press or click leaves the centre alone, even when the knob shows at the art's edge for a centre off it.
+    await page.mouse.move(knob.x, knob.y); await page.mouse.down(); await page.mouse.up();
+    const clicked = await page.evaluate(() => { const c = centreOf(); return c.keys.map((k) => getPath(state.values, k)); });
+    if (clicked.some((v, i) => v !== before[i])) wrong.push(`${name} (${view}): a click on the knob moved the centre`);
     await page.mouse.move(knob.x, knob.y); await page.mouse.down(); await page.mouse.move(knob.x + 90, knob.y + 70, { steps: 5 }); await page.mouse.up();
     const after = await page.evaluate(() => { const c = centreOf(); return c.keys.map((k) => getPath(state.values, k)); });
     if (after.every((v, i) => v === before[i])) wrong.push(`${name} (${view}): dragging the knob moved nothing`);
@@ -508,6 +521,33 @@ await check("Stack's bars never touch or overlap, in any format", async () => {
     return out;
   });
   expect(!touching.length, touching.join('\n'));
+});
+
+await check('The motion switch turns every look off and on, and back to its preset', async () => {
+  const wrong = await page.evaluate(() => {
+    const out = [];
+    for (const b of BUILT_INS) {
+      applyPreset('builtin:' + b.name);
+      const wasMoving = isAnimated(state), able = wasMoving || looksMoving(withMotion(state));
+      if (!able) {
+        // Unavailable: says why, and a click changes nothing.
+        const before = JSON.stringify(state.values);
+        toggleMotion();
+        if (JSON.stringify(state.values) !== before) out.push(`${b.name}: the switch changed a look with nothing to move`);
+        if (!/can move/.test(stillReason())) out.push(`${b.name}: no reason given`);
+        continue;
+      }
+      toggleMotion();
+      if (isAnimated(state) === wasMoving) { out.push(`${b.name}: the switch did not turn motion ${wasMoving ? 'off' : 'on'}`); continue; }
+      if (!wasMoving && !looksMoving(state)) out.push(`${b.name}: turned on, but nothing moves`);
+      if (!edited()) out.push(`${b.name}: switched, but not marked edited`);
+      toggleMotion();
+      if (isAnimated(state) !== wasMoving) out.push(`${b.name}: switching back did not return its motion`);
+      if (edited()) out.push(`${b.name}: switched off and on, but no longer the preset`);
+    }
+    return out;
+  });
+  expect(!wrong.length, wrong.join('\n'));
 });
 
 if (dist) await check('The published files carry no comments', async () => {

@@ -95,6 +95,9 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   was so before too). Silhouette was the only pattern far faster than the rest; fixed with the glitches.
 - **Decided 8 October:** Stack's Cache: bars must not touch or overlap ("don't touch" meant the bars). Spaced out;
   a release check keeps every Stack preset's bars apart in every format.
+- **8 October, later still:** a motion on/off icon in the panel header ("perfect UX and logic, think before doing
+  it"): built as the waves switch. The centre knob jumped on touch; Stairs shifted the S; slivers came back in
+  other modes. All fixed, with checks.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

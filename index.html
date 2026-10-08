@@ -160,6 +160,12 @@
   .history button { width: 32px; height: 32px; display: grid; place-items: center; transition: background .2s var(--ease); }
   .history button:hover:not(:disabled) { background: var(--button); }
   .history .icon { width: 17px; height: 17px; }
+  /* Motion on shows the waves in the accent colour on a chip; off, struck through and muted; unavailable, faint. */
+  .history .divider { width: 1px; margin: 7px 4px; background: var(--line); }
+  .motion-switch { color: var(--muted); transition: background .2s var(--ease), color .2s var(--ease); }
+  .motion-switch[aria-pressed="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 14%, transparent); }
+  .motion-switch[aria-disabled="true"] { color: var(--faint); opacity: .55; cursor: not-allowed; }
+  .history .motion-switch[aria-disabled="true"]:hover { background: none; }
   /* Brand headline style: Geist Medium, set tight (−4% like the {OS} lockup). */
   h1 { margin: 16px 0 8px; font-weight: 500; font-size: 40px; line-height: 1; letter-spacing: -.04em; overflow-wrap: anywhere; }
   .lede { margin: 0; color: var(--muted); font-size: 13.5px; line-height: 1.45; }
@@ -434,6 +440,8 @@
     <div class="head-top">
       <span class="eyebrow-row"><span class="os-chip"><img src="./brand/onesyntax-os-monogram.svg" alt="{OS}"></span><span class="eyebrow" id="eyebrow">Generative system / 01</span></span>
       <span class="history">
+        <button id="motionSwitch" class="motion-switch" aria-pressed="false" aria-label="Motion" title="Motion (M)"></button>
+        <span class="divider" aria-hidden="true"></span>
         <button id="undo" aria-label="Undo" title="Undo (Ctrl+Z)" disabled data-icon="undo"></button>
         <button id="redo" aria-label="Redo" title="Redo (Ctrl+Shift+Z)" disabled data-icon="redo"></button>
       </span>
@@ -512,6 +520,8 @@ const ICONS = {
   reset: '<path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/>',  // RotateCcw
   pause: '<rect x="14" y="4" width="4" height="16" rx="1"/><rect x="6" y="4" width="4" height="16" rx="1"/>',  // Pause
   play: '<polygon points="6 3 20 12 6 21 6 3"/>',  // Play
+  motion: '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/>',  // Waves
+  'motion-off': '<path d="M2 6c.6.5 1.2 1 2.5 1C7 7 7 5 9.5 5c2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 12c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="M2 18c.6.5 1.2 1 2.5 1 2.5 0 2.5-2 5-2 2.6 0 2.4 2 5 2 2.5 0 2.5-2 5-2 1.3 0 1.9.5 2.5 1"/><path d="m3 3 18 18"/>',  // Waves, struck through
   close: '<path d="M18 6 6 18"/><path d="m6 6 12 12"/>',  // X
   plus: '<path d="M5 12h14"/><path d="M12 5v14"/>',  // Plus
   minus: '<path d="M5 12h14"/>',  // Minus
@@ -1557,12 +1567,15 @@ function silhouetteGeometry(v, time, pool) {
       previous = now; px = x;
     }
   }
-  /** One stripe at y, drawn round the shape ('out'), inside it ('in') or both ('all'); `clip` cuts it to the stripes'
-   *  frame, so a moving stripe slides in and out under the frame's edge. Each piece's ends come from where the
-   *  stripe's middle line crosses the shape, so a bar ends square on a slope. Where the shape's edge runs flat through
-   *  the stripe (its top and bottom), each side's bar is as thick as the share of the stripe on that side, centred on
-   *  the stripe: a moving stripe thickens or thins smoothly as it crosses, never leaving a sliver behind. */
-  function stripe(y, clip, id, parts) {
+  /** One stripe at y, drawn round the shape ('out'), inside it ('in') or both ('all'). A moving stripe (`moving`) is
+   *  cut to the stripes' frame, so it slides in and out under the frame's edge. Each piece's ends come from where
+   *  the stripe's middle line crosses the shape, so a bar ends square on a slope, and a sliver of a piece (a stripe
+   *  grazing a curve) takes the side round it rather than leaving a speck. Where a moving stripe
+   *  straddles a flat edge of the shape (its top and bottom), it changes over gradually as it crosses, and always
+   *  on its stripe with no thin strip left over: Fold's bars thicken or thin in place (a thin share hides inside the
+   *  thicker bar), Bars thickens, and a stripe drawing one side only thins and goes before it is a hairline. A
+   *  still stripe never straddles: its middle line decides. */
+  function stripe(y, moving, id, parts, clip = moving) {
     let thinW, fatW, round = false;
     if (fold) {
       const level = foldLevel(y), t = thick(v.weight);
@@ -1574,54 +1587,107 @@ function silhouetteGeometry(v, time, pool) {
       : inside ? (v.inside === 'gap' ? null : [fatW, ink2, 1]) : [thinW, ink, 0];
     const half = Math.max(thinW, fatW) / 2, upper = y - half, lower = y + half;
     const cuts = [left, right];
-    crossings(y, cuts); crossings(upper, cuts); crossings(lower, cuts);
+    crossings(y, cuts);
+    if (moving) { crossings(upper, cuts); crossings(lower, cuts); }
     cuts.sort((a, b) => a - b);
     // Pieces along the stripe: the side its middle line is on, and the share of the stripe inside the shape there.
-    const pieces = [];
+    let pieces = [];
     for (let k = 0; k < cuts.length - 1; k++) {
       const a = cuts[k], b = cuts[k + 1];
       if (b - a < 1e-6) continue;
-      const m = (a + b) / 2, mid = at(m, y), up = at(m, upper), dn = at(m, lower);
+      const m = (a + b) / 2, mid = at(m, y);
       let share = mid ? 1 : 0;
-      // A flat edge through the stripe (a wide piece, so not the end of a slope): how much of it lies inside.
-      if ((up !== mid || dn !== mid) && b - a > 4 * half) {
-        let lo = up !== mid ? upper : y, hi = up !== mid ? y : lower;
-        const from = at(m, lo);
-        for (let i = 0; i < 12; i++) { const c = (lo + hi) / 2; if (at(m, c) === from) lo = c; else hi = c; }
-        const edge = (lo + hi) / 2;
-        share = ((up ? edge - upper : 0) + (dn ? lower - edge : 0)) / (lower - upper);
+      if (moving) {
+        const up = at(m, upper), dn = at(m, lower);
+        // A flat edge through the stripe (a wide piece, so not the end of a slope): how much of it lies inside.
+        if ((up !== mid || dn !== mid) && b - a > 4 * half) {
+          let lo = up !== mid ? upper : y, hi = up !== mid ? y : lower;
+          const from = at(m, lo);
+          for (let i = 0; i < 12; i++) { const c = (lo + hi) / 2; if (at(m, c) === from) lo = c; else hi = c; }
+          const edge = (lo + hi) / 2;
+          share = ((up ? edge - upper : 0) + (dn ? lower - edge : 0)) / (lower - upper);
+        }
       }
       pieces.push({ a, b, mid, share });
     }
+    // Specks: a piece between two of the other side, shorter than three quarters of a stripe's spacing (or one at an
+    // end shorter than the stripe is thick), reads as a dot: it takes the side round it, then like pieces join.
+    const whole = (piece) => piece.share === 0 || piece.share === 1;
+    for (let k = 0; k < pieces.length; k++) {
+      const piece = pieces[k], before = pieces[k - 1], after = pieces[k + 1];
+      if (!whole(piece)) continue;
+      // Its length as drawn: a piece round the shape loses a gap beside each piece inside it.
+      const length = piece.b - piece.a - (gap && !piece.mid ? gap * ((before && before.mid ? 1 : 0) + (after && after.mid ? 1 : 0)) : 0);
+      const own = (look(piece.mid) || [0])[0];  // how thick it is drawn
+      let side = null;
+      if (before && after) { if (length < Math.max(2 * own, 0.75 * pitch) && whole(before) && whole(after) && before.mid === after.mid) side = before.mid; }
+      else if ((before || after) && length < own && whole(before || after)) side = (before || after).mid;
+      if (side !== null && side !== piece.mid) { piece.mid = side; piece.share = side ? 1 : 0; }
+    }
+    pieces = pieces.reduce((list, piece) => {
+      const last = list[list.length - 1];
+      if (last && whole(last) && whole(piece) && last.mid === piece.mid) last.b = piece.b; else list.push({ ...piece });
+      return list;
+    }, []);
     // Gaps (Bars, Stairs, Gap) open on the stripes round the shape, beside each piece inside it.
     const sideOf = (k) => (k >= 0 && k < pieces.length ? pieces[k].mid : null);
     const rects = [];
+    const add = (a, b, y0, y1, inside, style) => {
+      if (clip) { y0 = Math.max(y0, top); y1 = Math.min(y1, bottom); }
+      // Touching pieces drawn alike join into one bar: no seam between them, and fewer marks.
+      const last = rects[rects.length - 1];
+      if (last && last.inside === inside && Math.abs(last.b - a) < 1e-6 && Math.abs(last.y0 - y0) < 1e-6 && Math.abs(last.y1 - y1) < 1e-6) last.b = b;
+      else rects.push({ a, b, y0, y1, inside, style });
+    };
     pieces.forEach((piece, k) => {
       let { a, b } = piece;
       if (gap && !piece.mid) { if (sideOf(k - 1)) a += gap; if (sideOf(k + 1)) b -= gap; }
-      for (const [inside, cover] of [[false, 1 - piece.share], [true, piece.share]]) {
-        if (cover <= 0 || (parts === 'in' && !inside) || (parts === 'out' && inside)) continue;
-        const style = look(inside);
-        if (!style) continue;
-        const shift = inside && v.inside === 'shift' ? pitch / 2 : 0;
-        let y0 = y + shift - style[0] * cover / 2, y1 = y + shift + style[0] * cover / 2;
-        if (clip) { y0 = Math.max(y0, top); y1 = Math.min(y1, bottom); }
-        // Touching pieces drawn alike join into one bar: no seam between them, and fewer marks.
-        const last = rects[rects.length - 1];
-        if (last && last.inside === inside && Math.abs(last.b - a) < 1e-6 && Math.abs(last.y0 - y0) < 1e-6 && Math.abs(last.y1 - y1) < 1e-6) last.b = b;
-        else rects.push({ a, b, y0, y1, inside, style });
+      if (!fold) {
+        // One bar on the stripe. Bars thickens it from the stripe's weight to the inner weight as it crosses, in the
+        // inner colour from half way. A stripe drawing one side only (Gap, each of Stairs' two sets, Drift's) thins
+        // its bar as the stripe crosses out of that side, and leaves it out before it is a hairline.
+        const share = piece.share;
+        if (parts === 'all' && v.inside === 'bars') {
+          const inside = share >= 0.5, style = look(inside), width = thinW + (fatW - thinW) * share;
+          add(a, b, y - width / 2, y + width / 2, inside, style);
+          return;
+        }
+        const inside = parts === 'in';
+        const cover = inside ? share : 1 - share, style = look(inside);
+        if (!style || cover <= 0) return;
+        const width = style[0] * cover;
+        if (width < 0.4 * thinW) return;  // gone before it is a hairline
+        add(a, b, y - width / 2, y + width / 2, inside, style);
+        return;
       }
+      // Fold: each side's bar as thick as its share of the stripe, centred; only the thicker shows, so only it is drawn.
+      // A stripe drawing one side only (Drift's) thins as it crosses out of that side, gone before it is a hairline.
+      const sides = [[false, 1 - piece.share], [true, piece.share]]
+        .filter(([inside, cover]) => cover > 0 && !(parts === 'in' && !inside) && !(parts === 'out' && inside))
+        .map(([inside, cover]) => ({ inside, style: look(inside), width: look(inside)[0] * cover }))
+        .filter((x) => parts === 'all' || x.width >= 0.4 * thinW);
+      if (!sides.length) return;
+      const shown = sides.reduce((best, x) => (x.width > best.width ? x : best));
+      add(a, b, y - shown.width / 2, y + shown.width / 2, shown.inside, shown.style);
     });
     // Numbered by side and order, so a bar keeps its number as the stripe moves and its pieces change.
+    // A bar shorter than it is thick reads as a dot: left out.
     const counted = [0, 0];
-    for (const r of rects) bar(r.a, r.b, r.y0, r.y1, r.style[1], r.style[2], id + (r.inside ? 24 : 0) + Math.min(23, counted[r.inside ? 1 : 0]++));
+    for (const r of rects) if (r.b - r.a >= r.y1 - r.y0) bar(r.a, r.b, r.y0, r.y1, r.style[1], r.style[2], id + (r.inside ? 24 : 0) + Math.min(23, counted[r.inside ? 1 : 0]++));
   }
-  if (v.motion !== 'roll') for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, false, i * 48, v.motion === 'drift' ? 'out' : 'all');
+  // Stairs draws the shape's inside on stripes of its own, half a stripe on from the others and each cut where it
+  // crosses the shape, so the shape sits exactly where it is (both sets stop at its edges).
+  const stairs = v.inside === 'shift' && !fold, still = v.motion !== 'roll';
+  if (still) for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, false, i * 48, stairs || v.motion === 'drift' ? 'out' : 'all');
+  if (stairs && !flow) for (let k = 0; k <= lines; k++) stripe(top + k * pitch, false, (50000 + k) * 48, 'in', true);
   // Moving stripes, one each side beyond the frame, cut to it as they slide in and out.
-  if (flow) for (let j = -1; j <= lines; j++) {
-    const y = top + (j + 0.5 + offset) * pitch;
-    if (y + pitch / 2 <= top || y - pitch / 2 >= bottom) continue;
-    stripe(y, true, (100000 + j - passed) * 48, v.motion === 'drift' ? 'in' : 'all');
+  if (flow) for (let j = -2; j <= lines; j++) {
+    const y = top + (j + 0.5 + offset) * pitch, n = 100000 + j - passed;
+    const show = (at) => at + pitch / 2 > top && at - pitch / 2 < bottom;
+    if (stairs) {
+      if (v.motion === 'roll' && show(y)) stripe(y, true, n * 48, 'out');
+      if (show(y + pitch / 2)) stripe(y + pitch / 2, true, (n + 50000) * 48, 'in');
+    } else if (show(y)) stripe(y, true, n * 48, v.motion === 'drift' ? 'in' : 'all');
   }
   const params = { name: 'Silhouette', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
   return { instances, count, markCount: count, width, height, params };
@@ -2703,7 +2769,7 @@ function placeHandle() {
   const y = artPlace.y + (ay + (depth ? depth.toPage(fy) : fy) * ah) * artPlace.s;
   // A centre off the art as it shows (Event Stream's sits on the art's corner, off screen when the art fills it) stays
   // reachable at the nearest edge of what shows: clear of the panel over it and of the buttons and lines on the art.
-  const [px, py] = handleSpot(x, y);
+  const [px, py] = handleDrag && dragAt ? [E.clamp(dragAt[0], 18, window.innerWidth - 18), E.clamp(dragAt[1], 18, window.innerHeight - 18)] : handleSpot(x, y);
   centreHandle.style.translate = `${px}px ${py}px`;
   centreHandle.classList.toggle('shown', overArt || handleDrag || document.activeElement === centreKnob);
 }
@@ -2746,24 +2812,38 @@ window.addEventListener('pointermove', (e) => {
   if (over !== overArt) { overArt = over; placeHandle(); }
 }, { passive: true });
 document.documentElement.addEventListener('pointerleave', () => { overArt = false; placeHandle(); });
+// A drag moves the centre by as far as the pointer goes, from where the centre is: the knob may show at the art's
+// edge for a centre off it, so pressing it, or a click, changes nothing. While dragging, the knob follows the pointer.
+let dragFrom = null, dragAt = null;
 centreKnob.addEventListener('pointerdown', (e) => {
-  if (e.button !== 0) return;
+  const c = centreOf();
+  if (e.button !== 0 || !c || !artPlace) return;
   e.preventDefault();
   centreKnob.setPointerCapture(e.pointerId);
+  const [ax, ay, aw, ah] = c.area(state.values, artPlace.width, artPlace.height);
+  const depth = c.depth && c.depth(state.values, artPlace.width, artPlace.height), fy = getPath(state.values, c.keys[1]);
+  // Where the centre truly is on screen (perhaps off the art), and where the knob shows.
+  const at = [artPlace.x + (ax + getPath(state.values, c.keys[0]) * aw) * artPlace.s, artPlace.y + (ay + (depth ? depth.toPage(fy) : fy) * ah) * artPlace.s];
+  const knob = centreHandle.style.translate.split(' ').map(parseFloat);
+  dragFrom = { x: e.clientX, y: e.clientY, at, knob, moved: false };
   handleDrag = true; centreHandle.classList.add('dragging');
 });
 centreKnob.addEventListener('pointermove', (e) => {
   const c = centreOf();
-  if (!handleDrag || !c || !artPlace) return;
+  if (!handleDrag || !dragFrom || !c || !artPlace) return;
+  const dx = e.clientX - dragFrom.x, dy = e.clientY - dragFrom.y;
+  if (!dragFrom.moved && Math.hypot(dx, dy) < 3) return;  // a click, not a drag
+  dragFrom.moved = true;
   const [ax, ay, aw, ah] = c.area(state.values, artPlace.width, artPlace.height);
-  let fx = ((e.clientX - artPlace.x) / artPlace.s - ax) / aw, fy = ((e.clientY - artPlace.y) / artPlace.s - ay) / ah;
+  let fx = ((dragFrom.at[0] + dx - artPlace.x) / artPlace.s - ax) / aw, fy = ((dragFrom.at[1] + dy - artPlace.y) / artPlace.s - ay) / ah;
   // Within 10 screen pixels of an edge or the middle, the centre snaps there.
   const snap = (f, size) => { for (const t of [0, 0.5, 1]) if (Math.abs(f - t) * size * artPlace.s < 10) return t; return f; };
   if (!e.altKey) { fx = snap(fx, aw); fy = snap(fy, ah); }
   const depth = c.depth && c.depth(state.values, artPlace.width, artPlace.height);
+  dragAt = [dragFrom.knob[0] + dx, dragFrom.knob[1] + dy];
   setCentre(fx, depth ? depth.toPlane(fy) : fy);
 });
-const endDrag = () => { if (!handleDrag) return; handleDrag = false; centreHandle.classList.remove('dragging'); placeHandle(); };
+const endDrag = () => { if (!handleDrag) return; handleDrag = false; dragFrom = dragAt = null; centreHandle.classList.remove('dragging'); placeHandle(); };
 centreKnob.addEventListener('pointerup', endDrag);
 centreKnob.addEventListener('pointercancel', endDrag);
 centreKnob.addEventListener('dblclick', () => {
@@ -2798,7 +2878,7 @@ function tipText(el) {
 function showTip(el) {
   const text = tipText(el);
   if (!text || !el.isConnected) return;
-  const shortcut = text.match(/^(.*?)\s*\(((?:Ctrl|Shift|Esc|←|→)[^)]*)\)$/);
+  const shortcut = text.match(/^(.*?)\s*\(((?:Ctrl|Shift|Esc|←|→)[^)]*|[A-Z])\)$/);
   tip.innerHTML = shortcut ? `${escapeHtml(shortcut[1])}<kbd>${escapeHtml(shortcut[2])}</kbd>` : escapeHtml(text);
   tip.style.left = '0px'; tip.style.top = '0px';  // measured at the corner, where it can take its full width
   if (tipPopover) tip.showPopover(); else tip.hidden = false;
@@ -3582,6 +3662,7 @@ function updateStatus() {
     el.appendChild(button);
   }
   document.getElementById('play').hidden = !animated();
+  refreshMotionSwitch();
 }
 
 function applyPreset(id) {
@@ -4858,6 +4939,97 @@ playButton.addEventListener('click', () => {
   playButton.dataset.tip = paused ? 'Play' : 'Pause';
 });
 
+// ---------- Motion switch ----------
+// The switch in the panel's header turns a look's motion off and on without scrolling to its Speed. Off sets every
+// speed in the look to nothing: it holds its first frame, and its exports turn still. On brings back what was moving
+// before; for a look that never moved, the motion its preset keeps for it, else its pattern's own at the slowest
+// speed. A look with nothing that could move (Deploy's fixed bars, Refactor with no ripple) shows the switch
+// unavailable and says why, so it is never a dead control. It is an edit like any other: undo takes it back, and a
+// preset changed this way reads as edited. The pause button under the art only pauses the preview.
+const SPEED_KEYS = {
+  studio: ['motion.speed', 'pulse.speed', 'field.ripples.orbit'], rows: ['speed'], mark: ['speed'],
+  orbit: ['speed', 'grid.speed', 'pulse.speed'], silhouette: ['speed'], readout: ['speed'],
+};
+const MOTION_CHOICES = { studio: ['field.motion'], mark: ['effect'], orbit: ['motion', 'grid.motion'], silhouette: ['motion'] };
+// What moved before the look was held still, and how it sat still before it was set moving, by preset and pattern.
+const motionSwitch = document.getElementById('motionSwitch'), motionMemory = new Map(), stillMemory = new Map();
+const motionKeys = (st) => [...(SPEED_KEYS[kindOf(st)] || []), ...(MOTION_CHOICES[kindOf(st)] || [])].filter((k) => getPath(st.values, k) !== undefined);
+const motionOf = (st) => Object.fromEntries(motionKeys(st).map((k) => [k, getPath(st.values, k)]));
+/** The look held still: every speed at nothing. */
+function stilled(st) {
+  const out = structuredClone(st);
+  for (const k of SPEED_KEYS[kindOf(st)] || []) if (typeof getPath(out.values, k) === 'number') setPath(out.values, k, 0);
+  return out;
+}
+/** The look moving again: as it last moved, else as its preset moves, else its pattern's motion at the slowest speed. */
+function withMotion(st) {
+  const out = structuredClone(st), v = out.values, kind = kindOf(st);
+  const from = motionMemory.get(current + '|' + st.pattern) || (baseline.pattern === st.pattern && isAnimated(baseline) ? motionOf(baseline) : null);
+  if (from) { for (const [k, x] of Object.entries(from)) setPath(v, k, x); if (isAnimated(out)) return out; }
+  const slow = (k) => { if (!getPath(v, k)) setPath(v, k, 0.5); };
+  if (kind === 'studio') slow('motion.speed');
+  else if (kind === 'rows' || kind === 'readout') slow('speed');
+  else if (kind === 'mark') { if (v.effect === 'none') v.effect = 'wave'; slow('speed'); }
+  else if (kind === 'orbit' && v.layout === 'grid') { if (v.grid.motion === 'none') v.grid.motion = 'ripple'; slow('grid.speed'); }
+  else if (kind === 'orbit') { if (v.motion === 'none') v.motion = 'flow'; slow('speed'); }
+  else if (kind === 'silhouette') { if (v.motion === 'none') v.motion = 'roll'; slow('speed'); }
+  return out;
+}
+/** Whether a look changes on screen over its loop. */
+function looksMoving(st) {
+  if (!isAnimated(st)) return false;
+  // A logo's distances are worked out just after a look opens; until they land, its motion is taken on trust.
+  if (kindOf(st) === 'studio') { const p = scaledStudio(st.values); if (logoActive(p) && !sdfCache.has(logoKey(p))) return true; }
+  const a = geometryFor(st, 0), z = geometryFor(st, 0.37 * loopSeconds(st));
+  if (a.count !== z.count) return true;
+  for (let i = 0; i < a.count * STRIDE; i++) if (i % STRIDE !== 13 && Math.abs(a.instances[i] - z.instances[i]) > 1e-3) return true;
+  return false;
+}
+const stillReason = () => (patternOf(state.pattern).name === 'Eddy' || state.pattern === 'Halftone Diagonal') && !rippleOn(state.values)
+  ? 'Nothing in this look can move: raise Ripple to give it something to move'
+  : 'Nothing in this look can move';
+// Whether a still look could move is worked out once editing pauses, as it means drawing the look twice.
+let motionCheck = 0;
+function refreshMotionSwitch() {
+  const on = animated();
+  clearTimeout(motionCheck);
+  motionSwitch.setAttribute('aria-pressed', String(on));
+  motionSwitch.innerHTML = icon(on ? 'motion' : 'motion-off');
+  motionSwitch.removeAttribute('title');
+  // A tooltip already showing for the switch follows its state.
+  const tell = (text) => { motionSwitch.dataset.tip = text; if (tipFor === motionSwitch) showTip(motionSwitch); };
+  if (on) {
+    motionSwitch.removeAttribute('aria-disabled');
+    tell('Motion on: turn off to hold the first frame (M)');
+    return;
+  }
+  tell('Motion off: turn on to animate (M)');
+  motionCheck = setTimeout(() => {
+    const able = looksMoving(withMotion(state));
+    if (able) motionSwitch.removeAttribute('aria-disabled'); else motionSwitch.setAttribute('aria-disabled', 'true');
+    if (!able) tell(stillReason());
+  }, 250);
+}
+function toggleMotion() {
+  const key = current + '|' + state.pattern;
+  if (animated()) {
+    motionMemory.set(key, motionOf(state));
+    // A look the switch set moving goes back to just how it sat still (a preset kept still stays unedited).
+    const before = stillMemory.get(key), back = before && structuredClone(state);
+    if (back) for (const [k, x] of Object.entries(before)) setPath(back.values, k, x);
+    state = back && !isAnimated(back) ? back : stilled(state);
+  } else {
+    const next = withMotion(state);
+    if (!looksMoving(next)) { notify(stillReason()); motionSwitch.setAttribute('aria-disabled', 'true'); return; }
+    stillMemory.set(key, motionOf(state));
+    state = next;
+    if (paused) playButton.click();  // turning motion on is asking to see it move
+  }
+  buildPanel(); edit();
+  move(motionSwitch.querySelector('.icon'), { scale: [0.6, 1] }, SPRING);
+}
+motionSwitch.addEventListener('click', toggleMotion);
+
 document.addEventListener('keydown', (e) => {
   if (looksDialog.open) return;
   const typing = e.target.matches('input[type=text], input[type=number], textarea, select, input[type=range]');
@@ -4872,6 +5044,7 @@ document.addEventListener('keydown', (e) => {
   if (typing || e.altKey || e.shiftKey) return;
   if (e.key === 'ArrowLeft') { e.preventDefault(); stepLook(-1); }
   else if (e.key === 'ArrowRight') { e.preventDefault(); stepLook(1); }
+  else if (e.key === 'm' && !e.target.closest('dialog')) { e.preventDefault(); toggleMotion(); }
 });
 
 let last = performance.now();
