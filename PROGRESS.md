@@ -113,12 +113,17 @@ stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouett
   with them open as the symbol). The S mark and {OS} are the brand files read back as masks; with Down stripes the
   shapes stay upright. One preset since 8 October, Merge (the Vonyes fold on the symbol's base, rolling), which is
   also the pattern's default; Interface and Branch are gone and sessions left on them open Merge.
-  - **Motion (8 October):** Breathe grows and shrinks the shape (a swing, as before). Drift and Roll no longer swing:
-    Drift slides the shape one way, leaving one side as it comes back in at the other; Roll sends the fold down the
-    page, the next fold (turned the other way) a page behind, so the shape turns from bars round it to bars inside
-    it and back. Both loop exactly.
+  - **Motion (8 October):** Breathe grows and shrinks the shape (a swing, as before). Roll and Drift move the lines,
+    never the shape or the fold, one way and never back: Roll runs every stripe down the page through the shape
+    (each thickens and thins as it passes the fold, its bar ends stepping along the shape's edges), Drift only the
+    stripes inside the shape, sliding past the still ones round it. The stripes move a page and one stripe a beat,
+    so every stripe has taken another's place when the loop closes; each thins away at the edge it leaves and grows
+    from nothing at the other. (A first try moved the shape and the fold round the page; that repeated them, and
+    was dropped.)
+  - **Animated SVG:** marks that travel are no longer drawn with crisp edges, which snapped them a pixel at a time;
+    the Silhouette file now matches the app within 0.2/255 through the loop (checked frame by frame, like Orbit).
   - **Fold depth (8 October):** the bars reach their thickest as far from the fold as the shape reaches (no further
-    than half the page), so a short shape like {OS} shows as clearly as a tall one.
+    than half the page), and hold it beyond, so a short shape like {OS} shows as clearly as a tall one.
   - **Fold (8 October), the Vonyes poster's effect, read off a close crop:** every stripe is a thin line from edge to
     edge, and part of it is a thick bar in the same colour. Above the fold the bars lie round the shape (from the page
     edge to the shape's edge), below it inside the shape; they thicken the further a stripe is from the fold, so the

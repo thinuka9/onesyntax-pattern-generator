@@ -86,7 +86,8 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   brought a turned-off sticker back (seen on Query).
 - **8 October, later:** Silhouette keeps only Merge ("this is the default"); shapes only the symbol, the S mark and
   {OS} ("3 for now"); cut-off names must show in full on hover; Drift and Roll should loop one way, "without ping
-  pong".
+  pong". Then: a seamless loop "doesn't mean repeated shapes, it has to be from lines": the motion comes from the
+  stripes moving, with the shape and fold still.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

@@ -153,7 +153,7 @@ await check('Exports: PNG, SVG and animated SVG', async () => {
   return `animated: ${notes.join(', ')}`;
 });
 
-await check('Orbit animated SVG matches the app frame by frame', async () => {
+await check('Orbit and Silhouette animated SVGs match the app frame by frame', async () => {
   const view = await browser.newPage({ viewport: { width: 700, height: 700 } });
   const shot = async (svg, t) => {
     await view.setContent(`<body style="margin:0">${svg.replace('<svg ', '<svg id="s" style="width:600px;height:600px;display:block" ')}</body>`);
@@ -183,6 +183,21 @@ await check('Orbit animated SVG matches the app frame by frame', async () => {
     }
     const seam = await difference(await shot(files.svg, 0), await shot(files.svg, files.loop));
     expect(seam < 0.2, `${name} ${settings.motion}: the loop shows a seam (${seam.toFixed(2)}/255)`);
+  }
+  // Silhouette's stripes move through the shape (Roll) or inside it (Drift); the file follows them stripe by stripe.
+  for (const motion of ['roll', 'drift']) {
+    const files = await page.evaluate((m) => {
+      applyPreset('builtin:Merge'); state.values.motion = m;
+      const { svg, loop } = animatedSVG(state), still = (t) => { const g = geometryFor(state, t); return E.toSVG(g, g.params, state, {}); };
+      return { svg, loop, stills: [0.3, 0.7].map((f) => still(f * loop)) };
+    }, motion);
+    for (const [i, f] of [0.3, 0.7].entries()) {
+      const off = await difference(await shot(files.svg, f * files.loop), await shot(files.stills[i]));
+      results.push(off);
+      expect(off < 4, `Merge ${motion}: ${off.toFixed(2)}/255 from the app at ${f} of the loop`);
+    }
+    const seam = await difference(await shot(files.svg, 0), await shot(files.svg, files.loop));
+    expect(seam < 0.2, `Merge ${motion}: the loop shows a seam (${seam.toFixed(2)}/255)`);
   }
   await view.close();
   return `within ${Math.max(...results).toFixed(2)}/255`;
