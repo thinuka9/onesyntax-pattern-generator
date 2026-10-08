@@ -765,7 +765,9 @@ const RENAMED_LOOKS = {
   Gauge: 'Bitstream', Telemetry: 'Bitstream', Uptime: 'Bitstream', Benchmark: 'Bitstream',
   // 7 October: the retired patterns' presets open the first of the pattern that took them over.
   ...Object.fromEntries(['Barcode', 'Bitstream', 'Hash', 'Payload', 'Telemetry', 'Uptime', 'Benchmark', 'Gauge'].map((n) => [n, 'Query'])),
-  ...Object.fromEntries(['Threshold Stripes', 'Stack Trace', 'Bandwidth', 'Packet', 'Strands', 'Threads', 'Protocol', 'Socket'].map((n) => [n, 'Interface'])),
+  ...Object.fromEntries(['Threshold Stripes', 'Stack Trace', 'Bandwidth', 'Packet', 'Strands', 'Threads', 'Protocol', 'Socket'].map((n) => [n, 'Merge'])),
+  // 8 October: Silhouette keeps only Merge.
+  Interface: 'Merge', Branch: 'Merge',
   'Call Stack': 'Deploy', Buffer: 'Deploy', Register: 'Deploy', 'Sinky Meter': 'Query',
 };
 // The studio patterns keep their geometry and move onto the closest brand palette.
@@ -1442,24 +1444,54 @@ const ORBIT_GRID_SECTIONS = [
 // After the Vonyes and One Grove references: stripes run across the page and break round a shape in the middle; inside
 // the shape the bars change (thicker, in the second colour, or shifted half a stripe so they step like stairs), so
 // the shape shows through the stripes. Shapes are the brand's: the symbol's base (the square with its top-left and
-// bottom-right corners cut a third in, as on the {OS} sticker), steps, a diamond and a circle. Each stripe is cut
-// where it crosses the shape, so a stripe steps rather than slopes. Motion breathes the shape, drifts it or rolls
-// the fold.
-// Fold is the Vonyes poster's effect: every stripe is a thin line from edge to edge, and part of it is a thick bar.
-// Above the fold the bars lie round the shape, below it inside the shape, and they thicken the further a stripe is
-// from the fold (a stripe at the fold is thin all the way along). The bar ends step along the shape's edges, so the
-// shape seems to turn out of the page.
+// bottom-right corners cut a third in, as on the {OS} sticker), the S mark and {OS}. Each stripe is cut where it
+// crosses the shape, so a stripe steps rather than slopes.
+// Fold is the Vonyes poster's effect, and the pattern's default (8 October): every stripe is a thin line from edge to
+// edge, and part of it is a thick bar. Above the fold the bars lie round the shape, below it inside the shape, and
+// they thicken the further a stripe is from the fold (a stripe at the fold is thin all the way along). The bar ends
+// step along the shape's edges, so the shape seems to turn out of the page.
+// Motion: Breathe grows and shrinks the shape; Drift slides it one way, out of one side and back in at the other;
+// Roll sends the fold down the page one way, the next fold (the other way round) following a page behind. Drift and
+// Roll never turn back, so their loops have no swing.
 const SILHOUETTE_DEFAULTS = {
-  lines: 18, margin: 0.08, weight: 0.32, shape: 'symbol', size: 0.56, x: 0.5, y: 0.5, gap: 0.03, inside: 'bars', innerWeight: 0.6,
-  fold: 0.5, direction: 'across', motion: 'none', speed: 1, depth: 0.3,
-  palette: 'Midnight', background: '#001931', ink: '#0A89FF', ink2: '#BDDFFF', format: '1:1', seed: 1,
+  lines: 22, margin: 0.08, weight: 0.12, shape: 'symbol', size: 0.74, x: 0.5, y: 0.5, gap: 0.03, inside: 'fold', innerWeight: 0.62,
+  fold: 0.5, direction: 'across', motion: 'roll', speed: 0.5, depth: 0.4,
+  palette: 'Midnight', background: '#001931', ink: '#BDDFFF', ink2: '#BDDFFF', format: '1:1', seed: 1,
 };
+// The S mark and {OS} are the brand files, drawn once onto a grid and read back: light pixels are inside (the white
+// symbol paints its S cut-outs black). Until a file has loaded its shape is left out, and the page redraws on load.
+const SILHOUETTE_FILES = { mark: './brand/onesyntax-symbol-white.svg', monogram: './brand/onesyntax-os-monogram.svg' };
+const silhouetteMasks = new Map();
+function silhouetteMask(key) {
+  if (!silhouetteMasks.has(key)) {
+    silhouetteMasks.set(key, null);
+    const img = new Image();
+    img.onload = () => {
+      const aspect = img.naturalWidth / img.naturalHeight || 1, cols = Math.round(1024 * Math.min(1, aspect)), rows = Math.round(1024 / Math.max(1, aspect));
+      const sheet = document.createElement('canvas'), g = sheet.getContext('2d', { willReadFrequently: true });
+      sheet.width = cols; sheet.height = rows;
+      g.drawImage(img, 0, 0, cols, rows);
+      const px = g.getImageData(0, 0, cols, rows).data, data = new Uint8Array(cols * rows);
+      for (let i = 0; i < data.length; i++) data[i] = px[i * 4 + 3] > 127 && px[i * 4] + px[i * 4 + 1] + px[i * 4 + 2] > 381 ? 1 : 0;
+      silhouetteMasks.set(key, { cols, rows, aspect, data });
+      requestRender();
+    };
+    img.src = SILHOUETTE_FILES[key];
+  }
+  return silhouetteMasks.get(key);
+}
+for (const key of Object.keys(SILHOUETTE_FILES)) silhouetteMask(key);  // ready before anyone picks them
+/** A brand file's shape, centred in the unit square at its own proportions. */
+const maskShape = (m) => (u, v) => {
+  const s = m.aspect < 1 ? (u - 0.5) / m.aspect + 0.5 : u, t = m.aspect > 1 ? (v - 0.5) * m.aspect + 0.5 : v;
+  return s >= 0 && s < 1 && t >= 0 && t < 1 && m.data[Math.floor(t * m.rows) * m.cols + Math.floor(s * m.cols)] === 1;
+};
+// Each shape: its test on the unit square, and its width over its height.
 const SILHOUETTE_SHAPES = {
   // The symbol's base: the square with its top-left and bottom-right corners cut 33.86% in.
-  symbol: (u, v) => u >= 0 && u <= 1 && v >= 0 && v <= 1 && u + v >= 0.3386 && 2 - u - v >= 0.3386,
-  steps: (u, v) => v >= 0 && v <= 1 && Math.abs(u - 0.5) <= 0.5 * v,
-  diamond: (u, v) => Math.abs(u - 0.5) + Math.abs(v - 0.5) <= 0.5,
-  circle: (u, v) => (u - 0.5) ** 2 + (v - 0.5) ** 2 <= 0.25,
+  symbol: () => ({ test: (u, v) => u >= 0 && u <= 1 && v >= 0 && v <= 1 && u + v >= 0.3386 && 2 - u - v >= 0.3386, aspect: 1 }),
+  mark: () => { const m = silhouetteMask('mark'); return m ? { test: maskShape(m), aspect: m.aspect } : { test: () => false, aspect: 1 }; },
+  monogram: () => { const m = silhouetteMask('monogram'); return m ? { test: maskShape(m), aspect: m.aspect } : { test: () => false, aspect: 633.616 / 272.482 }; },
 };
 function silhouetteGeometry(v, time, pool) {
   const [width, height] = FORMATS[v.format] || FORMATS['1:1'], down = v.direction === 'down';
@@ -1468,11 +1500,27 @@ function silhouetteGeometry(v, time, pool) {
   const lines = Math.max(2, Math.min(240, Math.round(v.lines))), pitch = (H - 2 * margin) / lines;
   const tau = v.speed * time / 5, swing = Math.sin(2 * Math.PI * tau) * E.clamp(v.depth);
   const size = Math.max(0.02, v.size * (v.motion === 'breathe' ? 1 + 0.35 * swing : 1)) * side;
-  const cx = v.x * W + (v.motion === 'drift' ? swing * 0.25 * W : 0), cy = v.y * H;
-  const inside = SILHOUETTE_SHAPES[v.shape] || SILHOUETTE_SHAPES.symbol, fold = v.inside === 'fold';
-  const gap = fold ? 0 : Math.max(0, v.gap) * side, left = margin, right = W - margin, samples = 480;
-  const top = margin, bottom = H - margin;
-  const foldY = E.clamp(v.fold, 0, 1) * (bottom - top) + top + (v.motion === 'roll' ? swing * 0.5 * (bottom - top) : 0);
+  const left = margin, right = W - margin, top = margin, bottom = H - margin, span = right - left, reach = bottom - top;
+  // The shape is placed and read on the page, so upright stripes neither move nor mirror it. Drift: one crossing of
+  // the stripes a beat, the shape leaving one side as it comes back in at the other.
+  const picked = (SILHOUETTE_SHAPES[v.shape] || SILHOUETTE_SHAPES.symbol)(), fold = v.inside === 'fold';
+  const shape = down ? (u, w) => picked.test(w, u) : picked.test;
+  const cx = (down ? v.y : v.x) * W + (v.motion === 'drift' ? (tau - Math.floor(tau)) * span : 0), cy = (down ? v.x : v.y) * H;
+  // How far the shape reaches across the stripes from its middle.
+  const halfDepth = size * (down ? Math.min(1, picked.aspect) : Math.min(1, 1 / picked.aspect)) / 2;
+  const inside = v.motion === 'drift'
+    ? (x, row) => shape((x - (cx - size / 2)) / size, row) || shape((x - span - (cx - size / 2)) / size, row) || shape((x + span - (cx - size / 2)) / size, row)
+    : (x, row) => shape((x - (cx - size / 2)) / size, row);
+  const gap = fold ? 0 : Math.max(0, v.gap) * side, samples = 480;
+  // Where the fold is: a wave two pages long, falling to the next fold a page on (which turns the other way), and
+  // Roll moves it two pages a beat. The bars are at their thickest as far from the fold as the shape reaches, so a
+  // short shape ({OS}) is as clear as a tall one.
+  const foldAt = E.clamp(v.fold, 0, 1) * reach + top + (v.motion === 'roll' ? tau * 2 * reach : 0);
+  const ramp = E.clamp(halfDepth, pitch, reach / 2);
+  const foldWave = (y) => {
+    const p = ((y - foldAt) / (2 * reach) % 1 + 1.25) % 1;
+    return E.clamp((p < 0.5 ? 4 * p - 1 : 3 - 4 * p) * reach / 2 / ramp, -1, 1);
+  };
   const thick = (share) => Math.max(0.2, Math.min(0.96, E.clamp(share, 0.02, 1)) * pitch);
   const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' || fold ? v.ink2 : v.ink);
   const instances = E.instanceBuffer(pool, lines * 16 * STRIDE);
@@ -1489,19 +1537,19 @@ function silhouetteGeometry(v, time, pool) {
     const spans = [];
     let start = -1;
     for (let j = 0; j <= samples; j++) {
-      const x = left + (right - left) * j / samples, hit = j < samples && inside((x - (cx - size / 2)) / size, vRow);
+      const x = left + span * j / samples, hit = j < samples && inside(x, vRow);
       if (hit && start < 0) start = x;
       if (!hit && start >= 0) { spans.push([start, x]); start = -1; }
     }
     if (fold) {
-      // The thick bars: round the shape above the fold, inside it below; the thin line fills the rest of the stripe.
-      const above = y < foldY, reach = Math.max(1, above ? foldY - top : bottom - foldY);
-      const thin = thick(v.weight), fat = thin + Math.max(0, thick(v.innerWeight) - thin) * Math.min(1, Math.abs(y - foldY) / reach);
+      // The thick bars: round the shape on the fold's upper side, inside it on its lower side; the thin line fills
+      // the rest of the stripe.
+      const level = foldWave(y), thin = thick(v.weight), fat = thin + Math.max(0, thick(v.innerWeight) - thin) * Math.min(1, Math.abs(level));
       const out = [];
       let from = left;
       for (const [a, b] of spans) { out.push([from, a]); from = b; }
       out.push([from, right]);
-      const bars = above ? out : spans, plain = above ? spans : out;
+      const bars = level < 0 ? out : spans, plain = level < 0 ? spans : out;
       bars.forEach(([a, b], k) => bar(a, b, y, fat, ink2, 1, i * 32 + 16 + k));
       plain.forEach(([a, b], k) => bar(a, b, y, thin, ink, 0, i * 32 + k));
       continue;
@@ -1579,9 +1627,15 @@ const FLAT_KINDS = {
   silhouette: {
     defaults: SILHOUETTE_DEFAULTS, geometry: silhouetteGeometry,
     speeds: (v) => [v.motion !== 'none' ? v.speed : 0],
-    remix: (v, pick, palette) => Object.assign(v, orbitPalette(palette.name), {
-      shape: pick(Object.keys(SILHOUETTE_SHAPES)), lines: pick([12, 16, 18, 24, 32]), inside: pick(['bars', 'bars', 'shift', 'gap', 'fold']),
-      weight: pick([0.2, 0.32, 0.5]), size: pick([0.45, 0.56, 0.66]), direction: pick(['across', 'across', 'down']) }),
+    remix: (v, pick, palette) => {
+      const inside = pick(['fold', 'fold', 'fold', 'bars', 'shift']), fold = inside === 'fold';
+      return Object.assign(v, orbitPalette(palette.name), {
+        shape: pick(['symbol', 'symbol', 'mark', 'monogram']), lines: pick([18, 22, 26, 32]), inside, size: pick([0.6, 0.74, 0.9]),
+        weight: fold ? pick([0.1, 0.12, 0.16]) : pick([0.2, 0.32, 0.5]), innerWeight: fold ? pick([0.5, 0.62, 0.75]) : 0.6,
+        direction: pick(['across', 'across', 'down']) });
+    },
+    // Shapes retired on 8 October (steps, diamond, circle; the V before them) open as the symbol.
+    fix: (v) => { if (!SILHOUETTE_SHAPES[v.shape]) v.shape = 'symbol'; return v; },
   },
   readout: {
     defaults: READOUT_DEFAULTS, geometry: readoutGeometry,
@@ -1630,7 +1684,7 @@ const PATTERNS = [
     sections: [
       ['Stripes', [range('lines', 'Stripes', 2, 120, 1, int), range('weight', 'Weight', 0.02, 1, 0.01, pct),
         choice('direction', 'Direction', [['Across', 'across'], ['Down', 'down']]), range('margin', 'Margin', 0, 0.45, 0.01, pct)]],
-      ['Shape', [choice('shape', 'Shape', [['Symbol', 'symbol'], ['Steps', 'steps'], ['Diamond', 'diamond'], ['Circle', 'circle']]),
+      ['Shape', [choice('shape', 'Shape', [['Symbol', 'symbol'], ['S mark', 'mark'], ['{OS}', 'monogram']]),
         range('size', 'Size', 0.05, 1.6, 0.01, pct), range('x', 'Across', 0, 1, 0.01, pct), range('y', 'Down', 0, 1, 0.01, pct),
         { ...choice('inside', 'Inside', [['Bars', 'bars'], ['Stairs', 'shift'], ['Gap', 'gap'], ['Fold', 'fold']]), rebuild: true },
         { ...range('innerWeight', 'Inner weight', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'bars' },
@@ -1639,7 +1693,8 @@ const PATTERNS = [
         { ...range('gap', 'Gap', 0, 0.2, 0.005, pct), when: (v) => v.inside !== 'fold' }],
         'Inside the shape the stripes become bars in the second colour, step half a stripe down, or leave a gap. Fold lays thick bars round the shape above the fold and inside it below, thicker away from the fold.'],
       ['Motion', [{ ...choice('motion', 'Motion', [['Still', 'none'], ['Breathe', 'breathe'], ['Drift', 'drift'], ['Roll', 'roll']]), rebuild: true },
-        { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: (v) => v.motion !== 'none' }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: (v) => v.motion !== 'none' }]],
+        { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: (v) => v.motion !== 'none' }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: (v) => v.motion === 'breathe' }],
+        'Breathe grows and shrinks the shape. Drift slides it across and round again; Roll sends the fold down the page. Both run one way, so they loop without swinging back.'],
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Stripe colour'), colour('ink2', 'Shape colour'), FORMAT] },
   { name: 'Halftone Diagonal', sections: [
@@ -1904,12 +1959,9 @@ const READOUT_PRESETS = [
   { name: 'Topology', params: { columns: 32, rows: 16, glyphs: 'ascii', slope: 1.2, slopeDirection: 180, wave: 0.6, frequency: 2, direction: 90, grain: 0.1, contrast: 1.5, speed: 0.5, ...orbitPalette('Grape') } },
   { name: 'Minibar', params: { columns: 36, rows: 18, glyphs: 'ascii', mirror: 'x', slope: 1, slopeDirection: 0, wave: 0.8, frequency: 1, direction: 90, grain: 0.08, contrast: 1.5, speed: 0.5, ...orbitPalette('Blueprint') } },
 ];
-// Silhouette, after Vonyes (Merge: the poster's fold, on the symbol's base), One Grove (Branch: thick stripes stepping
-// down round a centre) and the symbol's base (Interface).
+// Silhouette keeps one preset (8 October): Merge, the Vonyes fold on the symbol's base, which is also its default.
 const SILHOUETTE_PRESETS = [
-  { name: 'Interface', params: { lines: 18, weight: 0.3, shape: 'symbol', size: 0.56, inside: 'bars', innerWeight: 0.6, gap: 0.03, motion: 'breathe', speed: 0.5, depth: 0.25, ...orbitPalette('Midnight') } },
-  { name: 'Merge', params: { lines: 22, margin: 0.08, weight: 0.12, shape: 'symbol', size: 0.74, inside: 'fold', innerWeight: 0.62, fold: 0.5, motion: 'roll', speed: 0.5, depth: 0.4, ...orbitPalette('Midnight'), ink: '#BDDFFF' } },
-  { name: 'Branch', params: { lines: 8, weight: 0.5, margin: 0.12, shape: 'steps', size: 0.5, y: 0.56, inside: 'shift', gap: 0.015, motion: 'none', ...orbitPalette('Mono Dark') } },
+  { name: 'Merge', params: { ...SILHOUETTE_DEFAULTS } },
 ];
 const BUILT_INS = [
   ...ROW_PRESETS.map((p) => ({ name: p.name, group: 'Wave Rows', pattern: 'Wave Rows', values: sanitizeRows(p.params) })),
@@ -2020,7 +2072,8 @@ function sanitizePattern(st) {
       return { pattern: pattern.name, values: sanitizeFlat(defaults, { ...firstPreset(pattern.name).values, background: source.colour.background,
         ink: source.colour.stop1, ink2: source.colour.stop2, palette: source.colour.palette, format: source.canvas && source.canvas.format }) };
     }
-    return { pattern: pattern.name, values: sanitizeFlat(defaults, source) };
+    const fix = FLAT_KINDS[pattern.kind].fix || ((v) => v);
+    return { pattern: pattern.name, values: fix(sanitizeFlat(defaults, source)) };
   }
   let source = st && st.values;
   // Saves and links from before 5 October keep the plate's settings under its old key, `chladni`.
@@ -2639,8 +2692,14 @@ function hideTip() {
   tipFor = null; tipHiddenAt = performance.now();
   if (tipPopover) { if (tip.matches(':popover-open')) tip.hidePopover(); } else tip.hidden = true;
 }
+/** A choice cut short by its width (ending in an ellipsis) shows its whole name as a tooltip. */
+function nameCutShort(target) {
+  const b = target.closest && target.closest('.segmented button');
+  if (b && !b.dataset.tip && !b.hasAttribute('title') && b.scrollWidth > b.clientWidth + 1) b.dataset.tip = b.textContent.trim();
+}
 document.addEventListener('pointerover', (e) => {
   if (e.pointerType === 'touch') return;
+  nameCutShort(e.target);
   const el = e.target.closest('[title], [data-tip]');
   if (el && el === tipFor) return;
   hideTip();
@@ -2649,6 +2708,7 @@ document.addEventListener('pointerover', (e) => {
   tipTimer = setTimeout(() => showTip(el), performance.now() - tipHiddenAt < 500 ? 0 : 450);
 });
 document.addEventListener('focusin', (e) => {
+  nameCutShort(e.target);
   const el = e.target.closest('[title], [data-tip]');
   if (el && el.matches(':focus-visible')) { hideTip(); showTip(el); }
 });

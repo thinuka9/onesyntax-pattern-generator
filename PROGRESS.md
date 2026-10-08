@@ -11,7 +11,7 @@ exported proofs and the earlier "classic" page. `PLUGIN\_archive\Archive.zip` ho
 (claude-generator, codex) as they came off the Mac.
 
 Live at https://onesyntax-pattern-generator.pages.dev (Cloudflare Pages, redeployed on every push to `main`, comments
-stripped by `build.mjs`). 13 patterns, 45 built-in presets (7 October: Gauge, Barcode, Threshold Stripes and Strands retired; Readout and Silhouette added; old saves of the retired ones open in their replacements).
+stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouette keeps only Merge; 7 October: Gauge, Barcode, Threshold Stripes and Strands retired; Readout and Silhouette added; old saves of the retired ones open in their replacements).
 
 **Not done yet**
 
@@ -109,8 +109,16 @@ stripped by `build.mjs`). 13 patterns, 45 built-in presets (7 October: Gauge, Ba
 - **Silhouette (7 October, replaced Threshold Stripes), after Vonyes and One Grove:** stripes across (or down) the
   page that break round a shape, each stripe cut where it crosses the shape so the edge steps; inside, the stripes
   become bars in the second colour, shift half a stripe (stairs) or leave a gap. Shapes: the symbol's base (the
-  sticker's cut-corner square), steps, diamond, circle (the V was dropped). Motion breathes or drifts the shape.
-  Presets Interface, Merge (the Vonyes fold on the symbol's base), Branch (One Grove).
+  sticker's cut-corner square), the S mark and {OS} (8 October; steps, diamond, circle and the V are gone, and saves
+  with them open as the symbol). The S mark and {OS} are the brand files read back as masks; with Down stripes the
+  shapes stay upright. One preset since 8 October, Merge (the Vonyes fold on the symbol's base, rolling), which is
+  also the pattern's default; Interface and Branch are gone and sessions left on them open Merge.
+  - **Motion (8 October):** Breathe grows and shrinks the shape (a swing, as before). Drift and Roll no longer swing:
+    Drift slides the shape one way, leaving one side as it comes back in at the other; Roll sends the fold down the
+    page, the next fold (turned the other way) a page behind, so the shape turns from bars round it to bars inside
+    it and back. Both loop exactly.
+  - **Fold depth (8 October):** the bars reach their thickest as far from the fold as the shape reaches (no further
+    than half the page), so a short shape like {OS} shows as clearly as a tall one.
   - **Fold (8 October), the Vonyes poster's effect, read off a close crop:** every stripe is a thin line from edge to
     edge, and part of it is a thick bar in the same colour. Above the fold the bars lie round the shape (from the page
     edge to the shape's edge), below it inside the shape; they thicken the further a stripe is from the fold, so the
@@ -122,6 +130,8 @@ stripped by `build.mjs`). 13 patterns, 45 built-in presets (7 October: Gauge, Ba
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **Cut-off names (8 October):** a choice too long for its button ends in an ellipsis and shows its whole name as a
+  tooltip on hover or keyboard focus.
 - **Sticker colours (8 October):** 18 more schemes from the brand colours after the file's five, picked as tiles
   like the palettes. Ten stay in one family (Midnight, Ice, Grape, Lavender, Tangerine, Blush, Espresso, Amber,
   Bronze; type in the family's deep or light partner, the pattern in a tint or tone of it); eight pair complements

@@ -84,6 +84,9 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   lines edge to edge, thick bars round the shape above a fold and inside it below, thicker away from the fold), now
   Fold. Sticker colours: "experiment with all the colours, but matching and complementary". Bug: the seed dice
   brought a turned-off sticker back (seen on Query).
+- **8 October, later:** Silhouette keeps only Merge ("this is the default"); shapes only the symbol, the S mark and
+  {OS} ("3 for now"); cut-off names must show in full on hover; Drift and Roll should loop one way, "without ping
+  pong".
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped
