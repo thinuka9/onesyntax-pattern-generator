@@ -213,6 +213,29 @@ await check('Sticker: link round-trip and exports', async () => {
   const moving = await (await download(() => exportAnimatedSVG())).text();
   expect(await parses(moving) && /<animate/.test(moving) && moving.includes('id="sticker"'), 'the animated sticker SVG does not parse or does not move');
   await page.evaluate(() => { state.values.sticker.on = 'off'; requestRender(); });
+  // A preset loaded while the sticker was on still starts with it; a seed remix after turning it off must keep it off.
+  const after = await page.evaluate(() => {
+    state.values.sticker.on = 'on'; applyPreset('builtin:Query'); state.values.sticker.on = 'off'; newVariation(); return stickerOn(state);
+  });
+  expect(!after, 'the seed dice turned the sticker back on');
+  const schemes = await page.evaluate(() => Object.values(STICKER_SCHEMES).filter((x) => [x.fill, x.title, x.art].every((c) => /^#[0-9A-F]{6}$/.test(c))).length);
+  expect(schemes === Object.keys(await page.evaluate(() => STICKER_SCHEMES)).length && schemes > 5, 'a sticker scheme has a broken colour');
+});
+
+await check('Silhouette Fold: thin stripes, thick bars round the shape above the fold and inside it below', async () => {
+  const rows = await page.evaluate(() => {
+    applyPreset('builtin:Merge');
+    const v = { ...state.values, motion: 'none' }, g = silhouetteGeometry(v, 0), I = g.instances, marks = [];
+    for (let n = 0; n < g.count; n++) marks.push({ y: I[n * STRIDE + 1], w: I[n * STRIDE + 2], h: I[n * STRIDE + 3] });
+    const byRow = new Map();
+    for (const m of marks) { const k = Math.round(m.y); byRow.set(k, (byRow.get(k) || []).concat(m)); }
+    const rows = [...byRow.values()];
+    // Each stripe spans the page edge to edge, and its thickest part is thickest far from the fold.
+    return { rows: rows.length, lines: v.lines, spans: rows.map((r) => r.reduce((a, m) => a + m.w, 0)), first: Math.max(...rows[0].map((m) => m.h)), middle: Math.max(...rows[Math.floor(rows.length / 2)].map((m) => m.h)) };
+  });
+  expect(rows.rows === rows.lines, `${rows.rows} stripes drawn for ${rows.lines}`);
+  expect(Math.max(...rows.spans) - Math.min(...rows.spans) < 2, 'a stripe does not run edge to edge');
+  expect(rows.first > rows.middle * 2, `the bars do not thicken away from the fold (${rows.first} against ${rows.middle})`);
 });
 
 if (dist) await check('The published files carry no comments', async () => {

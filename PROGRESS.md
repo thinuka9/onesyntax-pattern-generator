@@ -109,21 +109,32 @@ stripped by `build.mjs`). 13 patterns, 45 built-in presets (7 October: Gauge, Ba
 - **Silhouette (7 October, replaced Threshold Stripes), after Vonyes and One Grove:** stripes across (or down) the
   page that break round a shape, each stripe cut where it crosses the shape so the edge steps; inside, the stripes
   become bars in the second colour, shift half a stripe (stairs) or leave a gap. Shapes: the symbol's base (the
-  sticker's cut-corner square), steps, diamond, circle (the V was dropped). Swell thickens the stripes gradually
-  towards the shape's middle and thins them away from it, the Vonyes poster's width illusion that lifts the shape.
-  Motion breathes or drifts the shape. Presets Interface, Merge (swelling stripes round the symbol's base), Branch
-  (One Grove).
+  sticker's cut-corner square), steps, diamond, circle (the V was dropped). Motion breathes or drifts the shape.
+  Presets Interface, Merge (the Vonyes fold on the symbol's base), Branch (One Grove).
+  - **Fold (8 October), the Vonyes poster's effect, read off a close crop:** every stripe is a thin line from edge to
+    edge, and part of it is a thick bar in the same colour. Above the fold the bars lie round the shape (from the page
+    edge to the shape's edge), below it inside the shape; they thicken the further a stripe is from the fold, so the
+    stripe at the fold is thin all the way and the bars flip sides there unseen. Bar ends step along the shape's
+    edges row by row. Thickest and Fold at set it; Roll moves the fold up and down. Replaces Swell (8 October), which
+    thickened whole stripes and was not the poster's effect.
 - **Stack (7 October):** Deploy leads it; Call Stack, Buffer and Register are gone; Release and Cache follow the two
   violet slanted-bar references (shaded across the grid; dense and see-through). Strands is removed.
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **Sticker colours (8 October):** 18 more schemes from the brand colours after the file's five, picked as tiles
+  like the palettes. Ten stay in one family (Midnight, Ice, Grape, Lavender, Tangerine, Blush, Espresso, Amber,
+  Bronze; type in the family's deep or light partner, the pattern in a tint or tone of it); eight pair complements
+  as the file's violet sticker does (Midnight and Coral, Ocean and Amber, Ice and Tangerine, Blush and Blue, Grape
+  and Amber, Cream and Violet, Black and Tangerine, White and Blue). Fixed: loading a preset with the sticker on,
+  turning it off and rolling the seed brought it back (the remix started from the preset's own values).
 - **Sticker, matched to Figma (7 October):** the outline, band and type now come from the Figma "Sticker" frame
   (421 units): corners cut 142.52 (33.86%), 32 margins, the brand {OS} monogram file 39 tall top right, title Geist
   Medium 40 at −4% and subtitle Geist Mono 32 at −4% and 64% in 125% line boxes (baselines measured from the fonts),
   and a fixed band at y 143, 135 tall, the pattern edge to edge in it (no margin of its own). Colours are the file's
-  five stickers (Blue, Violet, Grey, Black, White), each with its fill, inks and the colour the pattern is drawn in
-  (`stickerState`); Shuffle colours and the header dice roll one. Pattern on/off makes plain stickers. The adjustable
+  five stickers (Blue, Violet, Grey, Black, White; 18 more from the brand colours since 8 October, above), each
+  with its fill, inks and the colour the pattern is drawn in (`stickerState`); Shuffle colours and the header dice
+  roll one. Pattern on/off makes plain stickers. The adjustable
   band, corners and free sticker colour are gone. Fixed: turning the sticker off left its canvas covering the pattern
   (`display: block` beat `hidden`).
 - **Sticker (7 October):** any pattern can be shown as the {OS} sticker (Sticker section, on every pattern): the

@@ -611,16 +611,38 @@ const PALETTE = { type: 'palette' }, FORMAT = { type: 'format' };
 // Any pattern can be shown as the {OS} sticker from the Figma file (Brand Identity & Applications, "Sticker"),
 // measured on its 421-unit frame: the square with its top-left and bottom-right corners cut 142.52 in (33.86%), the
 // {OS} monogram 39 tall top right and the title (Geist Medium 40, −4%) and subtitle (Geist Mono 32, −4%, 64%) bottom
-// left, all 32 in from the edges, and the pattern masked into a fixed band (y 143, 135 tall). Each colour scheme is one
-// of the file's stickers: its fill, inks and the colour the pattern is drawn in. The settings ride along in
-// `values.sticker`, so saves, links and undo keep them; built-in presets have none, and loading one keeps the sticker.
+// left, all 32 in from the edges, and the pattern masked into a fixed band (y 143, 135 tall). Each colour scheme is a
+// fill, inks and the colour the pattern is drawn in: the file's five stickers, then more from the brand colours. The
+// settings ride along in `values.sticker`, so saves, links and undo keep them; built-in presets have none, and
+// loading one keeps the sticker.
 const STICKER_SIZE = 1200, STICKER_UNIT = STICKER_SIZE / 421;
 const STICKER_SCHEMES = {
+  // The file's five stickers.
   blue: { label: 'Blue', fill: '#0082FD', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FFFFFF', art: '#95CBFE' },
   violet: { label: 'Violet', fill: '#6426D2', title: '#FAFAFA', subtitle: '#FCFCFC', mark: '#FAFAFA', art: '#FFD036' },
   grey: { label: 'Grey', fill: '#D5D5D5', title: '#545454', subtitle: '#151515', mark: '#545454', art: '#FAFAFA' },
   black: { label: 'Black', fill: '#0F0F0F', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FFFFFF', art: '#FCFCFC' },
   white: { label: 'White', fill: '#FCFCFC', title: '#151515', subtitle: '#151515', mark: '#151515', art: '#151515' },
+  // More from the brand colours, each in one family: a fill, its deep or light partner for the type, and a tint or
+  // tone of the same colour for the pattern.
+  midnight: { label: 'Midnight', fill: '#001931', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FCFCFC', art: '#0A89FF' },
+  ice: { label: 'Ice', fill: '#BDDFFF', title: '#001931', subtitle: '#001931', mark: '#001931', art: '#0A89FF' },
+  grape: { label: 'Grape', fill: '#120033', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FCFCFC', art: '#B48CFF' },
+  lavender: { label: 'Lavender', fill: '#E9DDFF', title: '#120033', subtitle: '#120033', mark: '#120033', art: '#7B33FF' },
+  tangerine: { label: 'Tangerine', fill: '#FF5620', title: '#3D0F00', subtitle: '#3D0F00', mark: '#3D0F00', art: '#FFCFBF' },
+  blush: { label: 'Blush', fill: '#FFCFBF', title: '#3D0F00', subtitle: '#3D0F00', mark: '#3D0F00', art: '#FF5620' },
+  espresso: { label: 'Espresso', fill: '#3D0F00', title: '#FFCFBF', subtitle: '#FFCFBF', mark: '#FFCFBF', art: '#FF8A65' },
+  amber: { label: 'Amber', fill: '#FFD036', title: '#291F00', subtitle: '#291F00', mark: '#291F00', art: '#291F00' },
+  bronze: { label: 'Bronze', fill: '#291F00', title: '#FFF3CC', subtitle: '#FFF3CC', mark: '#FFF3CC', art: '#FFD036' },
+  // And complementary pairs: blue with orange, violet with yellow, as the file's violet sticker does.
+  'midnight-coral': { label: 'Midnight and Coral', fill: '#001931', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FCFCFC', art: '#FF8A65' },
+  'ocean-amber': { label: 'Ocean and Amber', fill: '#0082FD', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FFFFFF', art: '#FFD036' },
+  'ice-tangerine': { label: 'Ice and Tangerine', fill: '#BDDFFF', title: '#001931', subtitle: '#001931', mark: '#001931', art: '#FF5620' },
+  'blush-blue': { label: 'Blush and Blue', fill: '#FFCFBF', title: '#001931', subtitle: '#001931', mark: '#001931', art: '#0A89FF' },
+  'grape-amber': { label: 'Grape and Amber', fill: '#120033', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FCFCFC', art: '#FFD036' },
+  'cream-violet': { label: 'Cream and Violet', fill: '#FFF3CC', title: '#120033', subtitle: '#120033', mark: '#120033', art: '#7B33FF' },
+  'black-tangerine': { label: 'Black and Tangerine', fill: '#151515', title: '#FCFCFC', subtitle: '#FCFCFC', mark: '#FCFCFC', art: '#FF5620' },
+  'white-blue': { label: 'White and Blue', fill: '#FCFCFC', title: '#151515', subtitle: '#151515', mark: '#151515', art: '#0A89FF' },
 };
 const STICKER_DEFAULTS = { on: 'off', scheme: 'blue', pattern: 'on', title: 'Shipped', subtitle: 'Release 142' };
 function sanitizeSticker(s) {
@@ -641,7 +663,7 @@ function shuffleStickerScheme() {
 }
 const STICKER_CONTROLS = [
   { ...choice('sticker.on', 'Sticker', [['Off', 'off'], ['On', 'on']]), rebuild: true },
-  { ...choice('sticker.scheme', 'Colours', Object.entries(STICKER_SCHEMES).map(([k, x]) => [x.label, k])), when: stickerShown },
+  { type: 'schemes', key: 'sticker.scheme', label: 'Colours', when: stickerShown },
   { type: 'action', label: '', text: 'Shuffle colours', icon: 'dice', run: () => shuffleStickerScheme(), rebuild: true, when: stickerShown },
   { ...choice('sticker.pattern', 'Pattern', [['On', 'on'], ['Off', 'off']]), when: stickerShown },
   { ...textInput('sticker.title', 'Title'), when: stickerShown },
@@ -1420,11 +1442,16 @@ const ORBIT_GRID_SECTIONS = [
 // After the Vonyes and One Grove references: stripes run across the page and break round a shape in the middle; inside
 // the shape the bars change (thicker, in the second colour, or shifted half a stripe so they step like stairs), so
 // the shape shows through the stripes. Shapes are the brand's: the symbol's base (the square with its top-left and
-// bottom-right corners cut a third in, as on the {OS} sticker), a V, steps, a diamond and a circle. Each stripe is
-// cut where it crosses the shape, so a stripe steps rather than slopes. Motion breathes the shape or drifts it.
+// bottom-right corners cut a third in, as on the {OS} sticker), steps, a diamond and a circle. Each stripe is cut
+// where it crosses the shape, so a stripe steps rather than slopes. Motion breathes the shape, drifts it or rolls
+// the fold.
+// Fold is the Vonyes poster's effect: every stripe is a thin line from edge to edge, and part of it is a thick bar.
+// Above the fold the bars lie round the shape, below it inside the shape, and they thicken the further a stripe is
+// from the fold (a stripe at the fold is thin all the way along). The bar ends step along the shape's edges, so the
+// shape seems to turn out of the page.
 const SILHOUETTE_DEFAULTS = {
-  lines: 18, margin: 0.08, weight: 0.32, swell: 0, shape: 'symbol', size: 0.56, x: 0.5, y: 0.5, gap: 0.03, inside: 'bars', innerWeight: 0.6,
-  direction: 'across', motion: 'none', speed: 1, depth: 0.3,
+  lines: 18, margin: 0.08, weight: 0.32, shape: 'symbol', size: 0.56, x: 0.5, y: 0.5, gap: 0.03, inside: 'bars', innerWeight: 0.6,
+  fold: 0.5, direction: 'across', motion: 'none', speed: 1, depth: 0.3,
   palette: 'Midnight', background: '#001931', ink: '#0A89FF', ink2: '#BDDFFF', format: '1:1', seed: 1,
 };
 const SILHOUETTE_SHAPES = {
@@ -1442,17 +1469,16 @@ function silhouetteGeometry(v, time, pool) {
   const tau = v.speed * time / 5, swing = Math.sin(2 * Math.PI * tau) * E.clamp(v.depth);
   const size = Math.max(0.02, v.size * (v.motion === 'breathe' ? 1 + 0.35 * swing : 1)) * side;
   const cx = v.x * W + (v.motion === 'drift' ? swing * 0.25 * W : 0), cy = v.y * H;
-  const inside = SILHOUETTE_SHAPES[v.shape] || SILHOUETTE_SHAPES.symbol;
-  const gap = Math.max(0, v.gap) * side, left = margin, right = W - margin, samples = 480;
-  // Swell: stripes thicken gradually towards the shape's middle and thin away from it (as on the Vonyes poster), so
-  // the shape seems to press out of the page.
-  const swellAt = (y) => { const d = Math.min(1, Math.abs(y - cy) / Math.max(1, H - 2 * margin)); return 1 + E.clamp(v.swell, 0, 1) * 2.2 * (1 - d) ** 2 - E.clamp(v.swell, 0, 1) * 0.6 * d; };
-  const thick = (share, y) => Math.max(0.2, Math.min(0.96, E.clamp(share, 0.02, 1) * swellAt(y)) * pitch);
-  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' ? v.ink2 : v.ink);
-  const instances = E.instanceBuffer(pool, lines * 8 * STRIDE);
+  const inside = SILHOUETTE_SHAPES[v.shape] || SILHOUETTE_SHAPES.symbol, fold = v.inside === 'fold';
+  const gap = fold ? 0 : Math.max(0, v.gap) * side, left = margin, right = W - margin, samples = 480;
+  const top = margin, bottom = H - margin;
+  const foldY = E.clamp(v.fold, 0, 1) * (bottom - top) + top + (v.motion === 'roll' ? swing * 0.5 * (bottom - top) : 0);
+  const thick = (share) => Math.max(0.2, Math.min(0.96, E.clamp(share, 0.02, 1)) * pitch);
+  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' || fold ? v.ink2 : v.ink);
+  const instances = E.instanceBuffer(pool, lines * 16 * STRIDE);
   let count = 0;
   const bar = (x0, x1, y, thick, rgb, layer, id) => {
-    if (x1 - x0 < 0.5 || count >= lines * 8) return;
+    if (x1 - x0 < 0.5 || count >= lines * 16) return;
     const mx = (x0 + x1) / 2;
     if (down) putMark(instances, count++, y, mx, thick, x1 - x0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
     else putMark(instances, count++, mx, y, x1 - x0, thick, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
@@ -1467,7 +1493,20 @@ function silhouetteGeometry(v, time, pool) {
       if (hit && start < 0) start = x;
       if (!hit && start >= 0) { spans.push([start, x]); start = -1; }
     }
-    const outer = thick(v.weight, y), inner = thick(v.innerWeight, y);
+    if (fold) {
+      // The thick bars: round the shape above the fold, inside it below; the thin line fills the rest of the stripe.
+      const above = y < foldY, reach = Math.max(1, above ? foldY - top : bottom - foldY);
+      const thin = thick(v.weight), fat = thin + Math.max(0, thick(v.innerWeight) - thin) * Math.min(1, Math.abs(y - foldY) / reach);
+      const out = [];
+      let from = left;
+      for (const [a, b] of spans) { out.push([from, a]); from = b; }
+      out.push([from, right]);
+      const bars = above ? out : spans, plain = above ? spans : out;
+      bars.forEach(([a, b], k) => bar(a, b, y, fat, ink2, 1, i * 32 + 16 + k));
+      plain.forEach(([a, b], k) => bar(a, b, y, thin, ink, 0, i * 32 + k));
+      continue;
+    }
+    const outer = thick(v.weight), inner = thick(v.innerWeight);
     let from = left, k = 0;
     for (const [a, b] of spans) {
       bar(from, a - gap, y, outer, ink, 0, i * 16 + k++);
@@ -1541,7 +1580,7 @@ const FLAT_KINDS = {
     defaults: SILHOUETTE_DEFAULTS, geometry: silhouetteGeometry,
     speeds: (v) => [v.motion !== 'none' ? v.speed : 0],
     remix: (v, pick, palette) => Object.assign(v, orbitPalette(palette.name), {
-      shape: pick(Object.keys(SILHOUETTE_SHAPES)), lines: pick([12, 16, 18, 24, 32]), inside: pick(['bars', 'bars', 'shift', 'gap']),
+      shape: pick(Object.keys(SILHOUETTE_SHAPES)), lines: pick([12, 16, 18, 24, 32]), inside: pick(['bars', 'bars', 'shift', 'gap', 'fold']),
       weight: pick([0.2, 0.32, 0.5]), size: pick([0.45, 0.56, 0.66]), direction: pick(['across', 'across', 'down']) }),
   },
   readout: {
@@ -1589,14 +1628,17 @@ const PATTERNS = [
   { name: 'Silhouette', kind: 'silhouette', group: 'Studio patterns',
     description: 'Stripes that break round a shape, so the shape stands out of them.',
     sections: [
-      ['Stripes', [range('lines', 'Stripes', 2, 120, 1, int), range('weight', 'Weight', 0.02, 1, 0.01, pct), range('swell', 'Swell', 0, 1, 0.01, pct),
+      ['Stripes', [range('lines', 'Stripes', 2, 120, 1, int), range('weight', 'Weight', 0.02, 1, 0.01, pct),
         choice('direction', 'Direction', [['Across', 'across'], ['Down', 'down']]), range('margin', 'Margin', 0, 0.45, 0.01, pct)]],
       ['Shape', [choice('shape', 'Shape', [['Symbol', 'symbol'], ['Steps', 'steps'], ['Diamond', 'diamond'], ['Circle', 'circle']]),
-        range('size', 'Size', 0.05, 1.2, 0.01, pct), range('x', 'Across', 0, 1, 0.01, pct), range('y', 'Down', 0, 1, 0.01, pct),
-        { ...choice('inside', 'Inside', [['Bars', 'bars'], ['Stairs', 'shift'], ['Gap', 'gap']]), rebuild: true },
-        { ...range('innerWeight', 'Inner weight', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'bars' }, range('gap', 'Gap', 0, 0.2, 0.005, pct)],
-        'Inside the shape the stripes become bars in the second colour, step half a stripe down, or leave a gap.'],
-      ['Motion', [{ ...choice('motion', 'Motion', [['Still', 'none'], ['Breathe', 'breathe'], ['Drift', 'drift']]), rebuild: true },
+        range('size', 'Size', 0.05, 1.6, 0.01, pct), range('x', 'Across', 0, 1, 0.01, pct), range('y', 'Down', 0, 1, 0.01, pct),
+        { ...choice('inside', 'Inside', [['Bars', 'bars'], ['Stairs', 'shift'], ['Gap', 'gap'], ['Fold', 'fold']]), rebuild: true },
+        { ...range('innerWeight', 'Inner weight', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'bars' },
+        { ...range('innerWeight', 'Thickest', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'fold' },
+        { ...range('fold', 'Fold at', 0, 1, 0.01, pct), when: (v) => v.inside === 'fold' },
+        { ...range('gap', 'Gap', 0, 0.2, 0.005, pct), when: (v) => v.inside !== 'fold' }],
+        'Inside the shape the stripes become bars in the second colour, step half a stripe down, or leave a gap. Fold lays thick bars round the shape above the fold and inside it below, thicker away from the fold.'],
+      ['Motion', [{ ...choice('motion', 'Motion', [['Still', 'none'], ['Breathe', 'breathe'], ['Drift', 'drift'], ['Roll', 'roll']]), rebuild: true },
         { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: (v) => v.motion !== 'none' }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: (v) => v.motion !== 'none' }]],
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Stripe colour'), colour('ink2', 'Shape colour'), FORMAT] },
@@ -1862,11 +1904,11 @@ const READOUT_PRESETS = [
   { name: 'Topology', params: { columns: 32, rows: 16, glyphs: 'ascii', slope: 1.2, slopeDirection: 180, wave: 0.6, frequency: 2, direction: 90, grain: 0.1, contrast: 1.5, speed: 0.5, ...orbitPalette('Grape') } },
   { name: 'Minibar', params: { columns: 36, rows: 18, glyphs: 'ascii', mirror: 'x', slope: 1, slopeDirection: 0, wave: 0.8, frequency: 1, direction: 90, grain: 0.08, contrast: 1.5, speed: 0.5, ...orbitPalette('Blueprint') } },
 ];
-// Silhouette, after Vonyes (Merge: thin stripes swelling round the symbol's base), One Grove (Branch: thick stripes
-// stepping down round a centre) and the symbol's base (Interface).
+// Silhouette, after Vonyes (Merge: the poster's fold, on the symbol's base), One Grove (Branch: thick stripes stepping
+// down round a centre) and the symbol's base (Interface).
 const SILHOUETTE_PRESETS = [
   { name: 'Interface', params: { lines: 18, weight: 0.3, shape: 'symbol', size: 0.56, inside: 'bars', innerWeight: 0.6, gap: 0.03, motion: 'breathe', speed: 0.5, depth: 0.25, ...orbitPalette('Midnight') } },
-  { name: 'Merge', params: { lines: 26, weight: 0.16, swell: 0.75, shape: 'symbol', size: 0.5, inside: 'bars', innerWeight: 0.3, gap: 0.025, motion: 'breathe', speed: 0.5, depth: 0.2, ...orbitPalette('Blueprint') } },
+  { name: 'Merge', params: { lines: 22, margin: 0.08, weight: 0.12, shape: 'symbol', size: 0.74, inside: 'fold', innerWeight: 0.62, fold: 0.5, motion: 'roll', speed: 0.5, depth: 0.4, ...orbitPalette('Midnight'), ink: '#BDDFFF' } },
   { name: 'Branch', params: { lines: 8, weight: 0.5, margin: 0.12, shape: 'steps', size: 0.5, y: 0.56, inside: 'shift', gap: 0.015, motion: 'none', ...orbitPalette('Mono Dark') } },
 ];
 const BUILT_INS = [
@@ -2847,6 +2889,17 @@ function control(c) {
     const select = row.querySelector('select');
     select.value = getPath(v, c.key);
     select.addEventListener('change', () => { setPath(state.values, c.key, select.value); edit(); if (c.rebuild) buildPanel(); });
+  } else if (c.type === 'schemes') {
+    // The sticker's colour schemes as tiles, like the palettes: each its fill with the pattern's colour in the corner.
+    const chosen = getPath(v, c.key);
+    const tiles = Object.entries(STICKER_SCHEMES).map(([key, x]) =>
+      `<button title="${x.label}" aria-label="${x.label} colours" aria-pressed="${key === chosen}" data-key="${key}" style="--a:${x.fill};--b:${x.art}"></button>`).join('');
+    row.innerHTML = `<span class="label">${c.label}</span><div><div class="palettes schemes">${tiles}</div><p class="palette-name">${escapeHtml(STICKER_SCHEMES[chosen]?.label || '')}</p></div>`;
+    row.style.alignItems = 'start';
+    row.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
+      setPath(state.values, c.key, b.dataset.key); buildPanel(); edit();
+      move(document.querySelector('.schemes [aria-pressed="true"]'), { scale: [0.72, 1] }, SPRING);
+    }));
   } else if (c.type === 'action') {
     row.innerHTML = `<label>${c.label}</label><button type="button" class="text-field action-field">${icon(c.icon)}<span>${c.text}</span></button>`;
     row.querySelector('button').addEventListener('click', () => { c.run(); edit(); if (c.rebuild) buildPanel(); });
@@ -2893,7 +2946,7 @@ function control(c) {
     row.querySelectorAll('button').forEach((b) => b.addEventListener('click', () => {
       applyPalette(b.dataset.name); buildPanel(); edit();
       // The rebuilt panel's chosen tile pops in place, and its colour rows refill.
-      move(document.querySelector('.palettes [aria-pressed="true"]'), { scale: [0.72, 1] }, SPRING);
+      move(document.querySelector('.palettes:not(.schemes) [aria-pressed="true"]'), { scale: [0.72, 1] }, SPRING);
       move(document.querySelectorAll('.colour-row .tile, .gradient-row .tile'), { scale: [0.6, 1] }, { ...SPRING, delay: stagger(0.04) });
     }));
   } else if (c.type === 'format') {
@@ -3238,9 +3291,12 @@ function applySeed(raw) {
   const seed = E.clamp(Math.round(Number(raw) || 0), 0, MAX_SEED);
   const base = baseline.pattern === state.pattern ? baseline.values : defaultsFor(state.pattern);
   const remix = variationOf(state.pattern, base, seed);
-  // A remix changes the look, not the output or the motion.
+  // A remix changes the look, not the output or the motion, and the sticker stays as it is (the preset's starting
+  // values can hold one from when it was loaded, which must not come back after the sticker was turned off).
   if (isFlat(state)) Object.assign(remix, { format: state.values.format, speed: state.values.speed });
   else { remix.canvas = { ...state.values.canvas }; remix.motion = { ...state.values.motion }; remix.pulse.speed = state.values.pulse.speed; }
+  if (state.values.sticker) remix.sticker = structuredClone(state.values.sticker);
+  else delete remix.sticker;
   state.values = remix;
   buildPanel(); edit(); crossfade();
   move(document.getElementById('seedInput'), { opacity: [0.2, 1], y: [7, 0] }, SNAP);

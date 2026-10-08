@@ -80,6 +80,10 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   Threshold Stripes by Silhouette (Vonyes; One Grove as Branch; the symbol's base as a shape); Stack keeps only Deploy
   plus Release and Cache; the sticker is fixed to the Figma frame (shape, type, band) with its five colour schemes and
   a dice for them. Kaleido Pixels is liked now.
+- **8 October:** Silhouette still "not the same" as the Vonyes poster; a close crop showed the real effect (thin
+  lines edge to edge, thick bars round the shape above a fold and inside it below, thicker away from the fold), now
+  Fold. Sticker colours: "experiment with all the colours, but matching and complementary". Bug: the seed dice
+  brought a turned-off sticker back (seen on Query).
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped
