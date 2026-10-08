@@ -153,9 +153,9 @@ stripped by `build.mjs`). 13 patterns, 44 built-in presets (8 October: Rollout a
   carry the reference cell, and an older link without one takes its pattern's. A release check copies an edited
   link for every preset and opens it.
 - **Logo hover (8 October):** the whole logo, symbol and wordmark drawn as one piece from the brand files, is cut
-  into 3 px pixels, so the effect stays clear at its small size. On hover a band of pixels blinks off once and runs
+  into 3 px pixels, so the effect stays clear at its small size. On hover a narrow band of pixels dims once and runs
   left to right, leaning so the top leads, and the logo lands solid again; it never loops. (A stripe sweep came
-  first, too fine to see at 18 px; then a random strobe, "too much noise".)
+  first, too fine to see at 18 px; then a random strobe, "too much noise", then a full blink, "still too much".)
 - **Motion switch (8 October):** "an icon toggle for motion on and off instead of scrolling down; perfect UX and
   logic". Waves in the panel's header, beside undo (M on the keyboard). Off sets every speed in the look to nothing:
   it holds its first frame and its exports turn still. On brings back what moved before; for a look that never
