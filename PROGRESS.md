@@ -152,9 +152,10 @@ stripped by `build.mjs`). 13 patterns, 44 built-in presets (8 October: Rollout a
   out, so opening it worked the cell out again from its own grid and the bars came out narrower. Links now always
   carry the reference cell, and an older link without one takes its pattern's. A release check copies an edited
   link for every preset and opens it.
-- **Logo hover (8 October):** the {OS} symbol in the header turns to stripes when the pointer is on it, its bars
-  thinning one after another and rolling downward, the way the Silhouette stripes move; it is solid again when the
-  pointer leaves. Brand colours only; with "reduce motion" the stripes show without moving.
+- **Logo hover (8 October):** the whole logo, symbol and wordmark drawn as one piece from the brand files, is made
+  of stripes that sit flush, so it reads solid. On hover a wave crosses it left to right, top row first: the stripes
+  thin to a crest and settle as lines, then it stops (it does not loop). Away, the wave crosses back and the logo
+  closes up solid. Brand colours only, following the header's tone; with "reduce motion" it changes without moving.
 - **Motion switch (8 October):** "an icon toggle for motion on and off instead of scrolling down; perfect UX and
   logic". Waves in the panel's header, beside undo (M on the keyboard). Off sets every speed in the look to nothing:
   it holds its first frame and its exports turn still. On brings back what moved before; for a look that never
