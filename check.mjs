@@ -62,7 +62,7 @@ await page.waitForFunction(() => typeof BUILT_INS !== 'undefined' && document.fo
 async function download(trigger) {
   const [file] = await Promise.all([page.waitForEvent('download', { timeout: 60000 }), page.evaluate(trigger)]);
   const path = await file.path();
-  return { name: file.suggestedFilename(), bytes: (await stat(path)).size, text: async () => readFile(path, 'utf8') };
+  return { name: file.suggestedFilename(), bytes: (await stat(path)).size, text: async () => readFile(path, 'utf8'), base64: async () => (await readFile(path)).toString('base64') };
 }
 const parses = (svg) => page.evaluate((text) => !new DOMParser().parseFromString(text, 'image/svg+xml').querySelector('parsererror'), svg);
 /** How far two PNG screenshots (base64) differ, in 0..255 per pixel on average. */
@@ -240,8 +240,22 @@ await check('Sticker: link round-trip and exports', async () => {
   expect(back, 'the sticker did not survive a share link');
   const png = await download(() => exportPNG(1));
   expect(png.name.includes('sticker') && png.bytes > 10000, `the sticker PNG looks wrong (${png.name}, ${png.bytes} bytes)`);
+  // Cut out: the corners outside the outline are see-through, whatever Transparent is set to; inside is solid.
+  for (const transparent of [false, true]) {
+    await page.evaluate((t) => { exportOptions.transparent = t; }, transparent);
+    const file = await download(() => exportPNG(1));
+    const alpha = await page.evaluate(async (b64) => {
+      const img = await new Promise((resolve) => { const i = new Image(); i.onload = () => resolve(i); i.src = 'data:image/png;base64,' + b64; });
+      const c = document.createElement('canvas'); c.width = img.width; c.height = img.height; const g = c.getContext('2d'); g.drawImage(img, 0, 0);
+      const at = (x, y) => g.getImageData(Math.round(x * img.width), Math.round(y * img.height), 1, 1).data[3];
+      return { corners: [at(0.02, 0.02), at(0.98, 0.98)], middle: at(0.5, 0.5) };
+    }, await file.base64());
+    expect(alpha.corners.every((a) => a === 0) && alpha.middle === 255, `the sticker PNG is not cut out (Transparent ${transparent}: corners ${alpha.corners}, middle ${alpha.middle})`);
+  }
+  await page.evaluate(() => { exportOptions.transparent = false; });
   const svg = await (await download(() => exportSVG())).text();
   expect(await parses(svg) && svg.includes('id="sticker"') && svg.includes('Release 142'), 'the sticker SVG does not parse or lacks its parts');
+  expect(!svg.includes('id="page"'), 'the sticker SVG has a page behind it: it should be cut out');
   await page.evaluate(() => { applyPreset('builtin:Event Stream'); state.values.motion = 'flow'; });
   const moving = await (await download(() => exportAnimatedSVG())).text();
   expect(await parses(moving) && /<animate/.test(moving) && moving.includes('id="sticker"'), 'the animated sticker SVG does not parse or does not move');

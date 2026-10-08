@@ -135,6 +135,9 @@ stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouett
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **Stickers export cut out (8 October):** PNG and SVG stickers are always transparent round the outline; the grey
+  round the sticker is only the app's preview page (it went into exports unless Transparent was on). Video keeps
+  the grey, as MP4 has no transparency. A release check reads the exported PNG's corners.
 - **Hidden-error sweep (8 October), after "no motion in Recursion":** new release checks look at the app the way
   someone uses it (BUILD.md, check 11) and found, now fixed:
   - Recursion and the other Kaleido presets stood still on the sticker: their motion is all colour, and the
