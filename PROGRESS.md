@@ -11,9 +11,18 @@ exported proofs and the earlier "classic" page. `PLUGIN\_archive\Archive.zip` ho
 (claude-generator, codex) as they came off the Mac.
 
 Live at https://onesyntax-pattern-generator.pages.dev (Cloudflare Pages, redeployed on every push to `main`, comments
-stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouette keeps only Merge; 7 October: Gauge, Barcode, Threshold Stripes and Strands retired; Readout and Silhouette added; old saves of the retired ones open in their replacements).
+stripped by `build.mjs`). 13 patterns, 44 built-in presets (8 October: Rollout added under Deploy; Silhouette keeps only Merge; 7 October: Gauge, Barcode, Threshold Stripes and Strands retired; Readout and Silhouette added; old saves of the retired ones open in their replacements).
 
-**Not done yet**
+**Not done yet** (where things stand, 8 October, end of the cloud session)
+
+- Everything is pushed to the branch `claude/sharp-davinci-3zf2xr` (preview:
+  https://claude-sharp-davinci-3zf2xr.onesyntax-pattern-generator.pages.dev). `main` (live) has everything up to the
+  Cache spacing; the branch adds the motion switch, the knob drag, the Silhouette sliver fixes, Rollout, the share
+  link fix and the logo hover.
+- The full release check has not been run since Rollout, the link fix and the logo hover: run
+  `npm run check -- --dist` locally before merging. The new link check and a look at the logo passed.
+- Then merge the branch into `main` to go live (only when the studio says "merge"), and `handover.ps1` for the
+  client's zip when it is next sent.
 
 ## Built so far
 
@@ -135,6 +144,17 @@ stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouett
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **Rollout (8 October):** a second Deploy preset from the studio's own link: 9 columns by 33 rows, Midnight, full
+  width bars of uneven length with a Pulse sweeping across at 67°. Its reference cell is Deploy's, so its bars are
+  as wide as the studio made them.
+- **Share links open exactly the look (8 October):** "I opened the link I sent, it's not the same". A link stores
+  only what differs from the pattern's first preset, and a Deploy look with Deploy's reference cell left the cell
+  out, so opening it worked the cell out again from its own grid and the bars came out narrower. Links now always
+  carry the reference cell, and an older link without one takes its pattern's. A release check copies an edited
+  link for every preset and opens it.
+- **Logo hover (8 October):** the {OS} symbol in the header turns to stripes when the pointer is on it, its bars
+  thinning one after another and rolling downward, the way the Silhouette stripes move; it is solid again when the
+  pointer leaves. Brand colours only; with "reduce motion" the stripes show without moving.
 - **Motion switch (8 October):** "an icon toggle for motion on and off instead of scrolling down; perfect UX and
   logic". Waves in the panel's header, beside undo (M on the keyboard). Off sets every speed in the look to nothing:
   it holds its first frame and its exports turn still. On brings back what moved before; for a look that never
