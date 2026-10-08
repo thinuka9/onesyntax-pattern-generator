@@ -135,6 +135,9 @@ stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouett
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **Cache spaced out (8 October):** its bars overlapped (18% of their area within 3 px of another); now 16 columns,
+  10 px apart, a little narrower, so no two come within 2 px in any format. A release check holds every Stack
+  preset to that (the old Cache fails it at 12.5%).
 - **No slivers or ghost lines in Roll and Drift (8 October):** splitting a stripe along the shape's flat top and
   bottom left a thin strip of its bar floating beside it, and stripes thinned to a faint hairline as they left the
   page. Now each side's bar keeps centred on its stripe and is as thick as its share of the stripe, so a crossing

@@ -489,6 +489,27 @@ await check('The centre knob shows where it can be grabbed, and moves the centre
   expect(!wrong.length, wrong.join('\n'));
 });
 
+await check("Stack's bars never touch or overlap, in any format", async () => {
+  // Each bar drawn white at half opacity, 1 px of the page bigger all round: anywhere two come within 2 px of each
+  // other shows brighter.
+  const touching = await page.evaluate(() => {
+    const out = [];
+    for (const b of BUILT_INS.filter((x) => x.pattern === 'Stack')) for (const f of Object.keys(FORMATS)) {
+      applyPreset('builtin:' + b.name); setFormat(f);
+      const geo = geometryFor(state, 0), s = 2000 / Math.max(geo.width, geo.height), I = geo.instances, grow = 2;
+      for (let n = 0; n < geo.count; n++) { const o = n * STRIDE; I[o + 8] = I[o + 9] = I[o + 10] = 1; I[o + 11] = 0.5; I[o + 2] += grow; I[o + 3] += grow; }
+      geo.params = { ...geo.params, colour: { ...geo.params.colour, background: '#000000', source: 'constant', continuous: false } };
+      const c = document.createElement('canvas'); c.width = Math.round(geo.width * s); c.height = Math.round(geo.height * s);
+      const g = c.getContext('2d', { willReadFrequently: true }); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); draw(g, geo, s);
+      const d = g.getImageData(0, 0, c.width, c.height).data; let any = 0, both = 0;
+      for (let i = 0; i < d.length; i += 4) { if (d[i] > 100) any++; if (d[i] > 170) both++; }
+      if (both / Math.max(1, any) > 0.001) out.push(`${b.name} ${f}: ${(100 * both / any).toFixed(1)}% of its bars touch`);
+    }
+    return out;
+  });
+  expect(!touching.length, touching.join('\n'));
+});
+
 if (dist) await check('The published files carry no comments', async () => {
   const code = (await readFile(join(root, 'index.html'), 'utf8')) + (await readFile(join(root, 'engine.js'), 'utf8'));
   const found = code.match(/<!--|\/\*\*|^\s*\/\/ /m);
