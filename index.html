@@ -1388,6 +1388,21 @@ const contrast = range('shaping.contrast', 'Contrast', 0.05, 4, 0.01, f2);
 const steps = range('shaping.quantise', 'Steps', 0, 32, 1, stepsFmt);
 // Cycles of the pattern's main wave per 5 s, always moving one way; negative runs it backwards.
 const animate = range('motion.speed', 'Speed', -3, 3, 0.5, offOr);
+/** Whether a studio pattern's wave field shows: a size, place, turn or opacity read from it over a range, marks turned
+ *  along it or cut by a threshold on it, or colour drawn from it in more than one colour. When nothing reads the
+ *  field, its controls have nothing to change, so they stay hidden. */
+function fieldShows(v) {
+  const m = v.mappings, ranged = (x) => x && x.source === 'field' && Math.abs(x.max - x.min) > 1e-6;
+  if (['length', 'thickness', 'opacity', 'offsetX', 'offsetY', 'skew'].some((k) => ranged(m[k]))) return true;
+  // The angle mapping counts only for marks not set to a fixed angle, flow or swirl.
+  if (!['fixed', 'flow', 'swirl'].includes(v.marks.angleMode) && ranged(m.angle)) return true;
+  if (v.marks.angleMode === 'flow' || v.marks.threshold > 0) return true;
+  const stops = [v.colour.stop1, v.colour.stop2, ...(v.colour.stops === 3 ? [v.colour.stop3] : [])].map((c) => String(c).toUpperCase());
+  return (m.colour.source === 'field' ? v.colour.source : m.colour.source) === 'field' && new Set(stops).size > 1;
+}
+// Ripple-driven patterns (Halftone Diagonal, Eddy): with no ripple there is nothing for Speed, the ripple's frequency
+// or the wave shape to move, so they show once Ripple is up.
+const rippleOn = (v) => v.field.waveA.weight > 0;
 // The wave studies choose how they move: Morph sways the figure through its shapes and back, Flow travels one way.
 const studyMotion = (...extra) => [
   { ...choice('field.motion', 'Motion', [['Morph', 'morph'], ['Flow', 'flow']]), rebuild: true },
@@ -1590,7 +1605,9 @@ function readoutGeometry(v, time, pool) {
     const w = (r + 0.5) / rows;
     const slope = (u - 0.5) * Math.cos(sd) + (w - 0.5) * Math.sin(sd) + 0.5;
     const wave = 0.5 + 0.5 * Math.sin(2 * Math.PI * v.frequency * (u * Math.cos(wd) + w * Math.sin(wd)) + phase);
-    let value = (v.slope * slope + v.wave * wave) / Math.max(1e-6, v.slope + v.wave) + v.grain * grain[r * columns + c];
+    // Mirror folds the grain with the rest, so a pattern that only changes down the rows still mirrors.
+    const gc = v.mirror === 'x' ? Math.min(c, columns - 1 - c) : c;
+    let value = (v.slope * slope + v.wave * wave) / Math.max(1e-6, v.slope + v.wave) + v.grain * grain[r * columns + gc];
     value = E.clamp((value - 0.5) * v.contrast + 0.5);
     const level = Math.min(4, Math.floor(value * 5)), x = margin + c * cw, y = margin + r * ch, mid = y + ch / 2;
     const rgb = level >= 4 ? ink : ink2, id = (r * columns + c) * 16;
@@ -1661,8 +1678,9 @@ const PATTERNS = [
         range('marks.radius', 'Roundness', 0, 30, 0.5, px)]],
       ['Flow', [range('attractor.strength', 'Bend', -2, 2, 0.01, f2), range('attractor.radius', 'Bend size', 0.01, 1, 0.01, pct),
         range('attractor.x', 'Centre X', 0, 1, 0.01, pct), range('attractor.y', 'Centre Y', 0, 1, 0.01, pct),
-        range('field.gradient.direction', 'Direction', -180, 180, 1, deg), range('field.waveA.weight', 'Ripple', 0, 3, 0.01, f2), animate]],
-    ], look: studioLook() },
+        { ...range('field.gradient.direction', 'Direction', -180, 180, 1, deg), when: (v) => v.field.gradient.weight > 0 },
+        { ...range('field.waveA.weight', 'Ripple', 0, 3, 0.01, f2), rebuild: true }, { ...animate, when: rippleOn }]],
+    ], look: studioLook(), shapeWhen: rippleOn },
   { name: 'Readout', kind: 'readout', group: 'Studio patterns',
     description: 'Rows of dots, dashes and bars, like a printout of a running system.',
     sections: [
@@ -1698,9 +1716,10 @@ const PATTERNS = [
       ['Lines', [range('mappings.thickness.min', 'Thinnest', 0.2, 40, 0.1, px), range('mappings.thickness.max', 'Thickest', 0.2, 40, 0.1, px),
         range(both('mappings.length'), 'Length', 2, 160, 1, px), range('marks.fixedAngle', 'Angle', -180, 180, 1, deg)]],
       ['Gradient', [range('field.gradient.direction', 'Direction', -180, 180, 1, deg), range('shaping.gamma', 'Bias', 0.1, 4, 0.01, f2),
-        range('field.waveA.weight', 'Ripple', 0, 3, 0.01, f2), range('field.waveA.frequency', 'Ripple freq.', 0, 12, 0.05, times), animate],
+        { ...range('field.waveA.weight', 'Ripple', 0, 3, 0.01, f2), rebuild: true },
+        { ...range('field.waveA.frequency', 'Ripple freq.', 0, 12, 0.05, times), when: rippleOn }, { ...animate, when: rippleOn }],
         'The gradient itself stays still: Speed moves the ripple, so turn Ripple up to animate (or use Pulse).'],
-    ], look: studioLook() },
+    ], look: studioLook(), shapeWhen: rippleOn },
   { name: 'Contour Field', sections: [
       ['Grid', [columns(), rowsCount(), margin]],
       ['Marks', [range('mappings.length.min', 'Shortest', 0, 120, 0.5, px), range('mappings.length.max', 'Longest', 0, 120, 0.5, px),
@@ -1719,8 +1738,9 @@ const PATTERNS = [
       ['Grid', [columns('Columns', 20), rowsCount('Rows', 100), margin, range('layout.gutterX', 'Column gap', 0, 100, 1, px), turnControl]],
       ['Bars', [range(both('mappings.thickness'), 'Thickness', 0.5, 40, 0.5, px), range('mappings.length.min', 'Shortest', 0, 600, 1, px),
         range('mappings.length.max', 'Longest', 0, 600, 1, px)]],
-      ['Wave', [waveFrequency, waveDirection, secondWave, steps, animate]],
-    ], look: studioLook() },
+      // Deploy's bars read nothing from the wave (their sizes and colour are fixed), so the wave's controls hide.
+      ['Wave', [waveFrequency, waveDirection, secondWave, steps, animate], undefined, fieldShows],
+    ], look: studioLook(), shapeWhen: fieldShows },
 
   { name: 'Orbit', kind: 'orbit', group: 'Studio patterns',
     description: 'Dashes sweeping round nested arcs, crowding into fine lines towards the top.',
@@ -1799,7 +1819,7 @@ for (const p of PATTERNS) {
   p.group = p.group || (p.kind === 'rows' ? 'Wave Rows' : 'Studio patterns');
   p.description = p.description || E.PRESET_DESCRIPTIONS[p.name] || '';
   if (p.kind !== 'studio') continue;
-  if (!p.noShape) p.sections.push(['Wave shape', shapeControls('field.'), SHAPE_HINT]);
+  if (!p.noShape) p.sections.push(['Wave shape', shapeControls('field.'), SHAPE_HINT, p.shapeWhen]);
   p.sections.push(['Pulse', pulseControls, PULSE_HINT]);
 }
 const GROUPS = ['Wave Rows', 'Studio patterns', 'Wave studies', 'Bracket'];
@@ -1842,7 +1862,18 @@ function normaliseStudio(p) {
 function studioPalette(values, name) {
   const p = paletteNamed(name);
   if (p) { const { name: paletteName, ...colours } = p; Object.assign(values.colour, colours, { palette: paletteName }); }
+  // A pattern drawn by its colours alone would go flat in a palette with one mark colour (Mono Light on Kaleido
+  // Pixels): the palette's third colour stands in as its second.
+  const c = values.colour;
+  if (p && drawnByColour(values) && c.stops === 2 && c.stop1.toUpperCase() === c.stop2.toUpperCase()) c.stop2 = c.stop3;
   return values;
+}
+/** Whether a studio pattern shows its field only through colour: every mark the same size and opacity, coloured from
+ *  the field (Kaleido Pixels' even pixels). */
+function drawnByColour(v) {
+  const fixed = (m) => !m || m.source === 'constant' || Math.abs(m.max - m.min) < 1e-6;
+  const fromField = (v.mappings.colour.source === 'field' ? v.colour.source : v.mappings.colour.source) === 'field';
+  return fromField && fixed(v.mappings.thickness) && fixed(v.mappings.length) && fixed(v.mappings.opacity);
 }
 
 // Only known keys of the right type survive, so imported or stored JSON can't break the page.
@@ -1987,7 +2018,7 @@ const MORE_PRESETS = [
   { name: 'Latency', from: 'Gradient Descent', palette: 'Primary', set: { 'layout.columns': 40, 'layout.rows': 40, 'mappings.thickness.min': 1.2, 'mappings.thickness.max': 14,
     'mappings.length.min': 20, 'mappings.length.max': 20, 'marks.fixedAngle': 45, 'field.gradient.direction': 135, 'shaping.gamma': 0.8, 'field.waveA.weight': 0.3, 'field.waveA.frequency': 2.5 } },
   { name: 'Throttle', from: 'Gradient Descent', palette: 'Coral', set: { 'layout.columns': 22, 'layout.rows': 22, 'mappings.thickness.min': 1.5, 'mappings.thickness.max': 20,
-    'mappings.length.min': 44, 'mappings.length.max': 44, 'marks.fixedAngle': -30, 'field.gradient.direction': 0, 'shaping.gamma': 2, 'field.waveA.weight': 0 } },
+    'mappings.length.min': 44, 'mappings.length.max': 44, 'marks.fixedAngle': -30, 'field.gradient.direction': 0, 'shaping.gamma': 2, 'field.waveA.weight': 0.15 } },
   { name: 'Heap', from: 'Schema', palette: 'Midnight', set: { 'layout.columns': 44, 'layout.rows': 44, 'mappings.length.min': 8, 'mappings.length.max': 24,
     'mappings.thickness.min': 3.6, 'mappings.thickness.max': 3.6, 'field.waveA.frequency': 2.4, 'field.waveA.direction': 120, 'field.waveB.weight': 0.9, 'field.radial.weight': 0.5, 'shaping.warp': 0.12 } },
   { name: 'Closure', from: 'Schema', palette: 'Grape', set: { 'layout.columns': 30, 'layout.rows': 30, 'mappings.length.min': 10, 'mappings.length.max': 34,
@@ -2158,6 +2189,14 @@ let state = session.state && session.state.pattern
 let current = typeof session.current === 'string' ? session.current : 'builtin:Hello World';
 if (current.startsWith('builtin:') && RENAMED_LOOKS[current.slice(8)]) current = 'builtin:' + RENAMED_LOOKS[current.slice(8)];
 let baseline = presetState(current) || structuredClone(state);
+// A built-in preset left as it was reopens as the preset is now, so changes to the built-ins (a preset that now
+// moves) reach a returning session; one with edits keeps them. Sessions from before 8 October did not record which
+// they were, so they reopen the built-in as it is now. The sticker stays as it was either way.
+if (current.startsWith('builtin:') && presetState(current) && session.edited !== true) {
+  const sticker = state.values.sticker;
+  state = structuredClone(baseline);
+  if (sticker) state.values.sticker = sticker;
+}
 let exportOptions = { transparent: false, ...read('wave-rows-export', {}) };
 let viewMode = read('wave-rows-view', 'fill') === 'fit' ? 'fit' : 'fill';
 let time = 0, paused = false;
@@ -2165,7 +2204,7 @@ let time = 0, paused = false;
 // The session is written once editing pauses (a slider drag would otherwise write on every step), and at once on leaving.
 let saveTimer = 0;
 function save() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 300); }
-function saveNow() { clearTimeout(saveTimer); write('wave-rows-session', { v: STORAGE_VERSION, state, current }); }
+function saveNow() { clearTimeout(saveTimer); write('wave-rows-session', { v: STORAGE_VERSION, state, current, edited: edited() }); }
 window.addEventListener('pagehide', saveNow);
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveNow(); });
 function storePresets() { return write('wave-rows-presets', saved); }
@@ -2408,7 +2447,17 @@ function stickerState(st) {
   else if (isMark(out)) Object.assign(v, { ink: art, ink2: art, highlight: art, background: scheme.fill, margin: 0 });
   else if (kindOf(out) === 'orbit') { Object.assign(v, { ink: art, ink2: art, background: scheme.fill, margin: 0 }); v.grid.margin = 0; }
   else if (FLAT_KINDS[kindOf(out)]) Object.assign(v, { ink: art, ink2: art, background: scheme.fill, margin: 0 });
-  else { Object.assign(v.colour, { stop1: art, stop2: art, stop3: art, accent: art, background: scheme.fill }); v.layout.margin = 0; }
+  else {
+    // A pattern drawn by its colours alone (Kaleido Pixels) would go flat in one colour, motion and all: its colours
+    // become steps of opacity in the sticker's colour instead, faint where they sat nearest the background.
+    const c = v.colour, stops = [c.stop1, c.stop2, ...(c.stops === 3 ? [c.stop3] : [])];
+    if (drawnByColour(v) && new Set(stops.map((x) => String(x).toUpperCase())).size > 1) {
+      const near = (x) => Math.abs(luminance(x) - luminance(c.background)), rising = near(stops[0]) <= near(stops[stops.length - 1]);
+      const o = v.mappings.opacity.min;
+      v.mappings.opacity = { source: 'field', min: o * (rising ? 0.2 : 1), max: o * (rising ? 1 : 0.2) };
+    }
+    Object.assign(c, { stop1: art, stop2: art, stop3: art, accent: art, background: scheme.fill }); v.layout.margin = 0;
+  }
   return out;
 }
 /** How the pattern covers the band: its scale and top-left corner, on the sticker. */

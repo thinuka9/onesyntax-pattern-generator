@@ -65,6 +65,24 @@ async function download(trigger) {
   return { name: file.suggestedFilename(), bytes: (await stat(path)).size, text: async () => readFile(path, 'utf8') };
 }
 const parses = (svg) => page.evaluate((text) => !new DOMParser().parseFromString(text, 'image/svg+xml').querySelector('parsererror'), svg);
+/** How far two PNG screenshots (base64) differ, in 0..255 per pixel on average. */
+const pixelDifference = (a, b) => page.evaluate(async ([a, b]) => {
+  const load = (s) => new Promise((resolve) => { const i = new Image(); i.onload = () => resolve(i); i.src = 'data:image/png;base64,' + s; });
+  const [ia, ib] = await Promise.all([load(a), load(b)]), c = document.createElement('canvas'), g = c.getContext('2d');
+  c.width = ia.width; c.height = ia.height;
+  g.drawImage(ia, 0, 0); const da = g.getImageData(0, 0, c.width, c.height).data;
+  g.drawImage(ib, 0, 0); const db = g.getImageData(0, 0, c.width, c.height).data;
+  let sum = 0; for (let i = 0; i < da.length; i += 4) sum += (Math.abs(da[i] - db[i]) + Math.abs(da[i + 1] - db[i + 1]) + Math.abs(da[i + 2] - db[i + 2])) / 3;
+  return sum / (da.length / 4);
+}, [a, b]);
+/** How much the artwork changes on screen over most of a second. */
+async function screenMotion() {
+  const clip = { x: 80, y: 80, width: 560, height: 560 };
+  await page.waitForTimeout(1100);  // past the cross-fade from what was showing before
+  const a = (await page.screenshot({ clip })).toString('base64');
+  await page.waitForTimeout(700);
+  return pixelDifference(a, (await page.screenshot({ clip })).toString('base64'));
+}
 
 await check('Loads without errors, entirely from this site, in Geist', async () => {
   await page.waitForTimeout(800);
@@ -260,6 +278,141 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
     return [m, same(at(0), at(L)), !same(at(0.1 * L), at(0.4 * L))];
   }));
   for (const [m, loops, oneWay] of motion) expect(loops && oneWay, `${m}: ${loops ? 'swings back' : 'does not loop'}`);
+});
+
+// ---------- Hidden errors: things that look fine in the code but not to someone using the app ----------
+await check('Every preset that moves moves on screen, and every still one keeps still', async () => {
+  const wrong = [], names = await page.evaluate(() => BUILT_INS.map((b) => b.name));
+  await page.waitForTimeout(800);  // the page's own opening animation
+  for (const name of names) {
+    const moving = await page.evaluate((n) => { applyPreset('builtin:' + n); return isAnimated(state); }, name);
+    const change = await screenMotion();
+    if (moving ? change < 0.05 : change > 0.05) wrong.push(`${name}: ${moving ? 'should move but is still' : 'should be still but moves'} (${change.toFixed(2)})`);
+  }
+  // On the sticker too, for a pattern of each kind that moves.
+  for (const name of ['Recursion', 'Merge', 'Query', 'Event Stream', 'Night Build']) {
+    const moving = await page.evaluate((n) => { applyPreset('builtin:' + n); if (n === 'Event Stream') state.values.motion = 'flow'; state.values.sticker = { ...STICKER_DEFAULTS, on: 'on' }; buildPanel(); requestRender(); return isAnimated(state); }, name);
+    const change = await screenMotion();
+    if (moving && change < 0.05) wrong.push(`${name} on the sticker: should move but is still (${change.toFixed(2)})`);
+  }
+  await page.evaluate(() => { state.values.sticker.on = 'off'; buildPanel(); requestRender(); });
+  expect(!wrong.length, wrong.join('\n'));
+  return `${names.length} presets`;
+});
+
+await check('Seed remixes keep a moving preset moving', async () => {
+  const still = await page.evaluate(async () => {
+    const out = [];
+    for (const b of BUILT_INS) {
+      applyPreset('builtin:' + b.name);
+      if (!isAnimated(state)) continue;
+      for (const seed of [7, 4242, 9001]) {
+        applySeed(seed);
+        if (kindOf(state) === 'studio') await ensureLogoSdf(scaledStudio(state.values)).catch(() => {});  // the logo's distances come after a change
+        const a = geometryFor(state, 0), z = geometryFor(state, 0.37 * loopSeconds(state));
+        let change = a.count !== z.count;
+        for (let i = 0; !change && i < a.count * STRIDE; i++) if (i % STRIDE !== 13 && Math.abs(a.instances[i] - z.instances[i]) > 1e-3) change = true;
+        if (!isAnimated(state) || !change) out.push(`${b.name} seed ${seed}`);
+      }
+    }
+    return out;
+  });
+  expect(!still.length, 'remixes that stopped moving: ' + still.join(', '));
+});
+
+await check('Every control changes the drawing', async () => {
+  // On every built-in, every slider and choice showing is moved across its range and each option tried (Pulse's
+  // with Pulse on); one that changes nothing, still or over the loop, is dead.
+  const out = await page.evaluate(() => {
+    const sig = (st) => {
+      let h = 0, n = 0;
+      for (const t of [0, 1.3, 0.37 * loopSeconds(st)]) {
+        const g = geometryFor(st, t), I = g.instances;
+        for (let i = 0; i < g.count * STRIDE; i++) if (i % STRIDE !== 13) h = (h * 31 + Math.round(I[i] * 1000)) | 0;
+        n += g.count;
+        const s = JSON.stringify([g.params.colour, g.params.canvas, g.width, g.height]);
+        for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) | 0;
+      }
+      return h + ':' + n;
+    };
+    const dead = [], thrown = [];
+    for (const bi of BUILT_INS) {
+      const base = presetState('builtin:' + bi.name), pat = patternOf(base.pattern);
+      const pulseOn = (st) => { if (st.values.pulse) Object.assign(st.values.pulse, { enabled: true, opacityMin: 0.2, sizeMin: 0.5, speed: st.values.pulse.speed || 1 }); return st; };
+      const controls = [...pat.sections.filter((s) => !s[3] || s[3](base.values)).flatMap((s) => s[1].map((c) => [s[0], c])), ...pat.look.map((c) => ['Colour', c])]
+        .filter(([, c]) => (c.type === 'range' || c.type === 'select') && (!c.when || c.when(base.values)));
+      for (const [section, c] of controls) {
+        const keys = keysOf(c), now = getPath(base.values, keys[0]);
+        const tries = c.type === 'range'
+          ? [0, 1, 0.5, 0.25, 0.75].map((f) => c.min + (c.max - c.min) * f).filter((x) => Math.abs(x - now) > 1e-9)
+          : c.options.map((o) => o[1]).filter((x) => String(x) !== String(now));
+        const start = section === 'Pulse' ? pulseOn(structuredClone(base)) : structuredClone(base);
+        let ref;
+        try { ref = sig(start); } catch (e) { thrown.push(`${bi.name}: ${e.message}`); continue; }
+        let changed = false;
+        for (const x of tries) {
+          const st = structuredClone(start);
+          for (const k of keys) setPath(st.values, k, c.type === 'range' ? x : (typeof now === 'number' ? Number(x) : x));
+          try { if (sig(st) !== ref) changed = true; } catch (e) { thrown.push(`${bi.name} · ${c.label} = ${x}: ${e.message}`); }
+        }
+        if (tries.length && !changed) dead.push(`${bi.name} · ${section} · ${c.label}`);
+      }
+    }
+    return { dead, thrown };
+  });
+  expect(!out.thrown.length, 'controls that break the drawing:\n' + out.thrown.join('\n'));
+  expect(!out.dead.length, 'controls that change nothing:\n' + out.dead.join('\n'));
+});
+
+await check('Every preset draws in every format and remix: something, valid, on the page', async () => {
+  const issues = await page.evaluate(() => {
+    const issues = [];
+    const inspect = (st, label) => {
+      const L = loopSeconds(st);
+      for (const t of [0, 0.25 * L, 0.5 * L, 0.9 * L]) {
+        let g;
+        try { g = geometryFor(st, t); } catch (e) { issues.push(`${label}: throws ${e.message}`); return; }
+        // Bracket's Build takes the mark apart before it builds it again, so its page is empty for an instant.
+        if (!g.count) { if (!(st.pattern === 'Bracket' && st.values.effect === 'build')) issues.push(`${label} at ${t.toFixed(2)} s: draws nothing`); continue; }
+        const I = g.instances;
+        let invalid = 0, inside = 0;
+        for (let n = 0; n < g.count; n++) {
+          for (let f = 0; f < 14; f++) if (!Number.isFinite(I[n * STRIDE + f])) invalid++;
+          const x = I[n * STRIDE], y = I[n * STRIDE + 1];
+          if (x >= -1 && x <= g.width + 1 && y >= -1 && y <= g.height + 1) inside++;
+        }
+        if (invalid) issues.push(`${label} at ${t.toFixed(2)} s: ${invalid} invalid numbers`);
+        if (inside < g.count / 2) issues.push(`${label} at ${t.toFixed(2)} s: only ${inside} of ${g.count} marks on the page`);
+      }
+    };
+    for (const b of BUILT_INS) {
+      for (const f of Object.keys(FORMATS)) { applyPreset('builtin:' + b.name); setFormat(f); inspect(structuredClone(state), `${b.name} ${f}`); }
+      applyPreset('builtin:' + b.name);
+      for (let seed = 1; seed <= 10; seed++) inspect({ pattern: state.pattern, values: variationOf(state.pattern, baseline.values, seed * 977) }, `${b.name} seed ${seed * 977}`);
+    }
+    return issues;
+  });
+  expect(!issues.length, issues.join('\n'));
+});
+
+await check('A returning session opens untouched presets as they are now, and keeps edits', async () => {
+  const open = async (session) => {
+    const context = await browser.newContext();
+    if (session) await context.addInitScript((s) => { if (!sessionStorage.getItem('seeded')) { localStorage.setItem('wave-rows-session', JSON.stringify(s)); sessionStorage.setItem('seeded', '1'); } }, session);
+    const view = await context.newPage();
+    await view.goto(origin + '/');
+    await view.waitForFunction(() => typeof BUILT_INS !== 'undefined');
+    const info = await view.evaluate(() => ({ speed: state.values.motion.speed, columns: state.values.layout.columns, sticker: state.values.sticker && state.values.sticker.on }));
+    await context.close();
+    return info;
+  };
+  // Recursion saved before it moved, as an older version left it (no record of edits), with its sticker on.
+  const old = await page.evaluate(() => { const st = presetState('builtin:Recursion'); st.values.motion.speed = 0; st.values.sticker = { ...STICKER_DEFAULTS, on: 'on' }; return st; });
+  const fresh = await open({ v: 5, state: old, current: 'builtin:Recursion' });
+  expect(fresh.speed === 0.5 && fresh.sticker === 'on', `an untouched Recursion reopened with speed ${fresh.speed}, sticker ${fresh.sticker}`);
+  const tweaked = structuredClone(old); tweaked.values.layout.columns = 22;
+  const kept = await open({ v: 5, state: tweaked, current: 'builtin:Recursion', edited: true });
+  expect(kept.columns === 22, `an edited Recursion lost its edit (${kept.columns} columns)`);
 });
 
 if (dist) await check('The published files carry no comments', async () => {
