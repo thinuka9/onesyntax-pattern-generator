@@ -93,6 +93,7 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   the hidden-error sweep (BUILD.md check 11); run it before every merge.
 - **8 October, later:** "0.5 speed is too fast, check all"; Roll and Drift "not smooth, glitchy, not seamless" (it
   was so before too). Silhouette was the only pattern far faster than the rest; fixed with the glitches.
+- **Decided 8 October:** Stack's Cache keeps its overlapping bars ("don't touch"); don't raise it again.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped
