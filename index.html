@@ -3855,13 +3855,14 @@ function exportPNG(requested = 2) {
     }, 'image/png');
   }, 30);
 }
-/** The sticker as a PNG: transparent round its outline when Transparent is on, on the sticker page's grey if not. */
+/** The sticker as a PNG, cut out: transparent round its outline, whatever Transparent is set to (the grey round it
+ *  in the app is only the preview's page). */
 function exportStickerPNG(requested) {
   const geo = geometryFor(stickerState(state), time), scale = Math.min(requested, MAX_PNG_SIDE / STICKER_SIZE), off = document.createElement('canvas');
   off.width = off.height = Math.round(STICKER_SIZE * scale);
   notify(`Rendering a ${off.width} × ${off.height} PNG…`, { stay: true });
   setTimeout(() => {
-    drawSticker(off.getContext('2d'), state, geo, scale, { page: exportOptions.transparent ? null : STICKER_PAGE });
+    drawSticker(off.getContext('2d'), state, geo, scale, { page: null });
     off.toBlob((blob) => {
       if (!blob) { notify('The browser couldn\'t make that PNG. Try a smaller scale.', { error: true }); return; }
       download(blob, `${fileBase()}_sticker@${requested}x.png`);
@@ -3884,7 +3885,7 @@ function exportSVG() {
 /**
  * The sticker as a vector file around a pattern's own SVG (still or animated): the pattern's file nests as an inner
  * <svg> covering the band, cut to the outline and the band; the outline, {OS}, title and subtitle sit round it, the
- * text in Geist. Transparent leaves the page round the sticker empty; otherwise it is the sticker page's grey.
+ * text in Geist. Round the outline the file is empty, so the sticker is cut out (the app's grey is only its preview).
  */
 function stickerSVG(patternSVG, geo) {
   const s = state.values.sticker, parts = stickerParts(s), { S, scheme } = parts, cover = stickerCover(parts, geo), [bx, by, bw, bh] = parts.band;
@@ -3905,7 +3906,7 @@ function stickerSVG(patternSVG, geo) {
 <title>${escape(s.title)} · OneSyntax sticker</title>
 <metadata id="onesyntax-preset">${escape(JSON.stringify(state))}</metadata>
 <defs><clipPath id="sticker-outline"><path d="${parts.outline}"/></clipPath><clipPath id="sticker-band"><rect x="${n(bx)}" y="${n(by)}" width="${n(bw)}" height="${n(bh)}"/></clipPath></defs>
-${exportOptions.transparent ? '' : `<rect id="page" width="${S}" height="${S}" fill="${STICKER_PAGE}"/>\n`}<path id="sticker" d="${parts.outline}" fill="${scheme.fill}"/>
+<path id="sticker" d="${parts.outline}" fill="${scheme.fill}"/>
 ${s.pattern === 'on' ? `<g id="pattern" clip-path="url(#sticker-outline)"><g clip-path="url(#sticker-band)">\n${inner}\n</g></g>\n` : ''}${mark}
 <text id="title" x="${n(parts.margin)}" y="${n(titleY)}" fill="${scheme.title}" font-family="Geist, system-ui, sans-serif" font-size="${n(parts.title.size)}" font-weight="500" letter-spacing="${n(parts.title.tracking)}">${escape(s.title)}</text>
 <text id="subtitle" x="${n(parts.margin)}" y="${n(subtitleY)}" fill="${scheme.subtitle}" fill-opacity="${parts.subtitle.alpha}" font-family="'Geist Mono', ui-monospace, monospace" font-size="${n(parts.subtitle.size)}" letter-spacing="${n(parts.subtitle.tracking)}">${escape(s.subtitle)}</text>
