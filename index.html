@@ -99,6 +99,20 @@
   /* Lockup proportions from the brand file: symbol and wordmark share a height, 0.36 × height apart. */
   .logo { display: flex; align-items: center; gap: 6.5px; }
   .logo img { display: block; height: 18px; width: auto; }
+  /* The symbol, drawn from the brand file as stripes that sit flush (so it reads solid). On hover they open, top to
+     bottom, and flow down through it, the generator's stripes in the mark; away, they close and the flow rests. */
+  .logo .mark { display: block; width: 18px; height: 18px; overflow: hidden; }
+  .logo.on-dark .mark { color: var(--white); }
+  .logo.on-light .mark { color: var(--black); }
+  .logo .bar { transform-box: fill-box; transform-origin: center; transition: transform .5s var(--spring); }
+  .logo .flow { animation: mark-flow 1.8s linear infinite paused; }
+  .logo:hover .bar { transform: scaleY(.42); }
+  .logo:hover .flow { animation-play-state: running; }
+  .logo .bar:nth-child(2) { transition-delay: 0s; } .logo .bar:nth-child(3) { transition-delay: .03s; }
+  .logo .bar:nth-child(4) { transition-delay: .06s; } .logo .bar:nth-child(5) { transition-delay: .09s; }
+  .logo .bar:nth-child(6) { transition-delay: .12s; } .logo .bar:nth-child(7) { transition-delay: .15s; }
+  .logo .bar:nth-child(8) { transition-delay: .18s; } .logo .bar:nth-child(9) { transition-delay: .21s; }
+  @keyframes mark-flow { to { transform: translateY(25.236px); } }
   body[data-tone="dark"] .logo.on-light, body[data-tone="light"] .logo.on-dark { display: none; }
   .view { position: relative; display: flex; gap: 2px; padding: 2px; background: rgba(127,127,127,.2); }
   .view .indicator { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; background: var(--white); pointer-events: none; }
@@ -417,10 +431,10 @@
 
 <div class="topbar">
   <span class="logo on-dark" role="img" aria-label="OneSyntax">
-    <img src="./brand/onesyntax-symbol-white.svg" alt=""><img src="./brand/onesyntax-wordmark-white.svg" alt="">
+    <svg class="mark" viewBox="0 0 176.65 176.65" aria-hidden="true"><defs><mask id="osMarkDark" maskUnits="userSpaceOnUse" x="0" y="0" width="176.65" height="176.65"><path d="M68.2004 0H176.65V108.45L108.45 176.65H0V68.2004L68.2004 0Z" fill="#fff"/><path d="M79.9397 23.4785H156.525V63.7279H131.929V44.7212H91.1201L56.4609 79.3804L92.7972 100.359L76.5856 116.571L19.6939 83.7243L79.9397 23.4785Z" fill="#000"/><path d="M96.7108 153.172L20.1251 153.172V112.923H44.722V131.929H85.5304L120.19 97.2701L83.8534 76.2914L100.065 60.0798L156.957 92.9263L96.7108 153.172Z" fill="#000"/></mask></defs><g mask="url(#osMarkDark)" fill="currentColor"><g class="flow"><rect class="bar" x="0" y="-25.236" width="176.65" height="25.836"/><rect class="bar" x="0" y="0.000" width="176.65" height="25.836"/><rect class="bar" x="0" y="25.236" width="176.65" height="25.836"/><rect class="bar" x="0" y="50.471" width="176.65" height="25.836"/><rect class="bar" x="0" y="75.707" width="176.65" height="25.836"/><rect class="bar" x="0" y="100.943" width="176.65" height="25.836"/><rect class="bar" x="0" y="126.179" width="176.65" height="25.836"/><rect class="bar" x="0" y="151.414" width="176.65" height="25.836"/><rect class="bar" x="0" y="176.650" width="176.65" height="25.836"/></g></g></svg><img src="./brand/onesyntax-wordmark-white.svg" alt="">
   </span>
   <span class="logo on-light" role="img" aria-label="OneSyntax">
-    <img src="./brand/onesyntax-symbol-black.svg" alt=""><img src="./brand/onesyntax-wordmark-black.svg" alt="">
+    <svg class="mark" viewBox="0 0 176.65 176.65" aria-hidden="true"><defs><mask id="osMarkLight" maskUnits="userSpaceOnUse" x="0" y="0" width="176.65" height="176.65"><path d="M68.2004 0H176.65V108.45L108.45 176.65H0V68.2004L68.2004 0Z" fill="#fff"/><path d="M79.9397 23.4785H156.525V63.7279H131.929V44.7212H91.1201L56.4609 79.3804L92.7972 100.359L76.5856 116.571L19.6939 83.7243L79.9397 23.4785Z" fill="#000"/><path d="M96.7108 153.172L20.1251 153.172V112.923H44.722V131.929H85.5304L120.19 97.2701L83.8534 76.2914L100.065 60.0798L156.957 92.9263L96.7108 153.172Z" fill="#000"/></mask></defs><g mask="url(#osMarkLight)" fill="currentColor"><g class="flow"><rect class="bar" x="0" y="-25.236" width="176.65" height="25.836"/><rect class="bar" x="0" y="0.000" width="176.65" height="25.836"/><rect class="bar" x="0" y="25.236" width="176.65" height="25.836"/><rect class="bar" x="0" y="50.471" width="176.65" height="25.836"/><rect class="bar" x="0" y="75.707" width="176.65" height="25.836"/><rect class="bar" x="0" y="100.943" width="176.65" height="25.836"/><rect class="bar" x="0" y="126.179" width="176.65" height="25.836"/><rect class="bar" x="0" y="151.414" width="176.65" height="25.836"/><rect class="bar" x="0" y="176.650" width="176.65" height="25.836"/></g></g></svg><img src="./brand/onesyntax-wordmark-black.svg" alt="">
   </span>
   <div class="view" role="group" aria-label="Preview">
     <span class="indicator" aria-hidden="true"></span>
@@ -2157,6 +2171,14 @@ const MORE_PRESETS = [
     'field.gradient.enabled': true, 'field.gradient.weight': 1, 'field.gradient.direction': 45, 'field.waveA.weight': 0.5, 'field.waveA.frequency': 1.2, 'field.waveA.direction': 90,
     'field.waveB.weight': 0, 'mappings.opacity.source': 'field', 'mappings.opacity.min': 0.25, 'mappings.opacity.max': 0.75,
     'colour.source': 'field', 'colour.stops': 2, 'colour.background': '#120033', 'colour.stop1': '#7B33FF', 'colour.stop2': '#E9DDFF', 'motion.speed': 0.5 } },
+  // The studio's own look (8 October): Deploy's slanted bars in a tall, dense grid, in Midnight, a pulse of light
+  // running through them. Its bars keep Deploy's cell (816/7 by 100) as their reference, so they shrink into the
+  // smaller cells rather than spill over them.
+  { name: 'Rollout', from: 'Deploy', palette: 'Midnight', set: { 'layout.columns': 9, 'layout.rows': 33, 'layout.margin': 100, 'layout.gutterX': 9,
+    'layout.fitWidth': 816 / 7, 'layout.fitHeight': 100,
+    'mappings.thickness.min': 111, 'mappings.thickness.max': 111, 'mappings.length.min': 0, 'mappings.length.max': 99,
+    'colour.background': '#001931', 'colour.stop1': '#0A89FF', 'colour.stop2': '#BDDFFF', 'colour.stop3': '#67B6FF', 'colour.accent': '#FF8A65',
+    'pulse.enabled': true, 'pulse.opacityMin': 0.26, 'pulse.frequency': 4.1, 'pulse.direction': 67, 'pulse.speed': 2 } },
   { name: 'Kernel', from: 'Recursion', palette: 'Coral', set: { 'motion.speed': 1, 'layout.columns': 24, 'layout.rows': 24, 'mappings.thickness.min': 40, 'mappings.thickness.max': 40,
     'mappings.length.min': 40, 'mappings.length.max': 40, 'field.waveA.frequency': 1.4, 'field.waveB.frequency': 3.2, 'field.noise.weight': 0.1, 'shaping.mirror': 'X', 'shaping.quantise': 4 } },
   { name: 'Mutex', from: 'Recursion', palette: 'Violet', set: { 'motion.speed': 0.5, 'layout.columns': 64, 'layout.rows': 64, 'mappings.thickness.min': 16, 'mappings.thickness.max': 16,
@@ -3946,14 +3968,22 @@ const toBase64Url = (bytes) => btoa(String.fromCharCode(...bytes)).replace(/\+/g
 const fromBase64Url = (text) => Uint8Array.from(atob(text.replace(/-/g, '+').replace(/_/g, '/')), (c) => c.charCodeAt(0));
 async function pipe(bytes, transform) { return new Uint8Array(await new Response(new Blob([bytes]).stream().pipeThrough(transform)).arrayBuffer()); }
 
+// A link holds what differs from the pattern's own values. The bars' reference cell (`layout.fitWidth`/`fitHeight`)
+// always goes in: left out because it matched, it would read as a link from before reference cells, and the bars
+// would be resized to the shared grid's own cell (a Deploy grid made 9 by 33 opened with its bars overlapping).
 async function encodeLook(st) {
-  const json = new TextEncoder().encode(JSON.stringify({ v: STORAGE_VERSION, p: st.pattern, d: difference(st.values, defaultsFor(st.pattern)) || {} }));
+  const d = difference(st.values, defaultsFor(st.pattern)) || {}, layout = st.values.layout;
+  if (layout && layout.fitWidth > 0) d.layout = { ...(d.layout || {}), fitWidth: layout.fitWidth, fitHeight: layout.fitHeight };
+  const json = new TextEncoder().encode(JSON.stringify({ v: STORAGE_VERSION, p: st.pattern, d }));
   return window.CompressionStream ? 'z' + toBase64Url(await pipe(json, new CompressionStream('deflate-raw'))) : 'j' + toBase64Url(json);
 }
 async function decodeLook(code) {
   const bytes = fromBase64Url(code.slice(1));
   const json = code[0] === 'z' ? await pipe(bytes, new DecompressionStream('deflate-raw')) : bytes;
   const data = JSON.parse(new TextDecoder().decode(json));
+  // Links made before the reference cell always went in leave it out when it matched the pattern's own: theirs.
+  const own = data.d && data.d.layout && !(data.d.layout.fitWidth > 0) && defaultsFor(data.p).layout;
+  if (own && own.fitWidth > 0) Object.assign(data.d.layout, { fitWidth: own.fitWidth, fitHeight: own.fitHeight });
   return migrate(sanitizeState({ pattern: data.p, values: data.d }), data.v);
 }
 

@@ -550,6 +550,25 @@ await check('The motion switch turns every look off and on, and back to its pres
   expect(!wrong.length, wrong.join('\n'));
 });
 
+await check('A copied link opens exactly the look it was copied from, edits and all', async () => {
+  // On every preset, a few of its sliders moved (its grid among them, when it has one), then the link opened again.
+  const wrong = await page.evaluate(async () => {
+    const out = [];
+    for (const b of BUILT_INS) {
+      const st = presetState('builtin:' + b.name), pat = patternOf(st.pattern);
+      const sliders = pat.sections.flatMap((s) => s[1]).filter((c) => c.type === 'range' && (!c.when || c.when(st.values)));
+      for (const c of sliders.slice(0, 4)) { const k = keysOf(c), now = getPath(st.values, k[0]), next = Math.min(c.max, now + (c.max - c.min) * 0.17); for (const key of k) setPath(st.values, key, Math.round(next / c.step) * c.step); }
+      const back = await decodeLook(await encodeLook(st));
+      const a = geometryFor(st, 0.7), z = geometryFor(back, 0.7);
+      let same = a.count === z.count;
+      for (let i = 0; same && i < a.count * STRIDE; i++) if (i % STRIDE !== 13 && Math.abs(a.instances[i] - z.instances[i]) > 1e-3) same = false;
+      if (!same) out.push(b.name);
+    }
+    return out;
+  });
+  expect(!wrong.length, 'opened differently from the link: ' + wrong.join(', '));
+});
+
 if (dist) await check('The published files carry no comments', async () => {
   const code = (await readFile(join(root, 'index.html'), 'utf8')) + (await readFile(join(root, 'engine.js'), 'utf8'));
   const found = code.match(/<!--|\/\*\*|^\s*\/\/ /m);

@@ -71,7 +71,8 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
 2. Every built-in preset draws, opens in its own pattern and shows its controls.
 3. Every moving preset loops without a seam (its first frame and the frame at the loop length match).
 4. No method words (Fourier, Chladni, Gibbs, vector field…) appear in any pattern's panel, tooltip or preset name.
-5. Share links and preset JSON round-trip for every preset, and a save from before the `plate` rename still opens.
+5. Share links and preset JSON round-trip for every preset, and a save from before the `plate` rename still opens;
+   a link copied from an edited look opens exactly that look.
 6. PNG, SVG and animated SVG exports download and parse, for every moving preset.
 7. Orbit's animated SVG (Flow, Sway, and Pulse) and Silhouette's (Roll and Drift), frozen at set moments, match
    the app within 4/255 and loop without a seam.
