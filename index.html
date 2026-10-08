@@ -2680,6 +2680,8 @@ const CENTRES = {
       return { toPage: (f) => (lift * Math.exp(f * n) - lift) / spanY, toPlane: (g) => Math.log((Math.max(-lift * 0.999, g * spanY) + lift) / lift) / n };
     } },
   'Eddy': { keys: ['attractor.x', 'attractor.y'], min: 0, max: 1, area: (v, w, h) => [0, 0, w, h], active: (v) => v.attractor.enabled },
+  // Silhouette's shape, by its Across and Down.
+  Silhouette: { keys: ['x', 'y'], min: 0, max: 1, area: (v, w, h) => [0, 0, w, h] },
 };
 let artPlace = null, overArt = false, handleDrag = false;
 const centreHandle = document.getElementById('centreHandle'), centreKnob = centreHandle.querySelector('.knob');
@@ -2696,9 +2698,37 @@ function placeHandle() {
   const depth = c.depth && c.depth(state.values, artPlace.width, artPlace.height), fy = getPath(state.values, c.keys[1]);
   const x = artPlace.x + (ax + getPath(state.values, c.keys[0]) * aw) * artPlace.s;
   const y = artPlace.y + (ay + (depth ? depth.toPage(fy) : fy) * ah) * artPlace.s;
-  // A centre off the screen stays reachable at its nearest edge.
-  centreHandle.style.translate = `${E.clamp(x, 18, window.innerWidth - 18)}px ${E.clamp(y, 18, window.innerHeight - 18)}px`;
+  // A centre off the art as it shows (Event Stream's sits on the art's corner, off screen when the art fills it) stays
+  // reachable at the nearest edge of what shows: clear of the panel over it and of the buttons and lines on the art.
+  const [px, py] = handleSpot(x, y);
+  centreHandle.style.translate = `${px}px ${py}px`;
   centreHandle.classList.toggle('shown', overArt || handleDrag || document.activeElement === centreKnob);
+}
+const HANDLE_CLEAR = ['.topbar', '#meta', '#prevLook', '#nextLook', '#dots', '#play'];
+function handleSpot(x, y) {
+  const pad = 18, w = window.innerWidth, h = window.innerHeight;
+  const box = { x0: Math.max(0, artPlace.x), y0: Math.max(0, artPlace.y), x1: Math.min(w, artPlace.x + artPlace.width * artPlace.s), y1: Math.min(h, artPlace.y + artPlace.height * artPlace.s) };
+  const panel = document.getElementById('panel').getBoundingClientRect();
+  if (panel.width && panel.height) {
+    // The panel covers one side of the art (the right, or the bottom on a phone): the knob stays off it.
+    if (panel.left > (box.x0 + box.x1) / 2) box.x1 = Math.min(box.x1, panel.left);
+    else if (panel.top > (box.y0 + box.y1) / 2) box.y1 = Math.min(box.y1, panel.top);
+  }
+  const px = E.clamp(x, box.x0 + pad, Math.max(box.x0 + pad, box.x1 - pad)), py = E.clamp(y, box.y0 + pad, Math.max(box.y0 + pad, box.y1 - pad));
+  const blocks = HANDLE_CLEAR.map((selector) => document.querySelector(selector)).filter((el) => el && !el.hidden)
+    .map((el) => el.getBoundingClientRect()).filter((r) => r.width && r.height)
+    .map((r) => ({ left: r.left - pad, right: r.right + pad, top: r.top - pad, bottom: r.bottom + pad }));
+  const free = ([a, b]) => a >= box.x0 + pad - 0.5 && a <= box.x1 - pad + 0.5 && b >= box.y0 + pad - 0.5 && b <= box.y1 - pad + 0.5
+    && blocks.every((r) => a <= r.left || a >= r.right || b <= r.top || b >= r.bottom);
+  if (free([px, py])) return [px, py];
+  // Otherwise the nearest spot just outside one of them (or two of them, at a corner) that is clear of all.
+  const xs = [px, ...blocks.flatMap((r) => [r.left, r.right])], ys = [py, ...blocks.flatMap((r) => [r.top, r.bottom])];
+  let best = null, far = Infinity;
+  for (const a of xs) for (const b of ys) {
+    const d = Math.hypot(a - px, b - py);
+    if (d < far && free([a, b])) { best = [a, b]; far = d; }
+  }
+  return best || [px, py];
 }
 function setCentre(fx, fy) {
   const c = centreOf();

@@ -135,6 +135,11 @@ stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouett
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **Centre knob always reachable (8 October):** "missing the centre control we had before". It was there, but on
+  Event Stream and Event Loop (Orbit, centred on the art's corner) it was parked at the window's corner under the
+  OneSyntax and Fill/Fit bar whenever the art filled the screen. It now stays on the art as it shows, off the
+  panel, and clear of the bar, the size line, the arrows, the dots and the play button. Silhouette gets one too
+  (its shape's Across and Down). A release check hovers, finds the knob uncovered and drags it.
 - **Silhouette's Roll and Drift, smooth and slower (8 October):** "0.5 is too fast", "not smooth, glitchy, not
   seamless". The stripes now move two a beat (one every 5 s at Speed 0.5; before, a page and a stripe a beat, about
   ten times the other patterns' pace, measured as feature speed across every moving preset: nothing else stood out).
