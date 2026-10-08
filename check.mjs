@@ -236,6 +236,15 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
   expect(rows.rows === rows.lines, `${rows.rows} stripes drawn for ${rows.lines}`);
   expect(Math.max(...rows.spans) - Math.min(...rows.spans) < 2, 'a stripe does not run edge to edge');
   expect(rows.first > rows.middle * 2, `the bars do not thicken away from the fold (${rows.first} against ${rows.middle})`);
+  // Drift and Roll run one way: they loop exactly, and never pass back through a frame they showed on the way out
+  // (a swing would draw the same frame at a tenth and at four tenths of its loop).
+  const motion = await page.evaluate(() => ['drift', 'roll'].map((m) => {
+    const st = structuredClone(presetState('builtin:Merge')); st.values.motion = m;
+    const L = loopSeconds(st), at = (t) => { const g = geometryFor(st, t); return Array.from(g.instances.slice(0, g.count * STRIDE)); };
+    const same = (a, b) => a.length === b.length && a.every((x, i) => i % STRIDE === 13 || Math.abs(x - b[i]) < 1e-3);
+    return [m, same(at(0), at(L)), !same(at(0.1 * L), at(0.4 * L))];
+  }));
+  for (const [m, loops, oneWay] of motion) expect(loops && oneWay, `${m}: ${loops ? 'swings back' : 'does not loop'}`);
 });
 
 if (dist) await check('The published files carry no comments', async () => {
