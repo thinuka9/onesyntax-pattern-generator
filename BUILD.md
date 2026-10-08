@@ -86,7 +86,8 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
     - seed remixes of a moving preset still move;
     - every slider and choice on every preset changes the drawing (none is dead), and none breaks it;
     - every preset in every format, and ten remixes of each, draws something, with valid numbers, on the page;
-    - a returning session opens an untouched built-in preset as it is now (so fixes reach it) and keeps edits.
+    - a returning session opens an untouched built-in preset as it is now (so fixes reach it) and keeps edits;
+    - the centre knob (Orbit, Eddy, Silhouette) shows uncovered in Fill and Fit, and dragging it moves the centre.
 12. With `--dist`: the published `index.html` and `engine.js` carry no comments.
 
 It ends with "All checks passed." (exit code 0), or names each failure. Still by hand, in the browser:

@@ -451,6 +451,27 @@ await check('A returning session opens untouched presets as they are now, and ke
   expect(kept.columns === 22, `an edited Recursion lost its edit (${kept.columns} columns)`);
 });
 
+await check('The centre knob shows where it can be grabbed, and moves the centre', async () => {
+  const wrong = [];
+  for (const [name, view] of [['Event Stream', 'fill'], ['Event Stream', 'fit'], ['Event Loop', 'fill'], ['Data Flow', 'fill'], ['Refactor', 'fit'], ['Merge', 'fill'], ['Merge', 'fit']]) {
+    await page.evaluate((n) => applyPreset('builtin:' + n), name);
+    await page.click(`[data-view="${view}"]`);
+    await page.waitForTimeout(500);
+    await page.mouse.move(500, 450); await page.mouse.move(520, 470); await page.waitForTimeout(400);
+    const knob = await page.evaluate(() => {
+      const k = document.querySelector('#centreHandle .knob'), r = k.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
+      return { shown: !document.getElementById('centreHandle').hidden && getComputedStyle(k).opacity === '1', x, y, top: document.elementFromPoint(x, y) === k };
+    });
+    if (!knob.shown || !knob.top) { wrong.push(`${name} (${view}): the knob is ${knob.shown ? 'covered' : 'not shown'} at ${Math.round(knob.x)}, ${Math.round(knob.y)}`); continue; }
+    const before = await page.evaluate(() => { const c = centreOf(); return c.keys.map((k) => getPath(state.values, k)); });
+    await page.mouse.move(knob.x, knob.y); await page.mouse.down(); await page.mouse.move(knob.x + 90, knob.y + 70, { steps: 5 }); await page.mouse.up();
+    const after = await page.evaluate(() => { const c = centreOf(); return c.keys.map((k) => getPath(state.values, k)); });
+    if (after.every((v, i) => v === before[i])) wrong.push(`${name} (${view}): dragging the knob moved nothing`);
+  }
+  await page.click('[data-view="fill"]');
+  expect(!wrong.length, wrong.join('\n'));
+});
+
 if (dist) await check('The published files carry no comments', async () => {
   const code = (await readFile(join(root, 'index.html'), 'utf8')) + (await readFile(join(root, 'engine.js'), 'utf8'));
   const found = code.match(/<!--|\/\*\*|^\s*\/\/ /m);
