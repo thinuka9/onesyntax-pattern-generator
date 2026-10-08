@@ -79,7 +79,8 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
 9. The sticker survives a share link and exports as PNG, SVG and animated SVG, cut out (transparent round its
    outline, Transparent on or off); the seed dice never turns it back on.
 10. Silhouette's fold: stripes edge to edge, bars thickest away from the fold; Roll and Drift loop one way and
-    smoothly (no frame jumps more than 1.7 times the typical change).
+    smoothly (no frame jumps more than 1.7 times the typical change); in every inside, shape, direction and motion,
+    no piece is a hairline, a dot or off its stripe.
 11. Hidden errors, the kind that pass a glance at the code but not someone using the app:
     - every preset that moves moves on screen, and every still one keeps still (screenshots a second apart), and
       moving ones still move on the sticker;
@@ -87,7 +88,10 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
     - every slider and choice on every preset changes the drawing (none is dead), and none breaks it;
     - every preset in every format, and ten remixes of each, draws something, with valid numbers, on the page;
     - a returning session opens an untouched built-in preset as it is now (so fixes reach it) and keeps edits;
-    - the centre knob (Orbit, Eddy, Silhouette) shows uncovered in Fill and Fit, and dragging it moves the centre.
+    - the centre knob (Orbit, Eddy, Silhouette) shows uncovered in Fill and Fit, a click leaves the centre alone,
+      and dragging it moves the centre;
+    - Stack's bars never come within 2 px of each other, in any format;
+    - the motion switch turns every preset off and on and back to the preset, or is unavailable with a reason.
 12. With `--dist`: the published `index.html` and `engine.js` carry no comments.
 
 It ends with "All checks passed." (exit code 0), or names each failure. Still by hand, in the browser:
