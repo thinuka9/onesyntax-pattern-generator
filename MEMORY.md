@@ -99,8 +99,8 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   it"): built as the waves switch. The centre knob jumped on touch; Stairs shifted the S; slivers came back in
   other modes. All fixed, with checks.
 - **8 October, last in the cloud session:** "am I in Workers or Pages?": Cloudflare Pages (`.pages.dev`, the
-  "Cloudflare Pages" check on GitHub). Logo hover "something cool": stripes, as Silhouette makes; then "the whole logo, and stop, not
-  on loop": one wave across symbol and wordmark that settles as lines. "Another preset for Deploy" from the studio's link: Rollout. "Copy link should get the values":
+  "Cloudflare Pages" check on GitHub). Logo hover: tried stripes, then a pixel strobe; removed ("we'll do it in a
+  different stage"), so the logo is as it was. "Another preset for Deploy" from the studio's link: Rollout. "Copy link should get the values":
   links now always carry the reference cell. All pushed to the branch, not merged; work continues locally.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
