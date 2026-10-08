@@ -1529,50 +1529,96 @@ function silhouetteGeometry(v, time, pool) {
   const thick = (share) => Math.max(0.2, Math.min(0.96, E.clamp(share, 0.02, 1)) * pitch);
   const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' || fold ? v.ink2 : v.ink);
   // Roll and Drift move the stripes, never the shape or the fold: Roll sends every stripe down the page through the
-  // shape, Drift only the stripes inside it, past the still ones round it. They move a page and a stripe a beat, so
-  // when the loop closes every stripe has taken another's place; each thins away as it leaves one edge and grows
-  // from nothing at the other.
-  const flow = v.motion === 'roll' || v.motion === 'drift', moved = flow ? tau * (lines + 1) : 0;
-  const offset = moved - Math.floor(moved), passed = Math.floor(moved), slots = lines + 1;
-  const most = (2 * lines + 2) * 32, instances = E.instanceBuffer(pool, most * STRIDE);
+  // shape, Drift only the stripes inside it, past the still ones round it. Two stripes a beat (one every 5 s at
+  // Speed 0.5, in step with the other patterns' slowest), so a loop always ends on whole stripes; each thins away as
+  // it leaves one edge and grows from nothing at the other. A stripe keeps its number while it travels, so a file's
+  // marks glide rather than swap.
+  const flow = v.motion === 'roll' || v.motion === 'drift', moved = flow ? tau * 2 : 0;
+  const offset = moved - Math.floor(moved), passed = Math.floor(moved);
+  const most = (2 * lines + 2) * 48, instances = E.instanceBuffer(pool, most * STRIDE);
   let count = 0;
-  const bar = (x0, x1, y, thick, rgb, layer, id) => {
-    if (x1 - x0 < 0.5 || count >= most) return;
-    const mx = (x0 + x1) / 2;
-    if (down) putMark(instances, count++, y, mx, thick, x1 - x0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
-    else putMark(instances, count++, mx, y, x1 - x0, thick, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
+  const bar = (x0, x1, y0, y1, rgb, layer, id) => {
+    if (x1 - x0 < 0.5 || y1 - y0 < 0.02 || count >= most) return;
+    const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
+    if (down) putMark(instances, count++, my, mx, y1 - y0, x1 - x0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
+    else putMark(instances, count++, mx, my, x1 - x0, y1 - y0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
   };
-  /** One stripe at y, `fade` times as thick: its parts round the shape ('out'), inside it ('in') or both ('all'). */
-  function stripe(y, fade, id, parts) {
-    const vRow = (y - (cy - size / 2)) / size;
-    // Where this stripe crosses the shape (its spans, sampled across the page) and where it runs round it.
-    const spans = [], out = [];
-    let start = -1, from = left;
-    for (let j = 0; j <= samples; j++) {
-      const x = left + span * j / samples, hit = j < samples && shape((x - (cx - size / 2)) / size, vRow);
-      if (hit && start < 0) start = x;
-      if (!hit && start >= 0) { spans.push([start, x]); start = -1; }
+  const at = (x, y) => shape((x - (cx - size / 2)) / size, (y - (cy - size / 2)) / size);
+  /** Where a line at height y crosses the shape's edge, found to a fraction of a pixel (sampled, then halved down). */
+  function crossings(y, into) {
+    let previous = at(left, y), px = left;
+    for (let j = 1; j <= samples; j++) {
+      const x = left + span * j / samples, now = at(x, y);
+      if (now !== previous) {
+        let a = px, b = x;
+        for (let k = 0; k < 12; k++) { const m = (a + b) / 2; if (at(m, y) === previous) a = m; else b = m; }
+        into.push((a + b) / 2);
+      }
+      previous = now; px = x;
     }
-    for (const [a, b] of spans) { out.push([from, a]); from = b; }
-    out.push([from, right]);
-    if (fold) {
-      // The thick bars lie round the shape above the fold and inside it below; the thin line fills the rest.
-      const level = foldLevel(y), thin = thick(v.weight), fat = thin + Math.max(0, thick(v.innerWeight) - thin) * Math.abs(level);
-      const round = level < 0;
-      if (parts !== 'in') out.forEach(([a, b], k) => bar(a, b, y, (round ? fat : thin) * fade, round ? ink2 : ink, round ? 1 : 0, id + k));
-      if (parts !== 'out') spans.forEach(([a, b], k) => bar(a, b, y, (round ? thin : fat) * fade, round ? ink : ink2, round ? 0 : 1, id + 16 + k));
-      return;
-    }
-    if (parts !== 'in') out.forEach(([a, b], k) => bar(a > left ? a + gap : a, b < right ? b - gap : b, y, thick(v.weight) * fade, ink, 0, id + k));
-    if (parts !== 'out' && v.inside !== 'gap') spans.forEach(([a, b], k) =>
-      bar(a, b, y + (v.inside === 'shift' ? pitch / 2 : 0), thick(v.inside === 'shift' ? v.weight : v.innerWeight) * fade, ink2, 1, id + 16 + k));
   }
-  if (v.motion !== 'roll') for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, 1, i * 32, v.motion === 'drift' ? 'out' : 'all');
+  /** One stripe at y, `fade` times as thick, drawn round the shape ('out'), inside it ('in') or both ('all'). Each
+   *  piece's ends come from where the stripe's middle line crosses the shape, so a bar ends square on a slope. Where
+   *  the shape's edge runs flat through the stripe (its top and bottom), the stripe is split along the edge instead,
+   *  so a moving stripe changes over smoothly rather than all at once as its middle crosses. */
+  function stripe(y, fade, id, parts) {
+    let thinW, fatW, round = false;
+    if (fold) {
+      const level = foldLevel(y), t = thick(v.weight);
+      thinW = t * fade; fatW = (t + Math.max(0, thick(v.innerWeight) - t) * Math.abs(level)) * fade; round = level < 0;
+    } else { thinW = thick(v.weight) * fade; fatW = thick(v.inside === 'shift' ? v.weight : v.innerWeight) * fade; }
+    // How each side is drawn: [width, colour, layer], or null for nothing (Gap's inside).
+    const look = (inside) => fold
+      ? (inside !== round ? [fatW, ink2, 1] : [thinW, ink, 0])
+      : inside ? (v.inside === 'gap' ? null : [fatW, ink2, 1]) : [thinW, ink, 0];
+    const half = Math.max(thinW, fatW) / 2, upper = y - half, lower = y + half;
+    const cuts = [left, right];
+    crossings(y, cuts); crossings(upper, cuts); crossings(lower, cuts);
+    cuts.sort((a, b) => a - b);
+    // Pieces along the stripe: each with the side its middle line is on, and how the band splits there.
+    const pieces = [];
+    for (let k = 0; k < cuts.length - 1; k++) {
+      const a = cuts[k], b = cuts[k + 1];
+      if (b - a < 1e-6) continue;
+      const m = (a + b) / 2, mid = at(m, y), up = at(m, upper), dn = at(m, lower);
+      let bands = [[upper, lower, mid]];
+      // A flat edge through the band (a wide piece, so not the end of a slope): split the band where it crosses.
+      if ((up !== mid || dn !== mid) && b - a > 4 * half) {
+        let lo = up !== mid ? upper : y, hi = up !== mid ? y : lower;
+        const from = at(m, lo);
+        for (let i = 0; i < 12; i++) { const c = (lo + hi) / 2; if (at(m, c) === from) lo = c; else hi = c; }
+        const edge = (lo + hi) / 2;
+        bands = [[upper, edge, up], [edge, lower, dn]];
+      }
+      pieces.push({ a, b, mid, bands });
+    }
+    // Gaps (Bars, Stairs, Gap) open on the stripes round the shape, beside each piece inside it.
+    const sideOf = (k) => (k >= 0 && k < pieces.length ? pieces[k].mid : null);
+    const rects = [];
+    pieces.forEach((piece, k) => {
+      let { a, b } = piece;
+      if (gap && !piece.mid) { if (sideOf(k - 1)) a += gap; if (sideOf(k + 1)) b -= gap; }
+      for (const [b0, b1, inside] of piece.bands) {
+        if (parts === 'in' ? !inside : parts === 'out' ? inside : false) continue;
+        const style = look(inside);
+        if (!style) continue;
+        const shift = inside && v.inside === 'shift' ? pitch / 2 : 0;
+        const y0 = Math.max(b0, y - style[0] / 2) + shift, y1 = Math.min(b1, y + style[0] / 2) + shift;
+        // Touching pieces drawn alike join into one bar: no seam between them, and fewer marks.
+        const last = rects[rects.length - 1];
+        if (last && last.inside === inside && Math.abs(last.b - a) < 1e-6 && Math.abs(last.y0 - y0) < 1e-6 && Math.abs(last.y1 - y1) < 1e-6) last.b = b;
+        else rects.push({ a, b, y0, y1, inside, style });
+      }
+    });
+    // Numbered by side and order, so a bar keeps its number as the stripe moves and its pieces change.
+    const counted = [0, 0];
+    for (const r of rects) bar(r.a, r.b, r.y0, r.y1, r.style[1], r.style[2], id + (r.inside ? 24 : 0) + Math.min(23, counted[r.inside ? 1 : 0]++));
+  }
+  if (v.motion !== 'roll') for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, 1, i * 48, v.motion === 'drift' ? 'out' : 'all');
   if (flow) for (let j = -1; j < lines; j++) {
     const y = top + (j + 0.5 + offset) * pitch;
     if (y <= top || y >= bottom) continue;
-    const slot = ((j - passed) % slots + slots) % slots;
-    stripe(y, Math.min(1, (y - top) / (pitch / 2), (bottom - y) / (pitch / 2)), (slots + slot) * 32, v.motion === 'drift' ? 'in' : 'all');
+    stripe(y, Math.min(1, (y - top) / (pitch / 2), (bottom - y) / (pitch / 2)), (100000 + j - passed) * 48, v.motion === 'drift' ? 'in' : 'all');
   }
   const params = { name: 'Silhouette', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
   return { instances, count, markCount: count, width, height, params };
@@ -4108,7 +4154,10 @@ function animatedSVG(st, { transparent = false } = {}) {
   // Each mark's samples sit in one typed array, F fields per sample.
   const X = 0, Y = 1, W = 2, H = 3, A = 4, O = 5, RED = 6, GREEN = 7, BLUE = 8, RADIUS = 9, F = 10;
   const byId = new Map(), tracks = [];
-  for (let k = 0; k < samples; k++) {
+  // The last sample is the loop's true end. Marks that come back to where they started close on their first sample
+  // as before; a mark that travels on (Silhouette's stripes, each a stripe further down) ends where it really is, and
+  // the loop restarts with another mark in its place.
+  for (let k = 0; k <= samples; k++) {
     const geo = k ? geometryFor(st, k * loop / samples, undefined, true) : first;
     const I = geo.instances, continuous = geo.params.colour.continuous;
     for (let i = 0; i < geo.count; i++) {
@@ -4183,10 +4232,10 @@ function animatedSVG(st, { transparent = false } = {}) {
     let shown = 0;
     for (let k = 0; k < samples; k++) shown = Math.max(shown, d[k * F + O]);
     if (shown < 0.004) continue;  // never visible: left out
-    // Unwrap angles so marks turn the short way; then the closing sample repeats the first.
-    for (let k = 1; k < samples; k++) d[k * F + A] = d[(k - 1) * F + A] + wrap180(d[k * F + A] - d[(k - 1) * F + A]);
-    d.copyWithin(samples * F, 0, F);
-    d[samples * F + A] = d[(samples - 1) * F + A] + wrap180(d[A] - d[(samples - 1) * F + A]);
+    // A mark gone by the loop's end fades out where it last was.
+    if (Number.isNaN(d[samples * F])) { d.copyWithin(samples * F, (samples - 1) * F, samples * F); d[samples * F + O] = 0; }
+    // Unwrap angles so marks turn the short way.
+    for (let k = 1; k < S; k++) d[k * F + A] = d[(k - 1) * F + A] + wrap180(d[k * F + A] - d[(k - 1) * F + A]);
 
     let widest = 0, tallest = 0, rounded = 0;
     for (let k = 0; k < S; k++) { widest = Math.max(widest, d[k * F + W]); tallest = Math.max(tallest, d[k * F + H]); rounded = Math.max(rounded, d[k * F + RADIUS]); }

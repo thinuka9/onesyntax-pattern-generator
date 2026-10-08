@@ -110,7 +110,8 @@ await check('Every moving preset loops without a seam', async () => {
     const a = geometryFor(st, 0), z = geometryFor(st, loopSeconds(st));
     if (a.count !== z.count) return `${b.name}: ${a.count} marks at the start, ${z.count} at the end`;
     let worst = 0;
-    for (let i = 0; i < a.count * STRIDE; i++) worst = Math.max(worst, Math.abs(a.instances[i] - z.instances[i]));
+    // What shows, not the marks' numbers: Silhouette's travelling stripes each take another's place by the end.
+    for (let i = 0; i < a.count * STRIDE; i++) if (i % STRIDE !== 13) worst = Math.max(worst, Math.abs(a.instances[i] - z.instances[i]));
     return worst > 1e-3 ? `${b.name}: frames differ by ${worst}` : null;
   }).filter(Boolean));
   expect(!seams.length, seams.join('\n'));
@@ -272,13 +273,17 @@ await check('Sticker: link round-trip and exports', async () => {
 await check('Silhouette Fold: thin stripes, thick bars round the shape above the fold and inside it below', async () => {
   const rows = await page.evaluate(() => {
     applyPreset('builtin:Merge');
-    const v = { ...state.values, motion: 'none' }, g = silhouetteGeometry(v, 0), I = g.instances, marks = [];
-    for (let n = 0; n < g.count; n++) marks.push({ y: I[n * STRIDE + 1], w: I[n * STRIDE + 2], h: I[n * STRIDE + 3] });
+    const v = { ...state.values, motion: 'none' }, g = silhouetteGeometry(v, 0), I = g.instances;
+    // Pieces by stripe (a stripe's marks share its number's block of 48), each stripe's pieces as spans across.
     const byRow = new Map();
-    for (const m of marks) { const k = Math.round(m.y); byRow.set(k, (byRow.get(k) || []).concat(m)); }
-    const rows = [...byRow.values()];
+    for (let n = 0; n < g.count; n++) {
+      const o = n * STRIDE, row = Math.floor(I[o + 13] / 48);
+      byRow.set(row, (byRow.get(row) || []).concat({ a: I[o] - I[o + 2] / 2, b: I[o] + I[o + 2] / 2, h: I[o + 3] }));
+    }
+    const rows = [...byRow.keys()].sort((x, y) => x - y).map((k) => byRow.get(k));
+    const covered = (pieces) => { let total = 0, end = -Infinity; for (const p of [...pieces].sort((x, y) => x.a - y.a)) { total += Math.max(0, p.b - Math.max(p.a, end)); end = Math.max(end, p.b); } return total; };
     // Each stripe spans the page edge to edge, and its thickest part is thickest far from the fold.
-    return { rows: rows.length, lines: v.lines, spans: rows.map((r) => r.reduce((a, m) => a + m.w, 0)), first: Math.max(...rows[0].map((m) => m.h)), middle: Math.max(...rows[Math.floor(rows.length / 2)].map((m) => m.h)) };
+    return { rows: rows.length, lines: v.lines, spans: rows.map(covered), first: Math.max(...rows[0].map((m) => m.h)), middle: Math.max(...rows[Math.floor(rows.length / 2)].map((m) => m.h)) };
   });
   expect(rows.rows === rows.lines, `${rows.rows} stripes drawn for ${rows.lines}`);
   expect(Math.max(...rows.spans) - Math.min(...rows.spans) < 2, 'a stripe does not run edge to edge');
@@ -292,6 +297,23 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
     return [m, same(at(0), at(L)), !same(at(0.1 * L), at(0.4 * L))];
   }));
   for (const [m, loops, oneWay] of motion) expect(loops && oneWay, `${m}: ${loops ? 'swings back' : 'does not loop'}`);
+  // Smooth: no frame of the loop jumps against the others (a stripe crossing the shape's flat top or bottom used to
+  // switch all at once), and slow, in step with the other patterns.
+  const smooth = await page.evaluate(() => ['roll', 'drift'].map((m) => {
+    const st = structuredClone(presetState('builtin:Merge')); st.values.motion = m;
+    const L = loopSeconds(st), c = document.createElement('canvas'); c.width = c.height = 400;
+    const g = c.getContext('2d', { willReadFrequently: true });
+    const frame = (t) => { const geo = geometryFor(st, t); g.clearRect(0, 0, 400, 400); draw(g, geo, 400 / geo.width); return g.getImageData(0, 0, 400, 400).data; };
+    let previous = frame(0); const steps = [];
+    for (let k = 1; k <= L * 30; k++) {
+      const now = frame(k / 30); let sum = 0;
+      for (let i = 0; i < now.length; i += 4) sum += Math.abs(now[i] - previous[i]) + Math.abs(now[i + 1] - previous[i + 1]) + Math.abs(now[i + 2] - previous[i + 2]);
+      steps.push(sum); previous = now;
+    }
+    const sorted = [...steps].sort((a, b) => a - b);
+    return [m, sorted[sorted.length - 1] / sorted[Math.floor(sorted.length / 2)]];
+  }));
+  for (const [m, jump] of smooth) expect(jump < 1.7, `${m}: a frame jumps ${jump.toFixed(2)} times the typical change`);
 });
 
 // ---------- Hidden errors: things that look fine in the code but not to someone using the app ----------

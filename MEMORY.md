@@ -91,6 +91,8 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
 - **8 October, after the merge:** "no motion in Kaleido Pixels Recursion, check if any other has this issue";
   "I need a full check for hidden errors like this, then deploy after the fix". The release checks now include
   the hidden-error sweep (BUILD.md check 11); run it before every merge.
+- **8 October, later:** "0.5 speed is too fast, check all"; Roll and Drift "not smooth, glitchy, not seamless" (it
+  was so before too). Silhouette was the only pattern far faster than the rest; fixed with the glitches.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

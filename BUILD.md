@@ -78,7 +78,8 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
 8. The presets window opens on the current preset, with the group bar on its group.
 9. The sticker survives a share link and exports as PNG, SVG and animated SVG, cut out (transparent round its
    outline, Transparent on or off); the seed dice never turns it back on.
-10. Silhouette's fold: stripes edge to edge, bars thickest away from the fold; Roll and Drift loop one way.
+10. Silhouette's fold: stripes edge to edge, bars thickest away from the fold; Roll and Drift loop one way and
+    smoothly (no frame jumps more than 1.7 times the typical change).
 11. Hidden errors, the kind that pass a glance at the code but not someone using the app:
     - every preset that moves moves on screen, and every still one keeps still (screenshots a second apart), and
       moving ones still move on the sticker;
