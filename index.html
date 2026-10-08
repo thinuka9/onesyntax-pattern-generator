@@ -98,11 +98,11 @@
   }
   /* Lockup proportions from the brand file: symbol and wordmark share a height, 0.36 × height apart. */
   .logo { display: flex; align-items: center; }
-  /* Symbol and wordmark as one drawing, cut into pixels (so it reads solid). On hover a wave of pixels
-     blinks once, left to right, and the logo lands solid again; it never loops. */
+  /* Symbol and wordmark as one drawing, cut into pixels (so it reads solid). On hover a narrow wave of pixels
+     dims once, left to right, and the logo lands solid again; it never loops. */
   .logo .lockup { display: block; height: 18px; width: auto; }
-  .logo:hover .px { animation: px-strobe .32s steps(1, end) var(--d) 1 both; }
-  @keyframes px-strobe { 0% { opacity: 1; } 30% { opacity: 0; } 70% { opacity: 1; } }
+  .logo:hover .px { animation: px-strobe .28s steps(1, end) var(--d) 1 both; }
+  @keyframes px-strobe { 0% { opacity: 1; } 40% { opacity: .4; } 75% { opacity: 1; } }
   .view { position: relative; display: flex; gap: 2px; padding: 2px; background: rgba(127,127,127,.2); }
   .view .indicator { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; background: var(--white); pointer-events: none; }
   .view button { position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; font-size: 13px; font-weight: 500; opacity: .85; transition: color .25s var(--ease), opacity .25s var(--ease); }
@@ -544,7 +544,7 @@ for (const el of document.querySelectorAll('[data-icon]')) el.insertAdjacentHTML
 // Micro-animations are Motion (motion.dev) springs. Without the library, or with reduced motion on,
 // every change lands instantly and nothing depends on an animation finishing.
 const MOTION = window.Motion;
-// The header logo's pixels: three a side, each blinking once as a clean wave runs left to right,
+// The header logo's pixels: three a side, each dimming once as a narrow wave runs left to right,
 // leaning so the top row leads.
 (() => {
   const host = document.getElementById('osPixels'); if (!host) return;
@@ -553,7 +553,7 @@ const MOTION = window.Motion;
   for (let y = 0; y < H; y += cell) for (let x = 0; x < W; x += cell) {
     const r = document.createElementNS(ns, 'rect');
     r.setAttribute('x', x); r.setAttribute('y', y); r.setAttribute('width', cell + 0.05); r.setAttribute('height', cell + 0.05);
-    r.setAttribute('class', 'px'); r.style.setProperty('--d', (x / W * 0.5 + y / H * 0.08).toFixed(3) + 's');
+    r.setAttribute('class', 'px'); r.style.setProperty('--d', (x / W * 0.6 + y / H * 0.07).toFixed(3) + 's');
     frag.appendChild(r);
   }
   host.replaceChildren(frag);
