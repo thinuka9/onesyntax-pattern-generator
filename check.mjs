@@ -314,6 +314,23 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
     return [m, sorted[sorted.length - 1] / sorted[Math.floor(sorted.length / 2)]];
   }));
   for (const [m, jump] of smooth) expect(jump < 1.7, `${m}: a frame jumps ${jump.toFixed(2)} times the typical change`);
+  // No slivers: every piece of a moving stripe sits centred on that stripe, unless the frame's edge cuts it.
+  const loose = await page.evaluate(() => ['roll', 'drift'].flatMap((m) => {
+    const st = structuredClone(presetState('builtin:Merge')); st.values.motion = m;
+    const L = loopSeconds(st), out = [], v = st.values, H = FORMATS[v.format][1], margin = v.margin * Math.min(...FORMATS[v.format]);
+    for (let k = 0; k < 40; k++) {
+      const g = geometryFor(st, k / 40 * L), I = g.instances, middles = new Map();
+      for (let n = 0; n < g.count; n++) {
+        const o = n * STRIDE, y = I[o + 1], h = I[o + 3];
+        if (y - h / 2 <= margin + 0.01 || y + h / 2 >= H - margin - 0.01) continue;  // cut by the frame
+        const stripe = Math.floor(I[o + 13] / 48);
+        if (!middles.has(stripe)) middles.set(stripe, y);
+        else if (Math.abs(middles.get(stripe) - y) > 0.01) { out.push(`${m} at ${(k / 40 * L).toFixed(2)} s: a piece ${Math.abs(middles.get(stripe) - y).toFixed(1)} px off its stripe`); break; }
+      }
+    }
+    return out.slice(0, 3);
+  }));
+  expect(!loose.length, loose.join('\n'));
 });
 
 // ---------- Hidden errors: things that look fine in the code but not to someone using the app ----------

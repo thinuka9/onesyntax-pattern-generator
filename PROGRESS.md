@@ -135,6 +135,11 @@ stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouett
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **No slivers or ghost lines in Roll and Drift (8 October):** splitting a stripe along the shape's flat top and
+  bottom left a thin strip of its bar floating beside it, and stripes thinned to a faint hairline as they left the
+  page. Now each side's bar keeps centred on its stripe and is as thick as its share of the stripe, so a crossing
+  stripe thickens or thins in place; and moving stripes slide in and out under the frame's edge instead of thinning.
+  A release check holds every piece of a moving stripe on its stripe (the old way failed it by 11 to 14 px).
 - **Centre knob always reachable (8 October):** "missing the centre control we had before". It was there, but on
   Event Stream and Event Loop (Orbit, centred on the art's corner) it was parked at the window's corner under the
   OneSyntax and Fill/Fit bar whenever the art filled the screen. It now stays on the art as it shows, off the

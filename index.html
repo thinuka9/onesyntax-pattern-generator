@@ -1530,9 +1530,9 @@ function silhouetteGeometry(v, time, pool) {
   const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' || fold ? v.ink2 : v.ink);
   // Roll and Drift move the stripes, never the shape or the fold: Roll sends every stripe down the page through the
   // shape, Drift only the stripes inside it, past the still ones round it. Two stripes a beat (one every 5 s at
-  // Speed 0.5, in step with the other patterns' slowest), so a loop always ends on whole stripes; each thins away as
-  // it leaves one edge and grows from nothing at the other. A stripe keeps its number while it travels, so a file's
-  // marks glide rather than swap.
+  // Speed 0.5, in step with the other patterns' slowest), so a loop always ends on whole stripes; each slides out
+  // under one edge of the frame and in at the other. A stripe keeps its number while it travels, so a file's marks
+  // glide rather than swap.
   const flow = v.motion === 'roll' || v.motion === 'drift', moved = flow ? tau * 2 : 0;
   const offset = moved - Math.floor(moved), passed = Math.floor(moved);
   const most = (2 * lines + 2) * 48, instances = E.instanceBuffer(pool, most * STRIDE);
@@ -1557,16 +1557,17 @@ function silhouetteGeometry(v, time, pool) {
       previous = now; px = x;
     }
   }
-  /** One stripe at y, `fade` times as thick, drawn round the shape ('out'), inside it ('in') or both ('all'). Each
-   *  piece's ends come from where the stripe's middle line crosses the shape, so a bar ends square on a slope. Where
-   *  the shape's edge runs flat through the stripe (its top and bottom), the stripe is split along the edge instead,
-   *  so a moving stripe changes over smoothly rather than all at once as its middle crosses. */
-  function stripe(y, fade, id, parts) {
+  /** One stripe at y, drawn round the shape ('out'), inside it ('in') or both ('all'); `clip` cuts it to the stripes'
+   *  frame, so a moving stripe slides in and out under the frame's edge. Each piece's ends come from where the
+   *  stripe's middle line crosses the shape, so a bar ends square on a slope. Where the shape's edge runs flat through
+   *  the stripe (its top and bottom), each side's bar is as thick as the share of the stripe on that side, centred on
+   *  the stripe: a moving stripe thickens or thins smoothly as it crosses, never leaving a sliver behind. */
+  function stripe(y, clip, id, parts) {
     let thinW, fatW, round = false;
     if (fold) {
       const level = foldLevel(y), t = thick(v.weight);
-      thinW = t * fade; fatW = (t + Math.max(0, thick(v.innerWeight) - t) * Math.abs(level)) * fade; round = level < 0;
-    } else { thinW = thick(v.weight) * fade; fatW = thick(v.inside === 'shift' ? v.weight : v.innerWeight) * fade; }
+      thinW = t; fatW = t + Math.max(0, thick(v.innerWeight) - t) * Math.abs(level); round = level < 0;
+    } else { thinW = thick(v.weight); fatW = thick(v.inside === 'shift' ? v.weight : v.innerWeight); }
     // How each side is drawn: [width, colour, layer], or null for nothing (Gap's inside).
     const look = (inside) => fold
       ? (inside !== round ? [fatW, ink2, 1] : [thinW, ink, 0])
@@ -1575,22 +1576,22 @@ function silhouetteGeometry(v, time, pool) {
     const cuts = [left, right];
     crossings(y, cuts); crossings(upper, cuts); crossings(lower, cuts);
     cuts.sort((a, b) => a - b);
-    // Pieces along the stripe: each with the side its middle line is on, and how the band splits there.
+    // Pieces along the stripe: the side its middle line is on, and the share of the stripe inside the shape there.
     const pieces = [];
     for (let k = 0; k < cuts.length - 1; k++) {
       const a = cuts[k], b = cuts[k + 1];
       if (b - a < 1e-6) continue;
       const m = (a + b) / 2, mid = at(m, y), up = at(m, upper), dn = at(m, lower);
-      let bands = [[upper, lower, mid]];
-      // A flat edge through the band (a wide piece, so not the end of a slope): split the band where it crosses.
+      let share = mid ? 1 : 0;
+      // A flat edge through the stripe (a wide piece, so not the end of a slope): how much of it lies inside.
       if ((up !== mid || dn !== mid) && b - a > 4 * half) {
         let lo = up !== mid ? upper : y, hi = up !== mid ? y : lower;
         const from = at(m, lo);
         for (let i = 0; i < 12; i++) { const c = (lo + hi) / 2; if (at(m, c) === from) lo = c; else hi = c; }
         const edge = (lo + hi) / 2;
-        bands = [[upper, edge, up], [edge, lower, dn]];
+        share = ((up ? edge - upper : 0) + (dn ? lower - edge : 0)) / (lower - upper);
       }
-      pieces.push({ a, b, mid, bands });
+      pieces.push({ a, b, mid, share });
     }
     // Gaps (Bars, Stairs, Gap) open on the stripes round the shape, beside each piece inside it.
     const sideOf = (k) => (k >= 0 && k < pieces.length ? pieces[k].mid : null);
@@ -1598,12 +1599,13 @@ function silhouetteGeometry(v, time, pool) {
     pieces.forEach((piece, k) => {
       let { a, b } = piece;
       if (gap && !piece.mid) { if (sideOf(k - 1)) a += gap; if (sideOf(k + 1)) b -= gap; }
-      for (const [b0, b1, inside] of piece.bands) {
-        if (parts === 'in' ? !inside : parts === 'out' ? inside : false) continue;
+      for (const [inside, cover] of [[false, 1 - piece.share], [true, piece.share]]) {
+        if (cover <= 0 || (parts === 'in' && !inside) || (parts === 'out' && inside)) continue;
         const style = look(inside);
         if (!style) continue;
         const shift = inside && v.inside === 'shift' ? pitch / 2 : 0;
-        const y0 = Math.max(b0, y - style[0] / 2) + shift, y1 = Math.min(b1, y + style[0] / 2) + shift;
+        let y0 = y + shift - style[0] * cover / 2, y1 = y + shift + style[0] * cover / 2;
+        if (clip) { y0 = Math.max(y0, top); y1 = Math.min(y1, bottom); }
         // Touching pieces drawn alike join into one bar: no seam between them, and fewer marks.
         const last = rects[rects.length - 1];
         if (last && last.inside === inside && Math.abs(last.b - a) < 1e-6 && Math.abs(last.y0 - y0) < 1e-6 && Math.abs(last.y1 - y1) < 1e-6) last.b = b;
@@ -1614,11 +1616,12 @@ function silhouetteGeometry(v, time, pool) {
     const counted = [0, 0];
     for (const r of rects) bar(r.a, r.b, r.y0, r.y1, r.style[1], r.style[2], id + (r.inside ? 24 : 0) + Math.min(23, counted[r.inside ? 1 : 0]++));
   }
-  if (v.motion !== 'roll') for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, 1, i * 48, v.motion === 'drift' ? 'out' : 'all');
-  if (flow) for (let j = -1; j < lines; j++) {
+  if (v.motion !== 'roll') for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, false, i * 48, v.motion === 'drift' ? 'out' : 'all');
+  // Moving stripes, one each side beyond the frame, cut to it as they slide in and out.
+  if (flow) for (let j = -1; j <= lines; j++) {
     const y = top + (j + 0.5 + offset) * pitch;
-    if (y <= top || y >= bottom) continue;
-    stripe(y, Math.min(1, (y - top) / (pitch / 2), (bottom - y) / (pitch / 2)), (100000 + j - passed) * 48, v.motion === 'drift' ? 'in' : 'all');
+    if (y + pitch / 2 <= top || y - pitch / 2 >= bottom) continue;
+    stripe(y, true, (100000 + j - passed) * 48, v.motion === 'drift' ? 'in' : 'all');
   }
   const params = { name: 'Silhouette', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
   return { instances, count, markCount: count, width, height, params };
