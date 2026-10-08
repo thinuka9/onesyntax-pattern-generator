@@ -88,6 +88,9 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   {OS} ("3 for now"); cut-off names must show in full on hover; Drift and Roll should loop one way, "without ping
   pong". Then: a seamless loop "doesn't mean repeated shapes, it has to be from lines": the motion comes from the
   stripes moving, with the shape and fold still.
+- **8 October, after the merge:** "no motion in Kaleido Pixels Recursion, check if any other has this issue";
+  "I need a full check for hidden errors like this, then deploy after the fix". The release checks now include
+  the hidden-error sweep (BUILD.md check 11); run it before every merge.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

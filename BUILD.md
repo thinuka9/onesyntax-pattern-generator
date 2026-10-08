@@ -51,8 +51,8 @@ largest size that fits, and the tool says so.
 
 ## Checks to run before a release
 
-`check.mjs` opens the app in Edge or Chrome (as installed; nothing to download) and runs the checks in about a
-minute. Once, from this folder:
+`check.mjs` opens the app in Edge or Chrome (as installed; nothing to download) and runs the checks in about five
+minutes. Once, from this folder:
 
 ```bash
 npm install
@@ -73,11 +73,19 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
 4. No method words (Fourier, Chladni, Gibbs, vector field…) appear in any pattern's panel, tooltip or preset name.
 5. Share links and preset JSON round-trip for every preset, and a save from before the `plate` rename still opens.
 6. PNG, SVG and animated SVG exports download and parse, for every moving preset.
-7. Orbit's animated SVG (Flow, Sway, and Pulse), frozen at set moments, matches the app within 4/255 and loops
-   without a seam.
+7. Orbit's animated SVG (Flow, Sway, and Pulse) and Silhouette's (Roll and Drift), frozen at set moments, match
+   the app within 4/255 and loop without a seam.
 8. The presets window opens on the current preset, with the group bar on its group.
-9. The sticker survives a share link and exports as PNG, SVG and animated SVG.
-10. With `--dist`: the published `index.html` and `engine.js` carry no comments.
+9. The sticker survives a share link and exports as PNG, SVG and animated SVG; the seed dice never turns it back on.
+10. Silhouette's fold: stripes edge to edge, bars thickest away from the fold; Roll and Drift loop one way.
+11. Hidden errors, the kind that pass a glance at the code but not someone using the app:
+    - every preset that moves moves on screen, and every still one keeps still (screenshots a second apart), and
+      moving ones still move on the sticker;
+    - seed remixes of a moving preset still move;
+    - every slider and choice on every preset changes the drawing (none is dead), and none breaks it;
+    - every preset in every format, and ten remixes of each, draws something, with valid numbers, on the page;
+    - a returning session opens an untouched built-in preset as it is now (so fixes reach it) and keeps edits.
+12. With `--dist`: the published `index.html` and `engine.js` carry no comments.
 
 It ends with "All checks passed." (exit code 0), or names each failure. Still by hand, in the browser:
 

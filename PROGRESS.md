@@ -135,6 +135,20 @@ stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouett
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **Hidden-error sweep (8 October), after "no motion in Recursion":** new release checks look at the app the way
+  someone uses it (BUILD.md, check 11) and found, now fixed:
+  - Recursion and the other Kaleido presets stood still on the sticker: their motion is all colour, and the
+    sticker drew every pattern in one colour. A pattern drawn by colour alone now shows its colours as steps of
+    opacity in the sticker's colour.
+  - A returning session kept a built-in preset as it was when last open, so a fixed preset (Recursion moving)
+    never reached it. Untouched built-ins now reopen as they are now; edited ones keep their edits.
+  - Remixes and palettes with one mark colour (Mono Light) left Kaleido Pixels a flat grid: the palette's third
+    colour stands in.
+  - Dead controls: Throttle's Speed and ripple (no ripple; it has a light one now, like Gradient Descent);
+    Refactor's Direction and Speed (no gradient, no ripple: they show only when they can act); Deploy's whole
+    Wave section (its bars read nothing from the wave: hidden there); Readout's Mirror on Binary (Mirror now folds
+    the grain too).
+  - Animated SVG: marks that travel were drawn with crisp edges and snapped a pixel at a time.
 - **Cut-off names (8 October):** a choice too long for its button ends in an ellipsis and shows its whole name as a
   tooltip on hover or keyboard focus.
 - **Sticker colours (8 October):** 18 more schemes from the brand colours after the file's five, picked as tiles
