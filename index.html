@@ -1450,9 +1450,8 @@ const ORBIT_GRID_SECTIONS = [
 // edge, and part of it is a thick bar. Above the fold the bars lie round the shape, below it inside the shape, and
 // they thicken the further a stripe is from the fold (a stripe at the fold is thin all the way along). The bar ends
 // step along the shape's edges, so the shape seems to turn out of the page.
-// Motion: Breathe grows and shrinks the shape; Drift slides it one way, out of one side and back in at the other;
-// Roll sends the fold down the page one way, the next fold (the other way round) following a page behind. Drift and
-// Roll never turn back, so their loops have no swing.
+// Motion: Breathe grows and shrinks the shape. Roll and Drift move the lines instead, one way and never back: Roll
+// runs every stripe down through the shape, Drift only the stripes inside it.
 const SILHOUETTE_DEFAULTS = {
   lines: 22, margin: 0.08, weight: 0.12, shape: 'symbol', size: 0.74, x: 0.5, y: 0.5, gap: 0.03, inside: 'fold', innerWeight: 0.62,
   fold: 0.5, direction: 'across', motion: 'roll', speed: 0.5, depth: 0.4,
@@ -1501,67 +1500,64 @@ function silhouetteGeometry(v, time, pool) {
   const tau = v.speed * time / 5, swing = Math.sin(2 * Math.PI * tau) * E.clamp(v.depth);
   const size = Math.max(0.02, v.size * (v.motion === 'breathe' ? 1 + 0.35 * swing : 1)) * side;
   const left = margin, right = W - margin, top = margin, bottom = H - margin, span = right - left, reach = bottom - top;
-  // The shape is placed and read on the page, so upright stripes neither move nor mirror it. Drift: one crossing of
-  // the stripes a beat, the shape leaving one side as it comes back in at the other.
+  // The shape is placed and read on the page, so upright stripes neither move nor mirror it.
   const picked = (SILHOUETTE_SHAPES[v.shape] || SILHOUETTE_SHAPES.symbol)(), fold = v.inside === 'fold';
   const shape = down ? (u, w) => picked.test(w, u) : picked.test;
-  const cx = (down ? v.y : v.x) * W + (v.motion === 'drift' ? (tau - Math.floor(tau)) * span : 0), cy = (down ? v.x : v.y) * H;
+  const cx = (down ? v.y : v.x) * W, cy = (down ? v.x : v.y) * H;
   // How far the shape reaches across the stripes from its middle.
   const halfDepth = size * (down ? Math.min(1, picked.aspect) : Math.min(1, 1 / picked.aspect)) / 2;
-  const inside = v.motion === 'drift'
-    ? (x, row) => shape((x - (cx - size / 2)) / size, row) || shape((x - span - (cx - size / 2)) / size, row) || shape((x + span - (cx - size / 2)) / size, row)
-    : (x, row) => shape((x - (cx - size / 2)) / size, row);
   const gap = fold ? 0 : Math.max(0, v.gap) * side, samples = 480;
-  // Where the fold is: a wave two pages long, falling to the next fold a page on (which turns the other way), and
-  // Roll moves it two pages a beat. The bars are at their thickest as far from the fold as the shape reaches, so a
-  // short shape ({OS}) is as clear as a tall one.
-  const foldAt = E.clamp(v.fold, 0, 1) * reach + top + (v.motion === 'roll' ? tau * 2 * reach : 0);
-  const ramp = E.clamp(halfDepth, pitch, reach / 2);
-  const foldWave = (y) => {
-    const p = ((y - foldAt) / (2 * reach) % 1 + 1.25) % 1;
-    return E.clamp((p < 0.5 ? 4 * p - 1 : 3 - 4 * p) * reach / 2 / ramp, -1, 1);
-  };
+  // The fold: below it the bars thicken inside the shape, above it round the shape. They are at their thickest as
+  // far from the fold as the shape reaches, so a short shape ({OS}) is as clear as a tall one.
+  const foldAt = E.clamp(v.fold, 0, 1) * reach + top, ramp = E.clamp(halfDepth, pitch, reach / 2);
+  const foldLevel = (y) => E.clamp((y - foldAt) / ramp, -1, 1);
   const thick = (share) => Math.max(0.2, Math.min(0.96, E.clamp(share, 0.02, 1)) * pitch);
   const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' || fold ? v.ink2 : v.ink);
-  const instances = E.instanceBuffer(pool, lines * 16 * STRIDE);
+  // Roll and Drift move the stripes, never the shape or the fold: Roll sends every stripe down the page through the
+  // shape, Drift only the stripes inside it, past the still ones round it. They move a page and a stripe a beat, so
+  // when the loop closes every stripe has taken another's place; each thins away as it leaves one edge and grows
+  // from nothing at the other.
+  const flow = v.motion === 'roll' || v.motion === 'drift', moved = flow ? tau * (lines + 1) : 0;
+  const offset = moved - Math.floor(moved), passed = Math.floor(moved), slots = lines + 1;
+  const most = (2 * lines + 2) * 32, instances = E.instanceBuffer(pool, most * STRIDE);
   let count = 0;
   const bar = (x0, x1, y, thick, rgb, layer, id) => {
-    if (x1 - x0 < 0.5 || count >= lines * 16) return;
+    if (x1 - x0 < 0.5 || count >= most) return;
     const mx = (x0 + x1) / 2;
     if (down) putMark(instances, count++, y, mx, thick, x1 - x0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
     else putMark(instances, count++, mx, y, x1 - x0, thick, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
   };
-  for (let i = 0; i < lines; i++) {
-    const y = margin + (i + 0.5) * pitch, vRow = (y - (cy - size / 2)) / size;
-    // Where this stripe crosses the shape: its spans, sampled across the page.
-    const spans = [];
-    let start = -1;
+  /** One stripe at y, `fade` times as thick: its parts round the shape ('out'), inside it ('in') or both ('all'). */
+  function stripe(y, fade, id, parts) {
+    const vRow = (y - (cy - size / 2)) / size;
+    // Where this stripe crosses the shape (its spans, sampled across the page) and where it runs round it.
+    const spans = [], out = [];
+    let start = -1, from = left;
     for (let j = 0; j <= samples; j++) {
-      const x = left + span * j / samples, hit = j < samples && inside(x, vRow);
+      const x = left + span * j / samples, hit = j < samples && shape((x - (cx - size / 2)) / size, vRow);
       if (hit && start < 0) start = x;
       if (!hit && start >= 0) { spans.push([start, x]); start = -1; }
     }
+    for (const [a, b] of spans) { out.push([from, a]); from = b; }
+    out.push([from, right]);
     if (fold) {
-      // The thick bars: round the shape on the fold's upper side, inside it on its lower side; the thin line fills
-      // the rest of the stripe.
-      const level = foldWave(y), thin = thick(v.weight), fat = thin + Math.max(0, thick(v.innerWeight) - thin) * Math.min(1, Math.abs(level));
-      const out = [];
-      let from = left;
-      for (const [a, b] of spans) { out.push([from, a]); from = b; }
-      out.push([from, right]);
-      const bars = level < 0 ? out : spans, plain = level < 0 ? spans : out;
-      bars.forEach(([a, b], k) => bar(a, b, y, fat, ink2, 1, i * 32 + 16 + k));
-      plain.forEach(([a, b], k) => bar(a, b, y, thin, ink, 0, i * 32 + k));
-      continue;
+      // The thick bars lie round the shape above the fold and inside it below; the thin line fills the rest.
+      const level = foldLevel(y), thin = thick(v.weight), fat = thin + Math.max(0, thick(v.innerWeight) - thin) * Math.abs(level);
+      const round = level < 0;
+      if (parts !== 'in') out.forEach(([a, b], k) => bar(a, b, y, (round ? fat : thin) * fade, round ? ink2 : ink, round ? 1 : 0, id + k));
+      if (parts !== 'out') spans.forEach(([a, b], k) => bar(a, b, y, (round ? thin : fat) * fade, round ? ink : ink2, round ? 0 : 1, id + 16 + k));
+      return;
     }
-    const outer = thick(v.weight), inner = thick(v.innerWeight);
-    let from = left, k = 0;
-    for (const [a, b] of spans) {
-      bar(from, a - gap, y, outer, ink, 0, i * 16 + k++);
-      if (v.inside !== 'gap') bar(a, b, y + (v.inside === 'shift' ? pitch / 2 : 0), v.inside === 'shift' ? outer : inner, ink2, 1, i * 16 + 8 + k);
-      from = b + gap;
-    }
-    bar(from, right, y, outer, ink, 0, i * 16 + 15);
+    if (parts !== 'in') out.forEach(([a, b], k) => bar(a > left ? a + gap : a, b < right ? b - gap : b, y, thick(v.weight) * fade, ink, 0, id + k));
+    if (parts !== 'out' && v.inside !== 'gap') spans.forEach(([a, b], k) =>
+      bar(a, b, y + (v.inside === 'shift' ? pitch / 2 : 0), thick(v.inside === 'shift' ? v.weight : v.innerWeight) * fade, ink2, 1, id + 16 + k));
+  }
+  if (v.motion !== 'roll') for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, 1, i * 32, v.motion === 'drift' ? 'out' : 'all');
+  if (flow) for (let j = -1; j < lines; j++) {
+    const y = top + (j + 0.5 + offset) * pitch;
+    if (y <= top || y >= bottom) continue;
+    const slot = ((j - passed) % slots + slots) % slots;
+    stripe(y, Math.min(1, (y - top) / (pitch / 2), (bottom - y) / (pitch / 2)), (slots + slot) * 32, v.motion === 'drift' ? 'in' : 'all');
   }
   const params = { name: 'Silhouette', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
   return { instances, count, markCount: count, width, height, params };
@@ -1694,7 +1690,7 @@ const PATTERNS = [
         'Inside the shape the stripes become bars in the second colour, step half a stripe down, or leave a gap. Fold lays thick bars round the shape above the fold and inside it below, thicker away from the fold.'],
       ['Motion', [{ ...choice('motion', 'Motion', [['Still', 'none'], ['Breathe', 'breathe'], ['Drift', 'drift'], ['Roll', 'roll']]), rebuild: true },
         { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: (v) => v.motion !== 'none' }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: (v) => v.motion === 'breathe' }],
-        'Breathe grows and shrinks the shape. Drift slides it across and round again; Roll sends the fold down the page. Both run one way, so they loop without swinging back.'],
+        'Breathe grows and shrinks the shape. Roll runs the stripes down through the shape; Drift runs only the stripes inside it. Both run one way and loop without swinging back.'],
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Stripe colour'), colour('ink2', 'Shape colour'), FORMAT] },
   { name: 'Halftone Diagonal', sections: [
@@ -4123,7 +4119,7 @@ function animatedSVG(st, { transparent = false } = {}) {
   const candidates = [];
 
   const pending = [[], [], [], []];  // per layer: { fill, build }
-  let crisp = true;  // square, unturned marks render crisp (and faster) with shape-rendering="crispEdges"
+  let crisp = true;  // square, unturned, unmoving marks render crisp (and faster) with shape-rendering="crispEdges"
   for (const track of tracks) {
     const d = track.data;
     // A mark hidden in some samples keeps its nearest shown shape there, fully transparent.
@@ -4160,7 +4156,8 @@ function animatedSVG(st, { transparent = false } = {}) {
     const turn = series(d, [A], KEYFRAME_TOLERANCE.angle, (p) => num(d[p + A], 1), null, 'rotate');
     const alpha = series(d, [O], KEYFRAME_TOLERANCE.opacity, (p) => num(d[p + O], 2), 'fill-opacity');
     const fill = series(d, [RED, GREEN, BLUE], KEYFRAME_TOLERANCE.colour, (p) => hex(d[p + RED], d[p + GREEN], d[p + BLUE]), 'fill');
-    if (track.shape !== 0 || rounded >= 0.05 || track.skew || turn.animation || turn.value !== '0') crisp = false;
+    // Marks that travel stay smooth: crisp edges would snap them a whole pixel at a time.
+    if (track.shape !== 0 || rounded >= 0.05 || track.skew || turn.animation || turn.value !== '0' || xMoves || yMoves) crisp = false;
 
     // Marks are written once each layer's most common fill is known, so that colour can sit on the layer.
     const element = (tag, attributes, children) => `<${tag}${attributes}${children ? `>${children}</${tag}>` : '/>'}`;
