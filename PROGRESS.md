@@ -135,6 +135,15 @@ stripped by `build.mjs`). 13 patterns, 43 built-in presets (8 October: Silhouett
 - **Bars follow the grid (7 October):** `layout.fitWidth`/`fitHeight` keep each preset's own cell as the reference, so
   margins and more columns or rows shrink the bars rather than overlapping them. Sliders stretch to include the
   current and preset values, so a value past the usual range no longer snaps back.
+- **Silhouette's Roll and Drift, smooth and slower (8 October):** "0.5 is too fast", "not smooth, glitchy, not
+  seamless". The stripes now move two a beat (one every 5 s at Speed 0.5; before, a page and a stripe a beat, about
+  ten times the other patterns' pace, measured as feature speed across every moving preset: nothing else stood out).
+  Two glitches are gone: bar ends came from 480 samples across the page and stepped about 2 px at a time (now found
+  to a fraction of a pixel), and a stripe crossing the shape's flat top or bottom switched all at once as its middle
+  line crossed (now split along the edge, so it changes over gradually). Frame to frame, the largest change in a
+  loop is now within 1.4 times the typical one (2 to 2.8 times before); a release check holds it under 1.7. Stripes
+  keep their numbers as they travel, and the animated SVG ends each mark's loop where it really is, so the file
+  glides too.
 - **Stickers export cut out (8 October):** PNG and SVG stickers are always transparent round the outline; the grey
   round the sticker is only the app's preview page (it went into exports unless Transparent was on). Video keeps
   the grey, as MP4 has no transparency. A release check reads the exported PNG's corners.
