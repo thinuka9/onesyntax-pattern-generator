@@ -131,6 +131,19 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   now fails any hairline, speck or edge sliver, at 12 moments a loop. The studio "loved" a "Vector Transition"
   poster: built as Rise (stripes thicken down the page, faster inside the shape, which emerges from its own top)
   and the Migration preset.
+- **10 October, later:** Silhouette's motion "fades, and broken": Stairs, Gap and Drift were dropped (they drew one
+  side of a stripe, so a stripe crossing the shape's edge could only thin, fade or jump; saves open as Bars and Roll).
+  Every stripe now draws both sides: crossing an edge, its bar grows out of its line; short pieces on moving stripes
+  taper into their neighbours; at the frame's edge bars ease to the base line before it slides under. No opacity
+  anywhere. The centre knob is gone from Silhouette ("no need to move knob") and, elsewhere, is a small knob shown
+  only near the pointer (the rings were "what the hell is this"). Panel section descriptions removed; the
+  {Pattern.OS} wordmark moved to the top left (the panel eyebrow reads "Pattern 06 / 11"). The local folder is now
+  `PLUGIN\pattern-os`; the GitHub repo and the live address still carry the old name.
+- **10 October, last:** "no gaps, fix all and deploy". Breathe's animated SVG was broken (9/255 off: marks followed
+  by number, and numbers pass between pieces as the shape breathes); geometry can now ask the exporter to follow
+  marks by place (`followShapes`), with pieces that split off or join into a like mark held opaque across the change.
+  The release check compares Merge and Migration, Roll and Breathe, at five moments a loop. Its remaining ~3.6/255 on
+  Migration is edge smoothing (moving SVG marks are antialiased; the still is crisp), not a fault.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped
@@ -155,7 +168,7 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
 
 ```
 PLUGIN
-├─ OneSyntaxPatternGenerator/        this repository (private: thinuka9/onesyntax-pattern-generator)
+├─ pattern-os/                       this repository (private: thinuka9/pattern-os, once renamed on GitHub)
 ├─ OneSyntax-Pattern-Generator.zip   the client's copy (handover.ps1)
 ├─ references/                       client reference images (never committed)
 └─ _archive/                         the old studio and the earlier Mac projects

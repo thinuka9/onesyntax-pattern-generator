@@ -71,35 +71,30 @@
   #canvas, #stickerCanvas { position: fixed; inset: 0; width: 100vw; height: 100vh; display: block; }
   #canvas[hidden], #stickerCanvas[hidden] { display: none; }  /* display: block above would otherwise keep a hidden canvas showing */
   .frame { position: fixed; pointer-events: none; box-shadow: 0 18px 50px rgba(0,0,0,.2); }
-  /* The centre handle: rings round a knob, shown over the artwork; difference blending keeps it visible on any colour. */
+  /* The centre handle: a small knob over the shape's or the arcs' centre, shown only when the pointer comes near it
+     (or while it is dragged or focused), so the artwork stays clean. White with a soft dark edge reads on any colour
+     without blending into the pattern. */
   .centre-handle { position: fixed; left: 0; top: 0; width: 0; height: 0; z-index: 3; pointer-events: none; }
-  .centre-handle::before {
-    content: ''; position: absolute; left: -96px; top: -96px; width: 192px; height: 192px; border-radius: 50%; mix-blend-mode: difference;
-    background: repeating-radial-gradient(circle, transparent 0 15px, rgba(255,255,255,.8) 15px 16px);
-    -webkit-mask: radial-gradient(circle, #000 18%, transparent 70%); mask: radial-gradient(circle, #000 18%, transparent 70%);
-    opacity: 0; scale: .55; transition: opacity .25s var(--ease), scale .45s var(--spring);
-  }
   .centre-handle .knob {
-    position: absolute; left: -17px; top: -17px; width: 34px; height: 34px; padding: 0; border-radius: 50%; mix-blend-mode: difference;
-    border: 2px solid #fff; background: radial-gradient(circle, #fff 0 3px, transparent 3.5px); cursor: grab;
+    position: absolute; left: -12px; top: -12px; width: 24px; height: 24px; padding: 0; border-radius: 50%;
+    border: 2px solid #fff; background: radial-gradient(circle, #fff 0 2.5px, transparent 3px), rgba(255,255,255,.12);
+    box-shadow: 0 0 0 1px rgba(0,0,0,.28), 0 2px 8px rgba(0,0,0,.25), inset 0 0 0 1px rgba(0,0,0,.18); cursor: grab;
     opacity: 0; scale: .6; transition: opacity .2s var(--ease), scale .35s var(--spring);
   }
-  .centre-handle.shown::before { opacity: 1; scale: 1; }
   .centre-handle.shown .knob { opacity: 1; scale: 1; pointer-events: auto; }
-  .centre-handle .knob:hover, .centre-handle.dragging .knob { scale: 1.12; }
+  .centre-handle .knob:hover, .centre-handle.dragging .knob { scale: 1.15; }
   .centre-handle.dragging .knob { cursor: grabbing; }
-  .centre-handle.dragging::before { scale: 1.12; }
-  .centre-handle .knob:focus-visible { outline: none; box-shadow: 0 0 0 3px #fff; }
+  .centre-handle .knob:focus-visible { outline: none; box-shadow: 0 0 0 3px var(--accent); }
   /* Small overlays sit on frosted blocks so they stay legible over any pattern. */
   .chrome { background: var(--glass-strong); color: var(--text); -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); }
   .topbar {
     position: fixed; top: 20px; left: 20px; display: flex; gap: 16px; align-items: center; z-index: 4;
     padding: 6px 6px 6px 14px; background: var(--logo-bg); color: var(--logo-text);
   }
-  /* Lockup proportions from the brand file: symbol and wordmark share a height, 0.36 × height apart. */
-  .logo { display: flex; align-items: center; gap: 6.5px; }
-  .logo img { display: block; height: 18px; width: auto; }
-  body[data-tone="dark"] .logo.on-light, body[data-tone="light"] .logo.on-dark { display: none; }
+  /* The {Pattern.OS} wordmark (brand/pattern-os-wordmark.svg, from the Figma file), in the logo block's ink. */
+  .logo { display: flex; align-items: center; }
+  .wordmark { display: block; height: 19px; aspect-ratio: 671 / 109; background: var(--logo-text);
+    -webkit-mask: url(./brand/pattern-os-wordmark.svg) center / contain no-repeat; mask: url(./brand/pattern-os-wordmark.svg) center / contain no-repeat; }
   .view { position: relative; display: flex; gap: 2px; padding: 2px; background: rgba(127,127,127,.2); }
   .view .indicator { position: absolute; top: 2px; bottom: 2px; left: 0; width: 0; background: var(--white); pointer-events: none; }
   .view button { position: relative; z-index: 1; display: flex; align-items: center; gap: 6px; height: 28px; padding: 0 10px; font-size: 13px; font-weight: 500; opacity: .85; transition: color .25s var(--ease), opacity .25s var(--ease); }
@@ -153,9 +148,6 @@
   .panel-head { padding: 26px var(--pad) 12px; }
   .head-top { display: flex; justify-content: space-between; align-items: center; }
   .eyebrow-row { display: flex; align-items: center; }
-  /* The {Pattern.OS} wordmark (brand/pattern-os-wordmark.svg, from the Figma file) in the panel's ink. */
-  .wordmark { display: block; height: 15px; aspect-ratio: 671 / 109; margin-right: 10px; background: var(--text);
-    -webkit-mask: url(./brand/pattern-os-wordmark.svg) center / contain no-repeat; mask: url(./brand/pattern-os-wordmark.svg) center / contain no-repeat; }
   .eyebrow { font: 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   .history { display: flex; gap: 2px; }
   .history button { width: 32px; height: 32px; display: grid; place-items: center; transition: background .2s var(--ease); }
@@ -195,7 +187,6 @@
   .picker { display: grid; gap: 8px; padding: 4px 0 18px; }  /* same rhythm as every other group of rows */
   .sec-body[hidden] { display: none; }
   .sec-body.moving { overflow: hidden; }
-  .sec-hint { margin: -2px 0 4px; font-size: 12.5px; line-height: 1.5; color: var(--muted); }
 
   .ctl { display: grid; grid-template-columns: 116px minmax(0, 1fr); align-items: center; gap: 16px; min-height: var(--control); }
   .ctl > label, .ctl > .label { font-size: 14px; color: var(--text); }
@@ -417,12 +408,7 @@
 <div class="centre-handle" id="centreHandle" hidden><button class="knob" aria-label="Centre" title="Drag to move the centre · double-click to reset"></button></div>
 
 <div class="topbar">
-  <span class="logo on-dark" role="img" aria-label="OneSyntax">
-    <img src="./brand/onesyntax-symbol-white.svg" alt=""><img src="./brand/onesyntax-wordmark-white.svg" alt="">
-  </span>
-  <span class="logo on-light" role="img" aria-label="OneSyntax">
-    <img src="./brand/onesyntax-symbol-black.svg" alt=""><img src="./brand/onesyntax-wordmark-black.svg" alt="">
-  </span>
+  <span class="logo" role="img" aria-label="Pattern.OS by OneSyntax"><span class="wordmark"></span></span>
   <div class="view" role="group" aria-label="Preview">
     <span class="indicator" aria-hidden="true"></span>
     <button data-view="fill" data-icon="fill" title="Fill the screen · crops the edges"><span>Fill</span></button>
@@ -439,7 +425,7 @@
 <aside class="panel glass" id="panel" aria-label="Pattern controls">
   <div class="panel-head">
     <div class="head-top">
-      <span class="eyebrow-row"><span class="wordmark" role="img" aria-label="Pattern.OS"></span><span class="eyebrow" id="eyebrow">/ 01</span></span>
+      <span class="eyebrow-row"><span class="eyebrow" id="eyebrow">Pattern 01</span></span>
       <span class="history">
         <button id="motionSwitch" class="motion-switch" aria-pressed="false" aria-label="Motion" title="Motion (M)"></button>
         <span class="divider" aria-hidden="true"></span>
@@ -1480,7 +1466,7 @@ const ORBIT_GRID_SECTIONS = [
 
 // ---------- Silhouette (7 October; replaced Threshold Stripes) ----------
 // After the Vonyes and One Grove references: stripes run across the page and break round a shape in the middle; inside
-// the shape the bars change (thicker, in the second colour, or shifted half a stripe so they step like stairs), so
+// the shape the bars change (thicker, in the second colour), so
 // the shape shows through the stripes. Shapes are the brand's: the symbol's base (the square with its top-left and
 // bottom-right corners cut a third in, as on the {OS} sticker), the S mark and {OS}. Each stripe is cut where it
 // crosses the shape, so a stripe steps rather than slopes.
@@ -1488,8 +1474,9 @@ const ORBIT_GRID_SECTIONS = [
 // edge, and part of it is a thick bar. Above the fold the bars lie round the shape, below it inside the shape, and
 // they thicken the further a stripe is from the fold (a stripe at the fold is thin all the way along). The bar ends
 // step along the shape's edges, so the shape seems to turn out of the page.
-// Motion: Breathe grows and shrinks the shape. Roll and Drift move the lines instead, one way and never back: Roll
-// runs every stripe down through the shape, Drift only the stripes inside it.
+// Motion: Breathe grows and shrinks the shape; Roll runs every stripe down through it, one way and never back. Every
+// stripe draws both sides of the shape, so as it crosses an edge its bar grows out of its line (10 October: Stairs,
+// Gap and Drift drew one side only, and their crossings could only thin, fade or jump, so they went).
 const SILHOUETTE_DEFAULTS = {
   lines: 22, margin: 0.08, weight: 0.12, shape: 'symbol', size: 0.74, x: 0.5, y: 0.5, gap: 0.03, inside: 'fold', innerWeight: 0.62, bottomWeight: 0.5,
   fold: 0.5, direction: 'across', motion: 'roll', speed: 0.5, depth: 0.4,
@@ -1536,40 +1523,35 @@ function silhouetteGeometry(v, time, pool) {
   const W = down ? height : width, H = down ? width : height, side = Math.min(W, H), margin = E.clamp(v.margin, 0, 0.45) * side;
   const lines = Math.max(2, Math.min(240, Math.round(v.lines))), pitch = (H - 2 * margin) / lines;
   const tau = v.speed * time / 5, swing = Math.sin(2 * Math.PI * tau) * E.clamp(v.depth);
-  const size = Math.max(0.02, v.size * (v.motion === 'breathe' ? 1 + 0.35 * swing : 1)) * side;
+  const breathe = v.motion === 'breathe', size = Math.max(0.02, v.size * (breathe ? 1 + 0.35 * swing : 1)) * side;
   const left = margin, right = W - margin, top = margin, bottom = H - margin, span = right - left, reach = bottom - top;
   // The shape is placed and read on the page, so upright stripes neither move nor mirror it.
-  const picked = (SILHOUETTE_SHAPES[v.shape] || SILHOUETTE_SHAPES.symbol)(), fold = v.inside === 'fold';
+  const picked = (SILHOUETTE_SHAPES[v.shape] || SILHOUETTE_SHAPES.symbol)(), fold = v.inside === 'fold', rise = v.inside === 'rise';
   const shape = down ? (u, w) => picked.test(w, u) : picked.test;
   const cx = (down ? v.y : v.x) * W, cy = (down ? v.x : v.y) * H;
   // How far the shape reaches across the stripes from its middle.
   const halfDepth = size * (down ? Math.min(1, picked.aspect) : Math.min(1, 1 / picked.aspect)) / 2;
-  const rise = v.inside === 'rise', gap = fold || rise ? 0 : Math.max(0, v.gap) * side, samples = 480;
+  const gap = fold || rise ? 0 : Math.max(0, v.gap) * side, samples = 480;
   // The fold: below it the bars thicken inside the shape, above it round the shape. They are at their thickest as
   // far from the fold as the shape reaches, so a short shape ({OS}) is as clear as a tall one.
   const foldAt = E.clamp(v.fold, 0, 1) * reach + top, ramp = E.clamp(halfDepth, pitch, reach / 2);
   const foldLevel = (y) => E.clamp((y - foldAt) / ramp, -1, 1);
   const thick = (share) => Math.max(0.2, Math.min(0.96, E.clamp(share, 0.02, 1)) * pitch);
-  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' || fold || rise ? v.ink2 : v.ink);
-  // Roll and Drift move the stripes, never the shape or the fold: Roll sends every stripe down the page through the
-  // shape, Drift only the stripes inside it, past the still ones round it. Two stripes a beat (one every 5 s at
-  // Speed 0.5, in step with the other patterns' slowest), so a loop always ends on whole stripes; each slides out
-  // under one edge of the frame and in at the other. A stripe keeps its number while it travels, so a file's marks
-  // glide rather than swap.
-  const flow = v.motion === 'roll' || v.motion === 'drift', moved = flow ? tau * 2 : 0;
+  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.ink2);
+  // Roll moves the stripes, never the shape or the fold: every stripe runs down the page through the shape. Two
+  // stripes a beat (one every 5 s at Speed 0.5, in step with the other patterns' slowest), so a loop always ends on
+  // whole stripes; each slides out under the frame's bottom edge and in at its top. A stripe keeps its number while
+  // it travels, so a file's marks glide rather than swap.
+  const roll = v.motion === 'roll', moved = roll ? tau * 2 : 0;
   const offset = moved - Math.floor(moved), passed = Math.floor(moved);
-  const most = (2 * lines + 2) * 48, instances = E.instanceBuffer(pool, most * STRIDE);
+  const most = (lines + 4) * 48, instances = E.instanceBuffer(pool, most * STRIDE);
   let count = 0;
-  const bar = (x0, x1, y0, y1, rgb, layer, id, opacity = 1) => {
-    if (x1 - x0 < 0.5 || y1 - y0 < 0.02 || opacity < 0.02 || count >= most) return;
+  const bar = (x0, x1, y0, y1, rgb, layer, id) => {
+    if (x1 - x0 < 0.5 || y1 - y0 < 0.02 || count >= most) return;
     const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
-    if (down) putMark(instances, count++, my, mx, y1 - y0, x1 - x0, 0, 0, 0, rgb[0], rgb[1], rgb[2], opacity, layer, id);
-    else putMark(instances, count++, mx, my, x1 - x0, y1 - y0, 0, 0, 0, rgb[0], rgb[1], rgb[2], opacity, layer, id);
+    if (down) putMark(instances, count++, my, mx, y1 - y0, x1 - x0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
+    else putMark(instances, count++, mx, my, x1 - x0, y1 - y0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
   };
-  // A bar that is only partly there (sliding under the frame's edge, or crossing out of the side it draws) fades with
-  // how much of it is there instead of thinning: no hairlines, and the stripes come and go smoothly.
-  // Quick, centred on half: a bar is nearly always all there or gone, so a still frame shows no half-faded bars.
-  const fade = (share) => { const s = E.clamp((share - 0.3) / 0.4); return s * s * (3 - 2 * s); };
   const at = (x, y) => shape((x - (cx - size / 2)) / size, (y - (cy - size / 2)) / size);
   /** Where a line at height y crosses the shape's edge, found to a fraction of a pixel (sampled, then halved down). */
   function crossings(y, into) {
@@ -1584,15 +1566,18 @@ function silhouetteGeometry(v, time, pool) {
       previous = now; px = x;
     }
   }
-  /** One stripe at y, drawn round the shape ('out'), inside it ('in') or both ('all'). A moving stripe (`moving`) is
-   *  cut to the stripes' frame, so it slides in and out under the frame's edge. Each piece's ends come from where
-   *  the stripe's middle line crosses the shape, so a bar ends square on a slope, and a sliver of a piece (a stripe
-   *  grazing a curve) takes the side round it rather than leaving a speck. Where a moving stripe
-   *  straddles a flat edge of the shape (its top and bottom), it changes over gradually as it crosses, and always
-   *  on its stripe with no thin strip left over: Fold's bars thicken or thin in place (a thin share hides inside the
-   *  thicker bar), Bars thickens, and a stripe drawing one side only thins and goes before it is a hairline. A
-   *  still stripe never straddles: its middle line decides. */
-  function stripe(y, moving, id, parts, clip = moving) {
+  /**
+   * One stripe at y. Every stripe draws both sides of the shape: a line round it and a bar inside it (Bars, Rise),
+   * or a thin line with a thick bar on one side (Fold). Each piece's ends come from where the stripe's middle line
+   * crosses the shape, so a bar ends square on a slope, and a sliver of a piece (a stripe grazing a curve) takes the
+   * side round it rather than leaving a speck. A stripe that moves against the shape (`moving`: Roll's stripes, and
+   * every stripe while Breathe grows the shape) changes over as it crosses one of the shape's flat edges by growing:
+   * its bar thickens out of its line with the share of the stripe inside, never thinner than the line, never faded.
+   * A still stripe's middle line decides. Roll's stripes (`edge`) are cut by the frame as they slide under its edge,
+   * and their bars ease down to the stripe's base line over the last half stripe first, so only that line passes
+   * under the edge.
+   */
+  function stripe(y, id, moving, edge) {
     let thinW, fatW, round = false;
     if (fold) {
       const level = foldLevel(y), t = thick(v.weight);
@@ -1606,45 +1591,57 @@ function silhouetteGeometry(v, time, pool) {
       const shapeTop = cy - halfDepth, rising = E.clamp((y - shapeTop) / Math.max(pitch, bottom - shapeTop));
       thinW = thick(lineShare);
       fatW = Math.max(thinW, thick(lineShare + (Math.max(lineShare, v.innerWeight) - lineShare) * rising));
-    } else { thinW = thick(v.weight); fatW = thick(v.inside === 'shift' ? v.weight : v.innerWeight); }
-    // How each side is drawn: [width, colour, layer], or null for nothing (Gap's inside).
-    const look = (inside) => fold
-      ? (inside !== round ? [fatW, ink2, 1] : [thinW, ink, 0])
-      : inside ? (v.inside === 'gap' ? null : [fatW, ink2, 1]) : [thinW, ink, 0];
+    } else { thinW = thick(v.weight); fatW = Math.max(thinW, thick(v.innerWeight)); }
+    if (edge) {
+      // Full at its place half a stripe in, just the line by the time the line touches the edge (no bar is thicker
+      // than the stripe's spacing, so none reaches the edge before it has eased down).
+      const base = thick(v.weight), room = Math.max(1e-6, (pitch - base) / 2);
+      const ease = Math.min(E.clamp((y - top - base / 2) / room), E.clamp((bottom - y - base / 2) / room));
+      thinW = base + (thinW - base) * ease; fatW = base + (fatW - base) * ease;
+    }
+    // How each side is drawn: [width, colour, layer]. Fold's thick side is inside the shape below the fold and round
+    // it above; Bars and Rise draw the bar inside.
+    const look = (inside) => ((fold ? inside !== round : inside) ? [fatW, ink2, 1] : [thinW, ink, 0]);
     const half = Math.max(thinW, fatW) / 2, upper = y - half, lower = y + half;
     const cuts = [left, right];
     crossings(y, cuts);
     if (moving) { crossings(upper, cuts); crossings(lower, cuts); }
     cuts.sort((a, b) => a - b);
-    // Pieces along the stripe: the side its middle line is on, and the share of the stripe inside the shape there.
+    // How much of the stripe lies inside the shape at x, where one of the shape's edges runs through it.
+    const coverage = (x, mid) => {
+      const up = at(x, upper), dn = at(x, lower);
+      if (up === mid && dn === mid) return mid ? 1 : 0;
+      let lo = up !== mid ? upper : y, hi = up !== mid ? y : lower;
+      const from = at(x, lo);
+      for (let i = 0; i < 12; i++) { const c = (lo + hi) / 2; if (at(x, c) === from) lo = c; else hi = c; }
+      const edgeAt = (lo + hi) / 2;
+      return ((up ? edgeAt - upper : 0) + (dn ? lower - edgeAt : 0)) / (lower - upper);
+    };
+    // Pieces along the stripe: the side its middle line is on, and the share of the stripe inside the shape there. A
+    // moving stripe measures that share where a flat edge runs through it (a wide piece, so not the end of a slope).
     let pieces = [];
     for (let k = 0; k < cuts.length - 1; k++) {
       const a = cuts[k], b = cuts[k + 1];
       if (b - a < 1e-6) continue;
       const m = (a + b) / 2, mid = at(m, y);
-      let share = mid ? 1 : 0;
-      if (moving) {
-        const up = at(m, upper), dn = at(m, lower);
-        // A flat edge through the stripe (a wide piece, so not the end of a slope): how much of it lies inside.
-        if ((up !== mid || dn !== mid) && b - a > 4 * half) {
-          let lo = up !== mid ? upper : y, hi = up !== mid ? y : lower;
-          const from = at(m, lo);
-          for (let i = 0; i < 12; i++) { const c = (lo + hi) / 2; if (at(m, c) === from) lo = c; else hi = c; }
-          const edge = (lo + hi) / 2;
-          share = ((up ? edge - upper : 0) + (dn ? lower - edge : 0)) / (lower - upper);
-        }
-      }
-      pieces.push({ a, b, mid, share });
+      pieces.push({ a, b, m, mid, share: moving && b - a > 4 * half ? coverage(m, mid) : mid ? 1 : 0 });
+    }
+    // Where a flat edge meets a slope (the symbol's cut corners), the short pieces beside a stripe crossing that edge
+    // measure their own share too, so they change over smoothly with it instead of flipping as the edge passes.
+    if (moving) for (const order of [1, -1]) for (let k = order > 0 ? 0 : pieces.length - 1; k >= 0 && k < pieces.length; k += order) {
+      const piece = pieces[k], next = pieces[k - order];
+      if (next && next.share > 0 && next.share < 1 && (piece.share === 0 || piece.share === 1)) piece.share = coverage(piece.m, piece.mid);
     }
     // Specks: a piece between two of the other side, shorter than three quarters of a stripe's spacing (or one at an
     // end shorter than the stripe is thick), reads as a dot: it takes the side round it, then like pieces join.
+    // A moving stripe's short pieces taper instead (below), so nothing flips as a piece shortens past the limit.
     const whole = (piece) => piece.share === 0 || piece.share === 1;
-    for (let k = 0; k < pieces.length; k++) {
+    for (let k = 0; k < pieces.length && !moving; k++) {
       const piece = pieces[k], before = pieces[k - 1], after = pieces[k + 1];
       if (!whole(piece)) continue;
       // Its length as drawn: a piece round the shape loses a gap beside each piece inside it.
       const length = piece.b - piece.a - (gap && !piece.mid ? gap * ((before && before.mid ? 1 : 0) + (after && after.mid ? 1 : 0)) : 0);
-      const own = (look(piece.mid) || [0])[0];  // how thick it is drawn
+      const own = look(piece.mid)[0];  // how thick it is drawn
       let side = null;
       if (before && after) { if (length < Math.max(2 * own, 0.75 * pitch) && whole(before) && whole(after) && before.mid === after.mid) side = before.mid; }
       else if ((before || after) && length < own && whole(before || after)) side = (before || after).mid;
@@ -1655,56 +1652,40 @@ function silhouetteGeometry(v, time, pool) {
       if (last && whole(last) && whole(piece) && last.mid === piece.mid) last.b = piece.b; else list.push({ ...piece });
       return list;
     }, []);
-    // Gaps (Bars, Stairs, Gap) open on the stripes round the shape, beside each piece inside it.
+    // Bars' gaps open on the stripes round the shape, beside each piece inside it.
     const sideOf = (k) => (k >= 0 && k < pieces.length ? pieces[k].mid : null);
     const rects = [];
-    const add = (a, b, y0, y1, inside, style, opacity = 1) => {
-      if (clip) {
-        // Under the frame's edge the bar is cut, and fades with the share of it still showing.
-        const full = y1 - y0;
-        y0 = Math.max(y0, top); y1 = Math.min(y1, bottom);
-        if (full > 0) opacity *= fade((y1 - y0) / full);
-      }
+    const add = (a, b, width, inside) => {
+      let y0 = y - width / 2, y1 = y + width / 2;
+      if (edge) { y0 = Math.max(y0, top); y1 = Math.min(y1, bottom); }
       // Touching pieces drawn alike join into one bar: no seam between them, and fewer marks.
       const last = rects[rects.length - 1];
-      if (last && last.inside === inside && Math.abs(last.b - a) < 1e-6 && Math.abs(last.y0 - y0) < 1e-6 && Math.abs(last.y1 - y1) < 1e-6 && Math.abs(last.opacity - opacity) < 1e-6) last.b = b;
-      else rects.push({ a, b, y0, y1, inside, style, opacity });
+      if (last && last.inside === inside && Math.abs(last.b - a) < 1e-6 && Math.abs(last.y0 - y0) < 1e-6 && Math.abs(last.y1 - y1) < 1e-6) last.b = b;
+      else rects.push({ a, b, y0, y1, inside, style: look(inside) });
     };
     pieces.forEach((piece, k) => {
       let { a, b } = piece;
       if (gap && !piece.mid) { if (sideOf(k - 1)) a += gap; if (sideOf(k + 1)) b -= gap; }
-      if (!fold) {
-        // One bar on the stripe. Bars thickens it from the stripe's weight to the inner weight as it crosses, in the
-        // inner colour from half way. A stripe drawing one side only (Gap, each of Stairs' two sets, Drift's) keeps
-        // its bar's thickness and fades it as the stripe crosses out of that side.
-        const share = piece.share;
-        if (parts === 'all' && (v.inside === 'bars' || rise)) {
-          const inside = share >= 0.5, style = look(inside), width = thinW + (fatW - thinW) * share;
-          add(a, b, y - width / 2, y + width / 2, inside, style);
-          return;
+      // The thick side's share of the piece: the bar grows out of the line with it, in the bar's colour from half way.
+      const thickInside = fold ? !round : true, grownOf = (q) => (thickInside ? q.share : 1 - q.share);
+      let grown = grownOf(piece);
+      // On a moving stripe, a piece shorter than a still stripe would let it be (between two of the other side, or at
+      // an end) tapers towards its neighbours' thickness as it shortens, so it melts into them instead of flipping.
+      // It follows what they draw at that moment, part-way across an edge or not, and nothing in it switches as an edge
+      // passes (where the neighbours draw as the piece does, the taper changes nothing), so it never jumps.
+      // It tapers only as far as its neighbours differ from it (both of them, between two), so a bar's end on a slope,
+      // beside a piece drawn like it, keeps its square end.
+      if (moving) {
+        const before = pieces[k - 1], after = pieces[k + 1], length = piece.b - piece.a;
+        const differs = (q) => (q ? Math.abs(grownOf(q) - grown) : 0);
+        const weight = before && after ? Math.min(differs(before), differs(after)) : differs(before || after);
+        const own = thinW + (fatW - thinW) * grown, limit = before && after ? Math.max(2 * own, 0.75 * pitch) : own;
+        if (weight > 0 && length < limit) {
+          const target = before && after ? (grownOf(before) + grownOf(after)) / 2 : grownOf(before || after);
+          grown += (target - grown) * weight * (1 - (length / limit) ** 2);
         }
-        const inside = parts === 'in';
-        const cover = inside ? share : 1 - share, style = look(inside);
-        if (!style || cover <= 0) return;
-        add(a, b, y - style[0] / 2, y + style[0] / 2, inside, style, fade(cover));
-        return;
       }
-      // Fold, drawing both sides: the thin line runs on, and the thick bar grows out of it with the share of the stripe
-      // on the thick side, so a stripe crossing the shape's flat edge never draws thinner than its line.
-      const one = parts !== 'all';
-      if (!one) {
-        const thickSide = !round, grown = thickSide ? piece.share : 1 - piece.share, width = thinW + (fatW - thinW) * grown;
-        const inside = grown >= 0.5 ? thickSide : !thickSide;
-        add(a, b, y - width / 2, y + width / 2, inside, look(inside));
-        return;
-      }
-      // Drawing one side only (Drift's), a stripe keeps that side's thickness and fades as it crosses out of it.
-      const sides = [[false, 1 - piece.share], [true, piece.share]]
-        .filter(([inside, cover]) => cover > 0 && !(parts === 'in' && !inside) && !(parts === 'out' && inside))
-        .map(([inside, cover]) => ({ inside, style: look(inside), cover, width: look(inside)[0] * (one ? 1 : cover) }));
-      if (!sides.length) return;
-      const shown = sides.reduce((best, x) => (x.width > best.width ? x : best));
-      add(a, b, y - shown.width / 2, y + shown.width / 2, shown.inside, shown.style, one ? fade(shown.cover) : 1);
+      add(a, b, thinW + (fatW - thinW) * grown, grown >= 0.5 ? thickInside : !thickInside);
     });
     // Numbered by side and order, so a bar keeps its number as the stripe moves and its pieces change.
     // A bar standing alone and shorter than half a stripe's spacing, or than one and a half times its thickness, reads
@@ -1714,28 +1695,24 @@ function silhouetteGeometry(v, time, pool) {
     for (let k = 0; k < rects.length; k++) {
       const r = rects[k], n = id + (r.inside ? 24 : 0) + Math.min(23, counted[r.inside ? 1 : 0]++);
       const atSide = r.a <= left + 1e-6 || r.b >= right - 1e-6;
-      const joined = (k > 0 && Math.abs(rects[k - 1].b - r.a) < 1e-6) || (k < rects.length - 1 && Math.abs(rects[k + 1].a - r.b) < 1e-6);
+      const drawn = (q) => q && q.b - q.a >= 0.5;  // a neighbour under half a pixel is never drawn, so joins nothing
+      const joined = (drawn(rects[k - 1]) && Math.abs(rects[k - 1].b - r.a) < 1e-6) || (drawn(rects[k + 1]) && Math.abs(rects[k + 1].a - r.b) < 1e-6);
       if (!atSide && !joined && r.b - r.a < Math.max(1.5 * (r.y1 - r.y0), 0.5 * pitch)) continue;
-      if (r.b - r.a < r.y1 - r.y0) continue;
-      bar(r.a, r.b, r.y0, r.y1, r.style[1], r.style[2], n, r.opacity);
+      if (!joined && r.b - r.a < r.y1 - r.y0) continue;  // a lone dot; a short piece joined to its line stays
+      bar(r.a, r.b, r.y0, r.y1, r.style[1], r.style[2], n);
     }
   }
-  // Stairs draws the shape's inside on stripes of its own, half a stripe on from the others and each cut where it
-  // crosses the shape, so the shape sits exactly where it is (both sets stop at its edges).
-  const stairs = v.inside === 'shift' && !fold, still = v.motion !== 'roll';
-  if (still) for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, false, i * 48, stairs || v.motion === 'drift' ? 'out' : 'all');
-  if (stairs && !flow) for (let k = 0; k <= lines; k++) stripe(top + k * pitch, false, (50000 + k) * 48, 'in', true);
-  // Moving stripes, one each side beyond the frame, cut to it as they slide in and out.
-  if (flow) for (let j = -2; j <= lines; j++) {
-    const y = top + (j + 0.5 + offset) * pitch, n = 100000 + j - passed;
-    const show = (at) => at + pitch / 2 > top && at - pitch / 2 < bottom;
-    if (stairs) {
-      if (v.motion === 'roll' && show(y)) stripe(y, true, n * 48, 'out');
-      if (show(y + pitch / 2)) stripe(y + pitch / 2, true, (n + 50000) * 48, 'in');
-    } else if (show(y)) stripe(y, true, n * 48, v.motion === 'drift' ? 'in' : 'all');
+  if (!roll) for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, i * 48, breathe, false);
+  // Rolling stripes, one each side beyond the frame, cut to it as they slide in and out.
+  else {
+    for (let j = -2; j <= lines; j++) {
+      const y = top + (j + 0.5 + offset) * pitch;
+      if (y + pitch / 2 > top && y - pitch / 2 < bottom) stripe(y, (100000 + j - passed) * 48, true, true);
+    }
   }
   const params = { name: 'Silhouette', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
-  return { instances, count, markCount: count, width, height, params };
+  // Breathing splits and joins a stripe's pieces as the shape grows, so its animated SVG follows marks by place.
+  return { instances, count, markCount: count, width, height, params, followShapes: breathe };
 }
 
 // ---------- Readout (7 October; replaced Barcode) ----------
@@ -1812,12 +1789,13 @@ const FLAT_KINDS = {
   silhouette: {
     defaults: SILHOUETTE_DEFAULTS, geometry: silhouetteGeometry,
     speeds: (v) => [v.motion !== 'none' ? v.speed : 0],
-    // Only combinations where the shape reads: {OS} has fine detail, so it takes more stripes, drawn large, and not
-    // Stairs or Gap (they break it into scattered pieces); the symbol's base reads every way. The S mark's cut-outs
-    // read only in Rise, where the weight builds them up.
+    // Only combinations that read and move cleanly. Fold, Bars and Rise draw both sides of every stripe, so a stripe
+    // crossing the shape's edge grows out of its line. {OS} and the S mark have fine detail: they take more stripes,
+    // drawn large and across (upright stripes cut the letters apart), and the S mark reads only in Rise, where the
+    // weight builds it up.
     remix: (v, pick, palette) => {
       const shape = pick(['symbol', 'symbol', 'monogram', 'mark']), simple = shape === 'symbol';
-      const inside = simple ? pick(['fold', 'fold', 'bars', 'shift', 'rise', 'rise']) : shape === 'mark' ? 'rise' : pick(['fold', 'bars', 'rise']);
+      const inside = simple ? pick(['fold', 'fold', 'bars', 'rise', 'rise']) : shape === 'mark' ? 'rise' : pick(['fold', 'bars', 'rise']);
       const fold = inside === 'fold', rise = inside === 'rise';
       if (rise) {
         return Object.assign(v, orbitPalette(palette.name), {
@@ -1826,11 +1804,19 @@ const FLAT_KINDS = {
       }
       return Object.assign(v, orbitPalette(palette.name), {
         shape, lines: simple ? pick([18, 22, 26, 32]) : pick([36, 44, 52]), inside, size: simple ? pick([0.6, 0.74, 0.9]) : pick([0.8, 0.9]),
-        weight: fold ? pick([0.1, 0.12, 0.16]) : inside === 'shift' ? pick([0.3, 0.4]) : pick([0.2, 0.32, 0.5]), innerWeight: fold ? pick([0.5, 0.62, 0.75]) : 0.6,
-        direction: pick(['across', 'across', 'down']) });
+        weight: fold ? pick([0.1, 0.12, 0.16]) : pick([0.2, 0.32, 0.5]), innerWeight: fold ? pick([0.5, 0.62, 0.75]) : 0.6,
+        direction: simple ? pick(['across', 'across', 'down']) : 'across' });
     },
     // Shapes retired on 8 October (steps, diamond, circle; the V before them) open as the symbol.
-    fix: (v) => { if (!SILHOUETTE_SHAPES[v.shape]) v.shape = 'symbol'; return v; },
+    // Shapes retired on 8 October (steps, diamond, circle; the V before them) open as the symbol. Stairs, Gap and Drift
+    // were dropped on 10 October (each drew one side of a stripe, which could not cross the shape's edge cleanly):
+    // their saves open as Bars and Roll.
+    fix: (v) => {
+      if (!SILHOUETTE_SHAPES[v.shape]) v.shape = 'symbol';
+      if (v.inside === 'shift' || v.inside === 'gap') v.inside = 'bars';
+      if (v.motion === 'drift') v.motion = 'roll';
+      return v;
+    },
   },
   readout: {
     defaults: READOUT_DEFAULTS, geometry: readoutGeometry,
@@ -1884,17 +1870,17 @@ const PATTERNS = [
         choice('direction', 'Direction', [['Across', 'across'], ['Down', 'down']]), range('margin', 'Margin', 0, 0.45, 0.01, pct)]],
       ['Shape', [choice('shape', 'Shape', [['Symbol', 'symbol'], ['S mark', 'mark'], ['{OS}', 'monogram']]),
         range('size', 'Size', 0.05, 1.6, 0.01, pct), range('x', 'Across', 0, 1, 0.01, pct), range('y', 'Down', 0, 1, 0.01, pct),
-        { ...choice('inside', 'Inside', [['Bars', 'bars'], ['Stairs', 'shift'], ['Gap', 'gap'], ['Fold', 'fold'], ['Rise', 'rise']]), rebuild: true },
+        { ...choice('inside', 'Inside', [['Fold', 'fold'], ['Bars', 'bars'], ['Rise', 'rise']]), rebuild: true },
         { ...range('innerWeight', 'Inner weight', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'bars' },
         { ...range('innerWeight', 'Thickest', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'fold' },
         { ...range('bottomWeight', 'Lines at bottom', 0.02, 0.96, 0.01, pct), when: (v) => v.inside === 'rise' },
         { ...range('innerWeight', 'Inside at bottom', 0.02, 0.96, 0.01, pct), when: (v) => v.inside === 'rise' },
         { ...range('fold', 'Fold at', 0, 1, 0.01, pct), when: (v) => v.inside === 'fold' },
-        { ...range('gap', 'Gap', 0, 0.2, 0.005, pct), when: (v) => v.inside !== 'fold' && v.inside !== 'rise' }],
-        'Inside the shape the stripes become bars in the second colour, step half a stripe down, or leave a gap. Fold lays thick bars round the shape above the fold and inside it below, thicker away from the fold. Rise thickens every stripe down the page, faster inside the shape, so the shape rises out of the lines.'],
-      ['Motion', [{ ...choice('motion', 'Motion', [['Still', 'none'], ['Breathe', 'breathe'], ['Drift', 'drift'], ['Roll', 'roll']]), rebuild: true },
+        { ...range('gap', 'Gap', 0, 0.2, 0.005, pct), when: (v) => v.inside === 'bars' }],
+        'Inside the shape the stripes become bars in the second colour. Fold lays thick bars round the shape above the fold and inside it below, thicker away from the fold. Rise thickens every stripe down the page, faster inside the shape, so the shape rises out of the lines.'],
+      ['Motion', [{ ...choice('motion', 'Motion', [['Still', 'none'], ['Breathe', 'breathe'], ['Roll', 'roll']]), rebuild: true },
         { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: (v) => v.motion !== 'none' }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: (v) => v.motion === 'breathe' }],
-        'Breathe grows and shrinks the shape. Roll runs the stripes down through the shape; Drift runs only the stripes inside it. Both run one way and loop without swinging back.'],
+        'Breathe grows and shrinks the shape. Roll runs the stripes down through the shape, one way, looping without swinging back.'],
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Stripe colour'), colour('ink2', 'Shape colour'), FORMAT] },
   { name: 'Halftone Diagonal', sections: [
@@ -2805,10 +2791,10 @@ const CENTRES = {
       return { toPage: (f) => (lift * Math.exp(f * n) - lift) / spanY, toPlane: (g) => Math.log((Math.max(-lift * 0.999, g * spanY) + lift) / lift) / n };
     } },
   'Eddy': { keys: ['attractor.x', 'attractor.y'], min: 0, max: 1, area: (v, w, h) => [0, 0, w, h], active: (v) => v.attractor.enabled },
-  // Silhouette's shape, by its Across and Down.
-  Silhouette: { keys: ['x', 'y'], min: 0, max: 1, area: (v, w, h) => [0, 0, w, h] },
 };
-let artPlace = null, overArt = false, handleDrag = false;
+// The centre knob shows only when the pointer comes within KNOB_REACH of it (or while dragged or focused).
+let artPlace = null, nearKnob = false, knobAt = null, handleDrag = false;
+const KNOB_REACH = 56;
 const centreHandle = document.getElementById('centreHandle'), centreKnob = centreHandle.querySelector('.knob');
 const centreOf = () => {
   let c = CENTRES[state.pattern];
@@ -2826,8 +2812,8 @@ function placeHandle() {
   // A centre off the art as it shows (Event Stream's sits on the art's corner, off screen when the art fills it) stays
   // reachable at the nearest edge of what shows: clear of the panel over it and of the buttons and lines on the art.
   const [px, py] = handleDrag && dragAt ? [E.clamp(dragAt[0], 18, window.innerWidth - 18), E.clamp(dragAt[1], 18, window.innerHeight - 18)] : handleSpot(x, y);
-  centreHandle.style.translate = `${px}px ${py}px`;
-  centreHandle.classList.toggle('shown', overArt || handleDrag || document.activeElement === centreKnob);
+  centreHandle.style.translate = `${px}px ${py}px`; knobAt = [px, py];
+  centreHandle.classList.toggle('shown', nearKnob || handleDrag || document.activeElement === centreKnob);
 }
 const HANDLE_CLEAR = ['.topbar', '#meta', '#prevLook', '#nextLook', '#dots', '#play'];
 function handleSpot(x, y) {
@@ -2865,9 +2851,10 @@ function setCentre(fx, fy) {
 }
 window.addEventListener('pointermove', (e) => {
   const over = e.target === canvas || centreHandle.contains(e.target);
-  if (over !== overArt) { overArt = over; placeHandle(); }
+  const near = over && !!knobAt && Math.hypot(e.clientX - knobAt[0], e.clientY - knobAt[1]) < KNOB_REACH;
+  if (near !== nearKnob) { nearKnob = near; placeHandle(); }
 }, { passive: true });
-document.documentElement.addEventListener('pointerleave', () => { overArt = false; placeHandle(); });
+document.documentElement.addEventListener('pointerleave', () => { nearKnob = false; placeHandle(); });
 // A drag moves the centre by as far as the pointer goes, from where the centre is: the knob may show at the art's
 // edge for a centre off it, so pressing it, or a click, changes nothing. While dragging, the knob follows the pointer.
 let dragFrom = null, dragAt = null;
@@ -3011,11 +2998,12 @@ function buildPanel({ enter = false } = {}) {
   scroll.appendChild(buildPicker());
   panelControls = visibleControls();
   const pattern = patternOf(state.pattern);
-  for (const [title, controls, hint, when] of pattern.sections) if (!when || when(state.values)) scroll.appendChild(section(title, controls, hint));
+  // A section's third entry is a note on its controls for the studio; the panel shows controls only (10 October).
+  for (const [title, controls, , when] of pattern.sections) if (!when || when(state.values)) scroll.appendChild(section(title, controls));
   scroll.appendChild(section('Colour', pattern.look));
   // The sticker's settings exist from the first time the panel shows them (off until turned on).
   if (!state.values.sticker) { state.values.sticker = { ...STICKER_DEFAULTS }; baseline.values.sticker = { ...STICKER_DEFAULTS }; }
-  scroll.appendChild(section('Sticker', STICKER_CONTROLS, 'Shows this pattern on the {OS} sticker. Exports, presets and links include it.'));
+  scroll.appendChild(section('Sticker', STICKER_CONTROLS));
   scroll.insertAdjacentHTML('beforeend', '<p class="tips">Double-click a slider to type a value · Alt-click to reset it · ← → to step through presets</p>');
   scroll.scrollTop = enter ? 0 : top;
   for (const group of scroll.querySelectorAll('.segmented')) placeIndicator(group, false);
@@ -3091,7 +3079,7 @@ function buildPicker() {
   return wrap;
 }
 
-function section(title, controls, hint) {
+function section(title, controls) {
   const sec = document.createElement('section');
   sec.className = 'sec';
   const isPulse = title === 'Pulse';
@@ -3102,7 +3090,6 @@ function section(title, controls, hint) {
   const body = document.createElement('div');
   body.className = 'sec-body';
   body.hidden = !open;
-  if (hint) body.insertAdjacentHTML('beforeend', `<p class="sec-hint">${hint}</p>`);
   for (const c of controls) if (!c.when || c.when(state.values)) body.appendChild(control(c));
   sec.appendChild(body);
   if (isPulse) {
@@ -3656,7 +3643,7 @@ function shuffle() {
 function updateHeader() {
   const pattern = patternOf(state.pattern);
   const preset = presetState(current);
-  document.getElementById('eyebrow').textContent = `/ ${String(PATTERNS.indexOf(pattern) + 1).padStart(2, '0')}`;
+  document.getElementById('eyebrow').textContent = `Pattern ${String(PATTERNS.indexOf(pattern) + 1).padStart(2, '0')} / ${String(PATTERNS.length).padStart(2, '0')}`;
   document.getElementById('title').textContent = preset && preset.pattern === state.pattern ? label(current) : pattern.name;
   document.getElementById('lede').textContent = pattern.description;
   updateDots();
@@ -4350,26 +4337,75 @@ function animatedSVG(st, { transparent = false } = {}) {
   // Each mark's samples sit in one typed array, F fields per sample.
   const X = 0, Y = 1, W = 2, H = 3, A = 4, O = 5, RED = 6, GREEN = 7, BLUE = 8, RADIUS = 9, F = 10;
   const byId = new Map(), tracks = [];
+  // A pattern whose marks split and join as they move (Silhouette breathing: a stripe's pieces come and go as the
+  // shape grows) says so with `followShapes`; its marks are then followed by where they are, not by their numbers,
+  // which pass from piece to piece. Each mark continues the track of the mark on the same stripe in the sample before
+  // that it overlaps most, each track taken once; a mark with none starts a track of its own.
+  const follow = !!first.followShapes;
+  let before = [];  // the previous sample's marks: [track, x0, x1, y0, y1]
   // The last sample is the loop's true end. Marks that come back to where they started close on their first sample
   // as before; a mark that travels on (Silhouette's stripes, each a stripe further down) ends where it really is, and
   // the loop restarts with another mark in its place.
   for (let k = 0; k <= samples; k++) {
     const geo = k ? geometryFor(st, k * loop / samples, undefined, true) : first;
     const I = geo.instances, continuous = geo.params.colour.continuous;
+    const boxes = [], matched = new Map();
+    for (let i = 0; i < geo.count; i++) {
+      const o = i * STRIDE;
+      boxes.push([I[o] - I[o + 2] / 2, I[o] + I[o + 2] / 2, I[o + 1] - I[o + 3] / 2, I[o + 1] + I[o + 3] / 2]);
+    }
+    if (follow && k) {
+      const pairs = [];
+      boxes.forEach(([x0, x1, y0, y1], i) => {
+        for (const [track, a0, a1, b0, b1] of before) {
+          // On the same stripe (across or upright) and overlapping, or touching, along it.
+          const across = Math.abs((y0 + y1) - (b0 + b1)) / 2 < 2 ? Math.min(x1, a1) - Math.max(x0, a0) : -Infinity;
+          const upright = Math.abs((x0 + x1) - (a0 + a1)) / 2 < 2 ? Math.min(y1, b1) - Math.max(y0, b0) : -Infinity;
+          const overlap = Math.max(across, upright);
+          if (overlap > -1) pairs.push([overlap, i, track]);
+        }
+      });
+      pairs.sort((p, q) => q[0] - p[0]);
+      const taken = new Set();
+      for (const [, i, track] of pairs) if (!matched.has(i) && !taken.has(track)) { matched.set(i, track); taken.add(track); }
+    }
+    const now = [];
     for (let i = 0; i < geo.count; i++) {
       const o = i * STRIDE, shape = I[o + 7];
-      let track = byId.get(I[o + 13]);
+      let track = follow ? matched.get(i) : byId.get(I[o + 13]);
       if (!track) {
-        track = { layer: Math.round(E.clamp(I[o + 12], 0, 3)), shape, skew: shape === 2 ? I[o + 6] : 0, data: new Float32Array(S * F).fill(NaN) };
-        byId.set(I[o + 13], track);
+        track = { layer: Math.round(E.clamp(I[o + 12], 0, 3)), shape, skew: shape === 2 ? I[o + 6] : 0, data: new Float32Array(S * F).fill(NaN), born: k };
+        if (!follow) byId.set(I[o + 13], track);
         tracks.push(track);
       }
+      now.push([track, ...boxes[i]]);
       const d = track.data, p = k * F, w = I[o + 2], h = I[o + 3];
       const colour = continuous && track.layer < 3 ? continuousColour(geo.params, I[o], I[o + 1]) : [I[o + 8], I[o + 9], I[o + 10]];
       d[p + X] = I[o]; d[p + Y] = I[o + 1]; d[p + W] = w; d[p + H] = h; d[p + A] = I[o + 4] * 180 / Math.PI;
       d[p + O] = Math.min(1, I[o + 11]); d[p + RED] = colour[0]; d[p + GREEN] = colour[1]; d[p + BLUE] = colour[2];
       d[p + RADIUS] = shape === 1 || shape === 3 ? Math.min(w, h) / 2 : E.clamp(I[o + 5], 0, Math.min(w, h) / 2);
     }
+    if (follow && k) {
+      // A piece that splits off a mark drawn just like it (a line dividing as the shape's edge reaches it) was there
+      // all along, so it starts on the sample before, opaque, where it lay inside that mark; and a piece that joins
+      // into one like it stays to the sample after, inside the mark it joined. Neither then fades in or out.
+      // A mark's look in a sample: its thickness (the shorter side) and colour.
+      const look = (track, s) => { const d = track.data, p = s * F; return [Math.min(d[p + W], d[p + H]), d[p + RED], d[p + GREEN], d[p + BLUE]]; };
+      const alike = (a, b) => Math.abs(a[0] - b[0]) < 0.75 && [1, 2, 3].every((c) => Math.abs(a[c] - b[c]) < 0.01);
+      // Within another mark on the same stripe (across or upright), to a pixel.
+      const within = ([, x0, x1, y0, y1], [, a0, a1, b0, b1]) => (Math.abs((y0 + y1) - (b0 + b1)) / 2 < 2 && x0 >= a0 - 1 && x1 <= a1 + 1)
+        || (Math.abs((x0 + x1) - (a0 + a1)) / 2 < 2 && y0 >= b0 - 1 && y1 <= b1 + 1);
+      for (const mark of now) {
+        const track = mark[0];
+        if (track.born === k && before.some((p) => within(mark, p) && alike(look(track, k), look(p[0], k - 1)))) track.data.copyWithin((k - 1) * F, k * F, k * F + F);
+      }
+      const kept = new Set(now.map((m) => m[0]));
+      for (const mark of before) {
+        const track = mark[0];
+        if (!kept.has(track) && now.some((m) => within(mark, m) && alike(look(track, k - 1), look(m[0], k)))) track.data.copyWithin(k * F, (k - 1) * F, (k - 1) * F + F);
+      }
+    }
+    before = now;
   }
 
   // Short numbers: only the digits that show, no leading zero ("-.5", ".25").

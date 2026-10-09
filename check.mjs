@@ -203,20 +203,20 @@ await check('Orbit and Silhouette animated SVGs match the app frame by frame', a
     const seam = await difference(await shot(files.svg, 0), await shot(files.svg, files.loop));
     expect(seam < 0.2, `${name} ${settings.motion}: the loop shows a seam (${seam.toFixed(2)}/255)`);
   }
-  // Silhouette's stripes move through the shape (Roll) or inside it (Drift); the file follows them stripe by stripe.
-  for (const motion of ['roll', 'drift']) {
-    const files = await page.evaluate((m) => {
-      applyPreset('builtin:Merge'); state.values.motion = m;
+  // Silhouette's stripes move through the shape (Roll) or the shape grows and shrinks (Breathe); the file follows.
+  for (const [preset, motion] of [['Merge', 'roll'], ['Merge', 'breathe'], ['Migration', 'roll'], ['Migration', 'breathe']]) {
+    const files = await page.evaluate(([p, m]) => {
+      applyPreset('builtin:' + p); state.values.motion = m;
       const { svg, loop } = animatedSVG(state), still = (t) => { const g = geometryFor(state, t); return E.toSVG(g, g.params, state, {}); };
-      return { svg, loop, stills: [0.3, 0.7].map((f) => still(f * loop)) };
-    }, motion);
-    for (const [i, f] of [0.3, 0.7].entries()) {
+      return { svg, loop, stills: [0.15, 0.3, 0.5, 0.7, 0.85].map((f) => still(f * loop)) };
+    }, [preset, motion]);
+    for (const [i, f] of [0.15, 0.3, 0.5, 0.7, 0.85].entries()) {
       const off = await difference(await shot(files.svg, f * files.loop), await shot(files.stills[i]));
       results.push(off);
-      expect(off < 4, `Merge ${motion}: ${off.toFixed(2)}/255 from the app at ${f} of the loop`);
+      expect(off < 4, `${preset} ${motion}: ${off.toFixed(2)}/255 from the app at ${f} of the loop`);
     }
     const seam = await difference(await shot(files.svg, 0), await shot(files.svg, files.loop));
-    expect(seam < 0.2, `Merge ${motion}: the loop shows a seam (${seam.toFixed(2)}/255)`);
+    expect(seam < 0.2, `${preset} ${motion}: the loop shows a seam (${seam.toFixed(2)}/255)`);
   }
   await view.close();
   return `within ${Math.max(...results).toFixed(2)}/255`;
@@ -289,9 +289,9 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
   expect(rows.rows === rows.lines, `${rows.rows} stripes drawn for ${rows.lines}`);
   expect(Math.max(...rows.spans) - Math.min(...rows.spans) < 2, 'a stripe does not run edge to edge');
   expect(rows.first > rows.middle * 2, `the bars do not thicken away from the fold (${rows.first} against ${rows.middle})`);
-  // Drift and Roll run one way: they loop exactly, and never pass back through a frame they showed on the way out
+  // Roll runs one way: it loops exactly, and never passes back through a frame it showed on the way out
   // (a swing would draw the same frame at a tenth and at four tenths of its loop).
-  const motion = await page.evaluate(() => ['drift', 'roll'].map((m) => {
+  const motion = await page.evaluate(() => ['roll'].map((m) => {
     const st = structuredClone(presetState('builtin:Merge')); st.values.motion = m;
     const L = loopSeconds(st), at = (t) => { const g = geometryFor(st, t); return Array.from(g.instances.slice(0, g.count * STRIDE)); };
     const same = (a, b) => a.length === b.length && a.every((x, i) => i % STRIDE === 13 || Math.abs(x - b[i]) < 1e-3);
@@ -300,7 +300,7 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
   for (const [m, loops, oneWay] of motion) expect(loops && oneWay, `${m}: ${loops ? 'swings back' : 'does not loop'}`);
   // Smooth: no frame of the loop jumps against the others (a stripe crossing the shape's flat top or bottom used to
   // switch all at once), and slow, in step with the other patterns.
-  const smooth = await page.evaluate(() => ['roll', 'drift'].map((m) => {
+  const smooth = await page.evaluate(() => ['roll'].map((m) => {
     const st = structuredClone(presetState('builtin:Merge')); st.values.motion = m;
     const L = loopSeconds(st), c = document.createElement('canvas'); c.width = c.height = 400;
     const g = c.getContext('2d', { willReadFrequently: true });
@@ -315,11 +315,44 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
     return [m, sorted[sorted.length - 1] / sorted[Math.floor(sorted.length / 2)]];
   }));
   for (const [m, jump] of smooth) expect(jump < 1.7, `${m}: a frame jumps ${jump.toFixed(2)} times the typical change`);
+  // Breathe moves only the shape's edges, often slowly, so pixel changes are too small to compare (a 400 px raster
+  // rounds an edge a pixel over now and then). Each stripe's thickness along its length is compared instead, frame to
+  // frame: an edge sliding along changes a sliver of it, a bar growing changes it by a pixel or so; a pop changes a
+  // large area at once (over 150 px², a bar 25 px thick and 6 long). Splitting a bar into pieces of the same thickness
+  // changes nothing, and is not one.
+  const pops = await page.evaluate(() => ['Merge', 'Migration'].flatMap((preset) => {
+    const st = structuredClone(presetState('builtin:' + preset)); st.values.motion = 'breathe';
+    const L = loopSeconds(st), out = [], step = 2;
+    // Stripes keep their place while breathing: each one's thickness every 2 px along it, keyed by its middle.
+    const profiles = (t) => {
+      const g = geometryFor(st, t), I = g.instances, rows = new Map();
+      for (let n = 0; n < g.count; n++) {
+        const o = n * STRIDE, key = Math.round(I[o + 1]), row = rows.get(key) || new Float32Array(Math.ceil(g.width / step));
+        for (let x = Math.ceil((I[o] - I[o + 2] / 2) / step); x * step < I[o] + I[o + 2] / 2; x++) row[x] = Math.max(row[x], I[o + 3]);
+        rows.set(key, row);
+      }
+      return rows;
+    };
+    let previous = profiles(0);
+    for (let k = 1; k <= L * 30 && !out.length; k++) {
+      const now = profiles(k / 30);
+      for (const [key, row] of now) {
+        const before = previous.get(key) || previous.get(key - 1) || previous.get(key + 1);
+        if (!before) continue;
+        let run = 0, longest = 0;  // the changed area of the worst stretch, in square pixels
+        for (let x = 0; x < row.length; x++) { const d = Math.abs(row[x] - before[x]); run = d > 2.5 ? run + d * step : 0; longest = Math.max(longest, run); }
+        if (longest > 150) { out.push(`${preset} breathe: the stripe at ${key} px changes by ${Math.round(longest)} px² at ${(k / 30).toFixed(2)} s`); break; }
+      }
+      previous = now;
+    }
+    return out;
+  }));
+  expect(!pops.length, pops.join('\n'));
   // No slivers or specks, in every way of drawing the inside, shape and direction, still or moving: every piece sits
   // centred on a stripe of its own set (or is cut by the frame's edge), none is a hairline, and none is a dot.
   const loose = await page.evaluate(() => {
     const out = [];
-    for (const inside of ['fold', 'bars', 'shift', 'gap', 'rise']) for (const shape of ['symbol', 'mark', 'monogram']) for (const direction of ['across', 'down']) for (const motion of ['none', 'roll', 'drift']) {
+    for (const inside of ['fold', 'bars', 'rise']) for (const shape of ['symbol', 'mark', 'monogram']) for (const direction of ['across', 'down']) for (const motion of ['none', 'roll', 'breathe']) {
       const st = structuredClone(presetState('builtin:Merge'));
       Object.assign(st.values, { inside, shape, direction, motion, lines: 26, weight: inside === 'fold' ? 0.12 : 0.3 });
       const v = st.values, side = Math.min(...FORMATS[v.format]), margin = v.margin * side, span = FORMATS[v.format][direction === 'down' ? 0 : 1];
@@ -336,14 +369,17 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
           const o = n * STRIDE, across = direction === 'down' ? I[o] : I[o + 1], width = direction === 'down' ? I[o + 2] : I[o + 3], length = direction === 'down' ? I[o + 3] : I[o + 2];
           const middle = direction === 'down' ? I[o + 1] : I[o], opacity = I[o + 11];
           const cut = across - width / 2 <= margin + 0.01 || across + width / 2 >= span - margin - 0.01;
-          // A stripe sliding under the frame's edge fades out rather than showing as a sliver.
-          if (cut) { if (width < 0.3 * thin && opacity > 0.05) { out.push(`${label}: a sliver ${width.toFixed(1)} px thick at the frame's edge`); break; } continue; }
-          if (width < 0.99 * thin && opacity > 0.05) { out.push(`${label}: a hairline ${width.toFixed(1)} px thick`); break; }
+          // Only a stripe's base line passes under the frame's edge: its bars have eased down to it first.
+          if (cut) { if (width > thin + 0.01) { out.push(`${label}: a bar ${width.toFixed(1)} px thick cut by the frame's edge`); break; } continue; }
+          if (opacity < 0.999) { out.push(`${label}: a faded bar (opacity ${opacity.toFixed(2)})`); break; }
+          if (width < 0.99 * thin) { out.push(`${label}: a hairline ${width.toFixed(1)} px thick`); break; }
           // A speck: shorter than half a stripe's spacing or one and a half times its thickness, away from the page's sides.
           const atSide = middle - length / 2 <= margin + 0.01 || middle + length / 2 >= along - margin - 0.01;
           const joined = ends.get(Math.floor(I[o + 13] / 48)).some(([s, e]) => Math.abs(s - (middle + length / 2)) < 0.01 || Math.abs(e - (middle - length / 2)) < 0.01);
           if (!atSide && !joined && length < Math.max(1.5 * width, 0.5 * pitch) - 0.01) { out.push(`${label}: a speck ${length.toFixed(1)} px long`); break; }
-          if (length < width * 0.99) { out.push(`${label}: a dot ${length.toFixed(1)} px long`); break; }
+          // A short piece joined to the rest of its stripe (a step as a bar grows across an edge), or a stub no thicker
+          // than its line, is part of the line, not a dot.
+          if (!joined && length < width * 0.99 && width > thin * 1.05) { out.push(`${label}: a dot ${length.toFixed(1)} px long`); break; }
           const stripe = Math.floor(I[o + 13] / 48);
           if (!middles.has(stripe)) middles.set(stripe, across);
           else if (Math.abs(middles.get(stripe) - across) > 0.01) { out.push(`${label}: a piece ${Math.abs(middles.get(stripe) - across).toFixed(1)} px off its stripe`); break; }
@@ -492,11 +528,19 @@ await check('A returning session opens untouched presets as they are now, and ke
 
 await check('The centre knob shows where it can be grabbed, and moves the centre', async () => {
   const wrong = [];
-  for (const [name, view] of [['Event Stream', 'fill'], ['Event Stream', 'fit'], ['Event Queue', 'fit'], ['Event Loop', 'fill'], ['Data Flow', 'fill'], ['Refactor', 'fit'], ['Merge', 'fill'], ['Merge', 'fit']]) {
+  for (const [name, view] of [['Event Stream', 'fill'], ['Event Stream', 'fit'], ['Event Queue', 'fit'], ['Event Loop', 'fill'], ['Data Flow', 'fill'], ['Refactor', 'fit']]) {
     await page.evaluate((n) => applyPreset('builtin:' + n), name);
     await page.click(`[data-view="${view}"]`);
     await page.waitForTimeout(500);
-    await page.mouse.move(500, 450); await page.mouse.move(520, 470); await page.waitForTimeout(400);
+    // The knob keeps out of the way: hidden while the pointer is on the art away from it, shown as the pointer nears it.
+    const spot = await page.evaluate(() => document.getElementById('centreHandle').style.translate.split(' ').map(parseFloat));
+    const away = await page.evaluate(([x, y]) => {
+      const box = document.getElementById('canvas').getBoundingClientRect(), far = [[box.left + 30, box.top + 30], [box.right - 30, box.bottom - 30], [box.left + 30, box.bottom - 30], [box.right - 30, box.top + 30]];
+      return far.reduce((best, p) => (Math.hypot(p[0] - x, p[1] - y) > Math.hypot(best[0] - x, best[1] - y) ? p : best));
+    }, spot);
+    await page.mouse.move(away[0], away[1]); await page.waitForTimeout(400);
+    if (await page.evaluate(() => document.getElementById('centreHandle').classList.contains('shown'))) wrong.push(`${name} (${view}): the knob shows with the pointer far from it`);
+    await page.mouse.move(spot[0] + 20, spot[1] + 12, { steps: 4 }); await page.waitForTimeout(400);
     const knob = await page.evaluate(() => {
       const k = document.querySelector('#centreHandle .knob'), r = k.getBoundingClientRect(), x = r.x + r.width / 2, y = r.y + r.height / 2;
       return { shown: !document.getElementById('centreHandle').hidden && getComputedStyle(k).opacity === '1', x, y, top: document.elementFromPoint(x, y) === k };

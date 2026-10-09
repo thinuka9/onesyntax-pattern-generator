@@ -1,5 +1,5 @@
 {
-  "name": "onesyntax-pattern-generator",
+  "name": "pattern-os",
   "private": true,
   "type": "module",
   "description": "Build and check tooling only: the app itself needs no install.",
