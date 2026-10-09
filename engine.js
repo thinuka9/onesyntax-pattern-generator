@@ -533,7 +533,11 @@
           // (a wider cell makes level bars longer and upright bars wider).
           const along = Math.abs(Math.cos(angle)), across = Math.abs(Math.sin(angle));
           const fit = layout.fit ? along * cells.fit + across * cells.fitTall : 1, fitAcross = layout.fit ? across * cells.fit + along * cells.fitTall : 1;
-          append(x, y, mapped(mappings.length, value, u, v) * fit, mapped(mappings.thickness, value, u, v) * fitAcross, angle, marks.radius, (marks.shape === 'Parallelogram' ? marks.skew : 0) + mapped(mappings.skew, value, u, v), shapeIds[marks.shape], opacity, accent ? 3 : 1, cell.index);
+          const length = mapped(mappings.length, value, u, v) * fit, thickness = mapped(mappings.thickness, value, u, v) * fitAcross;
+          // Lines and pills are drawn fully round; below full Roundness they go out as rectangles with that share of it.
+          let shape = shapeIds[marks.shape], radius = marks.radius;
+          if ((shape === 1 || shape === 3) && marks.roundness < 1) { radius = clamp(marks.roundness) * Math.min(length, thickness) / 2; shape = 0; }
+          append(x, y, length, thickness, angle, radius, (marks.shape === 'Parallelogram' ? marks.skew : 0) + mapped(mappings.skew, value, u, v), shape, opacity, accent ? 3 : 1, cell.index);
         }
         if (count > before) markCount++;
       }
@@ -580,7 +584,8 @@
       shaping: { warp: 0, warpScale: 3, mirror: 'none', contrast: 1, gamma: 1, quantise: 0, invert: false },
       attractor: { enabled: false, x: 0.5, y: 0.48, radius: 0.32, strength: 0.55 },
       layout: { mode: 'Grid', columns: 28, rows: 28, margin: 100, gutterX: 0, gutterY: 0, jitter: 0, rotation: 0, fit: 0, fitWidth: 0, fitHeight: 0, stagger: 0.5, strandDisplacement: 90, strandSamples: 100 },
-      marks: { shape: 'Rectangle', radius: 0, skew: 0, threshold: 0, angleMode: 'fixed', fixedAngle: 0, trackThickness: 1.5, trackOpacity: 0.25, fillThickness: 12, capSize: 8, capOffset: 32, capWave: true },
+      // `roundness` (0..1) rounds Line and Pill ends, fully round at 1; other shapes take `radius` in pixels.
+      marks: { shape: 'Rectangle', radius: 0, roundness: 1, skew: 0, threshold: 0, angleMode: 'fixed', fixedAngle: 0, trackThickness: 1.5, trackOpacity: 0.25, fillThickness: 12, capSize: 8, capOffset: 32, capWave: true },
       mappings: {
         thickness: mapping('constant', 5, 5), length: mapping('constant', 26, 26),
         angle: mapping('field', -28, 28), opacity: mapping('constant', 1, 1), colour: mapping('field', 0, 1),

@@ -102,6 +102,10 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   "Cloudflare Pages" check on GitHub). Logo hover: tried stripes, then a pixel strobe; removed ("we'll do it in a
   different stage"), so the logo is as it was. "Another preset for Deploy" from the studio's link: Rollout. "Copy link should get the values":
   links now always carry the reference cell. All pushed to the branch, not merged; work continues locally.
+- **9 October:** "no rotation or roundness, check other patterns as well" (on Gradient Descent): every studio
+  pattern and wave study now has Rotation; Roundness on all but the dot patterns. Lines and pills were always
+  fully round; their Roundness (`marks.roundness`, 0–1) defaults to 1, so old saves look the same. Readout,
+  Silhouette, Bracket, Wave Rows and Orbit's Grid were left as they are.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

@@ -1391,6 +1391,9 @@ function orbitGeometry(v, time, pool, outlines = null, coarse = false) {
 // ---------- Studio patterns, tailored to a short list of controls ----------
 // Turns the whole pattern; it still fills the page in every format (90° lays a wide page out as a tall one).
 const turnControl = range('layout.rotation', 'Rotation', -180, 180, 1, deg);
+// Roundness: a share of fully round for lines and pills (square ends at 0), a corner radius for bars and pixels.
+const roundness = range('marks.roundness', 'Roundness', 0, 1, 0.01, pct);
+const cornerRadius = { ...range('marks.radius', 'Roundness', 0, 30, 0.5, px), when: (v) => v.marks.shape !== 'Dot' };
 const waveFrequency = range('field.waveA.frequency', 'Frequency', 0, 12, 0.05, times);
 const waveDirection = range('field.waveA.direction', 'Direction', -180, 180, 1, deg);
 const secondWave = range('field.waveB.weight', 'Second wave', 0, 3, 0.01, f2);
@@ -1788,9 +1791,9 @@ const PATTERNS = [
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Item colour'), FORMAT] },
   { name: 'Eddy', sections: [
-      ['Grid', [columns(), rowsCount(), margin]],
+      ['Grid', [columns(), rowsCount(), margin, turnControl]],
       ['Dashes', [range(both('mappings.length'), 'Length', 2, 160, 1, px), range(both('mappings.thickness'), 'Thickness', 0.5, 60, 0.5, px),
-        range('marks.radius', 'Roundness', 0, 30, 0.5, px)]],
+        cornerRadius]],
       ['Flow', [range('attractor.strength', 'Bend', -2, 2, 0.01, f2), range('attractor.radius', 'Bend size', 0.01, 1, 0.01, pct),
         range('attractor.x', 'Centre X', 0, 1, 0.01, pct), range('attractor.y', 'Centre Y', 0, 1, 0.01, pct),
         { ...range('field.gradient.direction', 'Direction', -180, 180, 1, deg), when: (v) => v.field.gradient.weight > 0 },
@@ -1827,24 +1830,24 @@ const PATTERNS = [
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Stripe colour'), colour('ink2', 'Shape colour'), FORMAT] },
   { name: 'Halftone Diagonal', sections: [
-      ['Grid', [columns(), rowsCount(), margin]],
+      ['Grid', [columns(), rowsCount(), margin, turnControl]],
       ['Lines', [range('mappings.thickness.min', 'Thinnest', 0.2, 40, 0.1, px), range('mappings.thickness.max', 'Thickest', 0.2, 40, 0.1, px),
-        range(both('mappings.length'), 'Length', 2, 160, 1, px), range('marks.fixedAngle', 'Angle', -180, 180, 1, deg)]],
+        range(both('mappings.length'), 'Length', 2, 160, 1, px), range('marks.fixedAngle', 'Angle', -180, 180, 1, deg), roundness]],
       ['Gradient', [range('field.gradient.direction', 'Direction', -180, 180, 1, deg), range('shaping.gamma', 'Bias', 0.1, 4, 0.01, f2),
         { ...range('field.waveA.weight', 'Ripple', 0, 3, 0.01, f2), rebuild: true },
         { ...range('field.waveA.frequency', 'Ripple freq.', 0, 12, 0.05, times), when: rippleOn }, { ...animate, when: rippleOn }],
         'The gradient itself stays still: Speed moves the ripple, so turn Ripple up to animate (or use Pulse).'],
     ], look: studioLook(), shapeWhen: rippleOn },
   { name: 'Contour Field', sections: [
-      ['Grid', [columns(), rowsCount(), margin]],
+      ['Grid', [columns(), rowsCount(), margin, turnControl]],
       ['Marks', [range('mappings.length.min', 'Shortest', 0, 120, 0.5, px), range('mappings.length.max', 'Longest', 0, 120, 0.5, px),
-        range(both('mappings.thickness'), 'Thickness', 0.2, 30, 0.1, px)]],
+        range(both('mappings.thickness'), 'Thickness', 0.2, 30, 0.1, px), roundness]],
       ['Field', [waveFrequency, waveDirection, secondWave, range('field.radial.weight', 'Ripple', 0, 3, 0.01, f2),
         range('shaping.warp', 'Warp', 0, 0.75, 0.01, f2), animate]],
     ], look: studioLook() },
   { name: 'Kaleido Pixels', sections: [
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Pixels across', 2, 120, 1, int),
-        range([...both('mappings.thickness'), ...both('mappings.length')], 'Pixel size', 1, 80, 0.5, px), margin]],
+        range([...both('mappings.thickness'), ...both('mappings.length')], 'Pixel size', 1, 80, 0.5, px), margin, turnControl, cornerRadius]],
       ['Field', [waveFrequency, range('field.waveB.frequency', 'Second freq.', 0, 12, 0.05, times), range('field.noise.weight', 'Noise', 0, 3, 0.01, f2),
         choice('shaping.mirror', 'Mirror', [['None', 'none'], ['Sides', 'X'], ['Top', 'Y'], ['Both', 'XY']]),
         range('shaping.quantise', 'Colour steps', 0, 16, 1, stepsFmt), animate]],
@@ -1852,7 +1855,7 @@ const PATTERNS = [
   { name: 'Stack', sections: [
       ['Grid', [columns('Columns', 20), rowsCount('Rows', 100), margin, range('layout.gutterX', 'Column gap', 0, 100, 1, px), turnControl]],
       ['Bars', [range(both('mappings.thickness'), 'Thickness', 0.5, 40, 0.5, px), range('mappings.length.min', 'Shortest', 0, 600, 1, px),
-        range('mappings.length.max', 'Longest', 0, 600, 1, px)]],
+        range('mappings.length.max', 'Longest', 0, 600, 1, px), cornerRadius]],
       // Deploy's bars read nothing from the wave (their sizes and colour are fixed), so the wave's controls hide.
       ['Wave', [waveFrequency, waveDirection, secondWave, steps, animate], undefined, fieldShows],
     ], look: studioLook(), shapeWhen: fieldShows },
@@ -1878,7 +1881,7 @@ const PATTERNS = [
       ['Motion', studyMotion(), 'Morph melts the figure into its neighbours and back; Flow keeps turning the mix one way.'],
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Dots across', 8, 140, 1, int),
         range(['mappings.thickness.max', 'mappings.length.max'], 'Dot size', 1, 30, 0.5, px),
-        range('mappings.opacity.min', 'Resting dots', 0, 1, 0.01, pct), margin]],
+        range('mappings.opacity.min', 'Resting dots', 0, 1, 0.01, pct), margin, turnControl]],
     ], look: studioLook() },
   { name: 'Interference', group: 'Wave studies',
     description: 'Rings from several centres, overlapping into moiré fringes.',
@@ -1889,7 +1892,7 @@ const PATTERNS = [
         'More sources make busier fringes; Spread moves them apart and Rings sets how fine they are.'],
       ['Motion', studyMotion(range('field.ripples.orbit', 'Orbit', -2, 2, 0.5, offOr)), 'Morph draws the sources apart and back while they swing; Flow sends the rings outward. Orbit turns the sources, Speed or not.'],
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Dots across', 8, 160, 1, int),
-        range(['mappings.thickness.max', 'mappings.length.max'], 'Dot size', 1, 30, 0.5, px), margin]],
+        range(['mappings.thickness.max', 'mappings.length.max'], 'Dot size', 1, 30, 0.5, px), margin, turnControl]],
     ], look: studioLook() },
   { name: 'Logo Field', group: 'Wave studies',
     description: 'The OneSyntax mark as a field: contours ripple out from its exact outline.',
@@ -1904,7 +1907,7 @@ const PATTERNS = [
         'Sharpness thins the bands into fine lines; Fade lets them die away from the mark.'],
       ['Motion', studyMotion(), 'Morph lets the contours breathe in and out around the mark; Flow sends them outward.'],
       ['Grid', [range(['layout.columns', 'layout.rows'], 'Pixels across', 8, 160, 1, int),
-        range(['mappings.thickness.max', 'mappings.length.max'], 'Pixel size', 1, 30, 0.5, px), margin]],
+        range(['mappings.thickness.max', 'mappings.length.max'], 'Pixel size', 1, 30, 0.5, px), margin, turnControl, cornerRadius]],
     ], look: studioLook() },
 
   // ---------- Bracket ----------
