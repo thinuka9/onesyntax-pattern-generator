@@ -1,5 +1,5 @@
 /*
- * Pattern engine for the OneSyntax Pattern Generator (index.html).
+ * The pattern engine behind Pattern.OS, OneSyntax's pattern app (index.html).
  * Field, layout, marks, SVG export, WebGL renderer and the nine studio presets started as a plain-JS
  * port of the original TypeScript studio (archived in OneSyntaxPatternGenerator-archive-2026-10-03.zip), so the
  * page runs without a build step. Since then: one-way seamless motion, Fourier wave shapes, Chladni
@@ -227,7 +227,9 @@
     const attractorX = attractor.x, attractorY = attractor.y;
     const radius = Math.max(0.001, attractor.radius);
 
-    const sample = (inputX, inputY) => {
+    // `raw` is the field before contrast, bias and steps. Those only flatten it and never move a contour, so
+    // directions read from `raw` stay true where the shaped field goes flat.
+    const raw = (inputX, inputY) => {
       let x = inputX, y = inputY;
       if (warp) {
         x += (noise2(inputX * warpScale + 19.4, inputY * warpScale - 9.1, seed + 37) - 0.5) * warp * 2;
@@ -238,7 +240,8 @@
       let value = 0;
       if (wa) value += (wave(x * ax + y * ay + ap) * 0.5 + 0.5) * wa;
       if (wb) value += (wave(x * bx + y * by + bp) * 0.5 + 0.5) * wb;
-      if (wr) value += (wave(Math.hypot(x - radialX, y - radialY) * radialFrequency + rp) * 0.5 + 0.5) * wr;
+      // A hair of softening rounds the ring's centre, which would otherwise come to a point that turns marks across.
+      if (wr) value += (wave(Math.hypot(x - radialX, y - radialY, 0.012) * radialFrequency + rp) * 0.5 + 0.5) * wr;
       if (wc) {
         const height = plateA * Math.cos(plateN * x) * Math.cos(plateM * y) + plateB * Math.cos(plateM * x) * Math.cos(plateN * y);
         value += (1 - Math.min(1, Math.abs(height) / Math.SQRT2)) * wc;
@@ -294,20 +297,17 @@
           value += influence * influence * attractorStrength * 0.35;
         }
       }
-      value = Math.pow(clamp((value - 0.5) * contrast + 0.5), gamma);
+      return value;
+    };
+    const sample = (inputX, inputY) => {
+      let value = Math.pow(clamp((raw(inputX, inputY) - 0.5) * contrast + 0.5), gamma);
       if (quantise > 1) value = Math.round(value * (quantise - 1)) / (quantise - 1);
       if (quantise === 1) value = value >= 0.5 ? 1 : 0;
       return invert ? 1 - value : value;
     };
 
     return {
-      sample,
-      angle(x, y) {
-        const epsilon = 0.0025;
-        const dx = sample(x + epsilon, y) - sample(x - epsilon, y);
-        const dy = sample(x, y + epsilon) - sample(x, y - epsilon);
-        return Math.abs(dx) + Math.abs(dy) < 1e-8 ? 0 : Math.atan2(dy / canvasHeight, dx / canvasWidth) + Math.PI / 2;
-      },
+      sample, raw,
       waveB(x, y) { return wave(x * bx + y * by + bp) * 0.5 + 0.5; },
     };
   }
@@ -357,7 +357,68 @@
     cells.fit = referenceWidth > 0 ? cellWidth / referenceWidth : 1;
     cells.fitTall = referenceHeight > 0 ? cellHeight / referenceHeight : 1;
     cells.frame = { originX, originY, width, height };
+    cells.pitch = Math.max(1, Math.min(stepX, stepY));
+    // Level rows (an unturned grid of two or more): where each row's space begins and how far apart rows are, from
+    // the middle of one gap to the next, so a crop can cut between rows (the sticker's band).
+    const level = Math.abs(((layout.rotation || 0) % 180 + 180) % 180) < 1e-6;
+    if (level && rows > 1 && (layout.mode === 'Grid' || layout.mode === 'Brick' || layout.mode === 'Rows')) cells.rowGrid = { origin: originY + margin - gutterY / 2, pitch: stepY };
     return cells;
+  }
+
+  /**
+   * Directions along the field's contours for `flow` marks, smoothed so that neighbours agree. The raw field is
+   * sampled once on a lattice at half the cell pitch. Each gradient enters as a structure tensor (its doubled angle,
+   * weighted by its strength), and a Gaussian of `smoothing` × the pitch blurs the tensors. Opposite gradients on
+   * either side of a ridge then agree instead of cancelling, so a mark on a ridge or a saddle lies with its
+   * neighbours instead of across them. Sampling once per lattice node also costs less than four samples per mark.
+   * `at(x, y)` (pixels in the frame) gives the contour angle and its coherence: 1 where the directions round the
+   * point agree, falling towards 0 at whirl centres and saddles.
+   */
+  function flowField(field, frame, pitch, smoothing) {
+    const spacing = Math.max(pitch / 2, Math.max(frame.width, frame.height) / 360);
+    const nx = Math.ceil(frame.width / spacing) + 3, ny = Math.ceil(frame.height / spacing) + 3, size = nx * ny;
+    // Node (i, j) sits at frame pixel ((i − 1) × spacing, (j − 1) × spacing), a node beyond each edge.
+    const values = new Float32Array(size);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) values[j * nx + i] = field.raw((i - 1) * spacing / frame.width, (j - 1) * spacing / frame.height);
+    let xx = new Float32Array(size), xy = new Float32Array(size), yy = new Float32Array(size);
+    for (let j = 0; j < ny; j++) for (let i = 0; i < nx; i++) {
+      const k = j * nx + i;
+      const gx = values[k + (i < nx - 1 ? 1 : 0)] - values[k - (i > 0 ? 1 : 0)];
+      const gy = values[k + (j < ny - 1 ? nx : 0)] - values[k - (j > 0 ? nx : 0)];
+      xx[k] = gx * gx; xy[k] = gx * gy; yy[k] = gy * gy;
+    }
+    const sigma = Math.max(0, smoothing) * pitch / spacing;
+    if (sigma > 0.05) {
+      const reach = Math.min(16, Math.ceil(sigma * 2.5)), weights = [];
+      for (let d = -reach; d <= reach; d++) weights.push(Math.exp(-d * d / (2 * sigma * sigma)));
+      const blur = (source, count, stride, lines, lineStride) => {
+        const out = new Float32Array(size);
+        for (let line = 0; line < lines; line++) for (let n = 0; n < count; n++) {
+          let sum = 0, total = 0;
+          for (let d = -reach; d <= reach; d++) {
+            const m = n + d;
+            if (m < 0 || m >= count) continue;
+            const w = weights[d + reach];
+            sum += source[line * lineStride + m * stride] * w; total += w;
+          }
+          out[line * lineStride + n * stride] = sum / total;
+        }
+        return out;
+      };
+      const both = (source) => blur(blur(source, nx, 1, ny, nx), ny, nx, nx, 1);  // across, then down
+      xx = both(xx); xy = both(xy); yy = both(yy);
+    }
+    return {
+      at(x, y) {
+        const fx = Math.min(nx - 1.001, Math.max(0, x / spacing + 1)), fy = Math.min(ny - 1.001, Math.max(0, y / spacing + 1));
+        const i = Math.floor(fx), j = Math.floor(fy), tx = fx - i, ty = fy - j, k = j * nx + i;
+        const lerp = (a) => (a[k] * (1 - tx) + a[k + 1] * tx) * (1 - ty) + (a[k + nx] * (1 - tx) + a[k + nx + 1] * tx) * ty;
+        const a = lerp(xx), b = lerp(xy), c = lerp(yy), strength = a + c;
+        if (strength < 1e-14) return { angle: 0, coherence: 0 };
+        // The tensor's main axis is the gradient's direction; the contour runs a quarter turn from it.
+        return { angle: Math.atan2(2 * b, a - c) / 2 + Math.PI / 2, coherence: Math.min(1, Math.hypot(a - c, 2 * b) / strength) };
+      },
+    };
   }
 
   // ---------- marks.ts ----------
@@ -396,6 +457,7 @@
   function buildGeometry(params, time, options = {}) {
     const cells = buildLayout(params), frame = cells.frame, field = createField(params, time, options);
     const { mappings, marks, layout, canvas, colour } = params;
+    const flow = marks.angleMode === 'flow' && layout.mode !== 'Strands' && layout.mode !== 'Hairlines' ? flowField(field, frame, cells.pitch, marks.smoothing) : null;
     const strands = layout.mode === 'Strands', hairlines = layout.mode === 'Hairlines';
     const strandSamples = Math.max(2, Math.min(2048, Math.round(layout.strandSamples)));
     const capacity = cells.length * (strands ? strandSamples - 1 : hairlines ? Math.ceil((strandSamples + 1) / 2) : marks.shape === 'Meter' ? 3 : 1);
@@ -512,10 +574,15 @@
         if (opacity <= 0) continue;
         const x = cell.x + mapped(mappings.offsetX, value, u, v);
         const y = cell.y + mapped(mappings.offsetY, value, u, v);
-        let angle;
+        let angle, settle = 1;
         if (marks.angleMode === 'fixed') angle = radians(marks.fixedAngle);
-        else if (marks.angleMode === 'flow') angle = field.angle(u, v) + radians(marks.fixedAngle);
-        else if (marks.angleMode === 'swirl') angle = Math.atan2((v - params.attractor.y) * canvas.height, (u - params.attractor.x) * canvas.width) + Math.PI / 2 + radians(marks.fixedAngle);
+        else if (marks.angleMode === 'flow') {
+          // Where the directions round a mark disagree (a whirl's centre, a saddle) it eases shorter, down to half,
+          // so those points read as calm instead of as marks pointing every way.
+          const f = flow.at(cell.x - frame.originX, cell.y - frame.originY), t = clamp((f.coherence - 0.15) / 0.5);
+          angle = f.angle + radians(marks.fixedAngle);
+          settle = 0.5 + 0.5 * t * t * (3 - 2 * t);
+        } else if (marks.angleMode === 'swirl') angle = Math.atan2((v - params.attractor.y) * canvas.height, (u - params.attractor.x) * canvas.width) + Math.PI / 2 + radians(marks.fixedAngle);
         else angle = radians(mapped(mappings.angle, value, u, v));
         setColor(value, u, v, cell.index, accent);
         const before = count;
@@ -533,7 +600,8 @@
           // (a wider cell makes level bars longer and upright bars wider).
           const along = Math.abs(Math.cos(angle)), across = Math.abs(Math.sin(angle));
           const fit = layout.fit ? along * cells.fit + across * cells.fitTall : 1, fitAcross = layout.fit ? across * cells.fit + along * cells.fitTall : 1;
-          const length = mapped(mappings.length, value, u, v) * fit, thickness = mapped(mappings.thickness, value, u, v) * fitAcross;
+          let length = mapped(mappings.length, value, u, v) * fit * settle, thickness = mapped(mappings.thickness, value, u, v) * fitAcross;
+          if (marks.cellSized) { length = cell.width * (1 - clamp(marks.cellGapX, 0, 0.95)); thickness = cell.height * (1 - clamp(marks.cellGapY, 0, 0.95)); }
           // Lines and pills are drawn fully round; below full Roundness they go out as rectangles with that share of it.
           let shape = shapeIds[marks.shape], radius = marks.radius;
           if ((shape === 1 || shape === 3) && marks.roundness < 1) { radius = clamp(marks.roundness) * Math.min(length, thickness) / 2; shape = 0; }
@@ -543,7 +611,7 @@
       }
     }
     const used = count === capacity ? instances : options.pool ? instances.subarray(0, count * STRIDE) : instances.slice(0, count * STRIDE);
-    return { instances: used, count, markCount };
+    return { instances: used, count, markCount, rowGrid: cells.rowGrid };
   }
 
   // ---------- presets.ts ----------
@@ -584,8 +652,10 @@
       shaping: { warp: 0, warpScale: 3, mirror: 'none', contrast: 1, gamma: 1, quantise: 0, invert: false },
       attractor: { enabled: false, x: 0.5, y: 0.48, radius: 0.32, strength: 0.55 },
       layout: { mode: 'Grid', columns: 28, rows: 28, margin: 100, gutterX: 0, gutterY: 0, jitter: 0, rotation: 0, fit: 0, fitWidth: 0, fitHeight: 0, stagger: 0.5, strandDisplacement: 90, strandSamples: 100 },
-      // `roundness` (0..1) rounds Line and Pill ends, fully round at 1; other shapes take `radius` in pixels.
-      marks: { shape: 'Rectangle', radius: 0, roundness: 1, skew: 0, threshold: 0, angleMode: 'fixed', fixedAngle: 0, trackThickness: 1.5, trackOpacity: 0.25, fillThickness: 12, capSize: 8, capOffset: 32, capWave: true },
+      // Marks are square unless asked: `roundness` (0..1) rounds Line and Pill ends, `radius` (pixels) the other shapes.
+      // `smoothing` (× the cell pitch) evens out `flow` directions so neighbouring marks agree.
+      // `cellSized` marks fill their cell less `cellGapX` / `cellGapY` (shares of it) instead of taking pixel sizes.
+      marks: { shape: 'Rectangle', radius: 0, roundness: 0, smoothing: 0.7, cellSized: false, cellGapX: 0, cellGapY: 0, skew: 0, threshold: 0, angleMode: 'fixed', fixedAngle: 0, trackThickness: 1.5, trackOpacity: 0.25, fillThickness: 12, capSize: 8, capOffset: 32, capWave: true },
       mappings: {
         thickness: mapping('constant', 5, 5), length: mapping('constant', 26, 26),
         angle: mapping('field', -28, 28), opacity: mapping('constant', 1, 1), colour: mapping('field', 0, 1),
@@ -639,7 +709,7 @@
       p.layout.columns = 44; p.layout.rows = 44; p.layout.margin = 80;
       p.field.waveA.frequency = 1.2; p.field.waveA.direction = 35; p.field.waveB.enabled = true; p.field.waveB.frequency = 1.7; p.field.waveB.direction = 128; p.field.waveB.weight = 0.6;
       p.field.radial.enabled = true; p.field.radial.weight = 0.25; p.shaping.warp = 0.07;
-      p.marks.shape = 'Pill'; p.marks.angleMode = 'flow'; p.marks.radius = 3;
+      p.marks.shape = 'Pill'; p.marks.angleMode = 'flow';
       p.mappings.thickness = mapping('constant', 2.5, 2.5); p.mappings.length = mapping('field', 8, 22);
     }),
     // Strands (reworked 7 October): close hairlines that run from a wavy edge, breaking as the field dips.
@@ -656,6 +726,7 @@
       p.field.waveA.frequency = 2.1; p.field.waveA.direction = 40; p.field.waveB.enabled = true; p.field.waveB.frequency = 1.8; p.field.waveB.direction = 112; p.field.waveB.weight = 0.8;
       p.field.noise.enabled = true; p.field.noise.weight = 0.2; p.shaping.mirror = 'XY'; p.shaping.quantise = 6; p.shaping.warp = 0;
       p.mappings.thickness = mapping('constant', 27, 27); p.mappings.length = mapping('constant', 27, 27);
+      p.marks.cellSized = true;  // pixels fill their cells, so they never overlap in any format
       p.colour.stops = 3; p.colour.stop1 = '#082A6F'; p.colour.stop2 = '#1B98FE'; p.colour.stop3 = '#A2D5FF';
       // It moves: the waves travel and the mirrors fold them into a turning kaleidoscope.
       p.motion.playing = true; p.motion.speed = 0.5;
@@ -787,7 +858,7 @@
     // A pattern's own frame (inside its margin) cuts the marks the same way the views do.
     const clip = geometry.clip, clipDef = clip ? `<clipPath id="frame"><rect x="${number(clip[0])}" y="${number(clip[1])}" width="${number(clip[2] - clip[0])}" height="${number(clip[3] - clip[1])}"/></clipPath>` : '';
     const defs = params.colour.continuous || clip ? `<defs>${params.colour.continuous ? gradientDefinition(params) : ''}${clipDef}</defs>\n` : '';
-    return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}" color-interpolation="sRGB">\n<title>${escape(params.name)} · OneSyntax</title>\n<desc>Seed ${params.seed}. ${geometry.markCount} marks. Generated with the OneSyntax Pattern Generator.</desc>\n<metadata id="onesyntax-preset">${escape(JSON.stringify(metadata))}</metadata>\n${defs}<g id="background" data-name="background">${options.transparent ? '' : `<rect width="${number(width)}" height="${number(height)}" fill="${rgb(colourRGB(params.colour.background))}"/>`}</g>\n${names.map((name, layer) => `<g id="${name}" data-name="${name}"${clip ? ' clip-path="url(#frame)"' : ''}>\n${layers[layer].join('\n')}\n</g>`).join('\n')}\n</svg>`;
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}" color-interpolation="sRGB">\n<title>${escape(params.name)} · OneSyntax</title>\n<desc>Seed ${params.seed}. ${geometry.markCount} marks. Made with Pattern.OS by OneSyntax.</desc>\n<metadata id="onesyntax-preset">${escape(JSON.stringify(metadata))}</metadata>\n${defs}<g id="background" data-name="background">${options.transparent ? '' : `<rect width="${number(width)}" height="${number(height)}" fill="${rgb(colourRGB(params.colour.background))}"/>`}</g>\n${names.map((name, layer) => `<g id="${name}" data-name="${name}"${clip ? ' clip-path="url(#frame)"' : ''}>\n${layers[layer].join('\n')}\n</g>`).join('\n')}\n</svg>`;
   }
 
   // ---------- renderer.ts ----------

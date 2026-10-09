@@ -3,7 +3,7 @@
 #   powershell -ExecutionPolicy Bypass -File handover.ps1
 param(
   [string]$Site = 'https://onesyntax-pattern-generator.pages.dev',
-  [string]$Name = 'OneSyntax-Pattern-Generator'
+  [string]$Name = 'OneSyntax-Pattern-OS'
 )
 $ErrorActionPreference = 'Stop'
 $parent = Split-Path $PSScriptRoot -Parent
@@ -28,7 +28,7 @@ $code = (Get-Content (Join-Path $folder 'index.html') -Raw) + (Get-Content (Join
 if ($code -match '<!--|/\*\*') { throw 'The deployed site still has comments in it. Check the Cloudflare build, then run this again.' }
 
 @"
-OneSyntax Pattern Generator
+Pattern.OS, the pattern engine for OneSyntax
 
 A static web app: index.html, engine.js and the brand and vendor folders. It needs no build, no server code and
 no internet connection: the Geist fonts and the libraries it uses are in the vendor folder, with their licences.

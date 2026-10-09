@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Pattern Generator · OneSyntax</title>
+<title>Pattern.OS · OneSyntax</title>
 <link rel="icon" type="image/svg+xml" href="./brand/onesyntax-symbol-black.svg">
 <!-- OneSyntax brand type: Geist for text, Geist Mono for values, served with the page (vendor/fonts) so it works
      offline and from any host. -->
@@ -153,8 +153,9 @@
   .panel-head { padding: 26px var(--pad) 12px; }
   .head-top { display: flex; justify-content: space-between; align-items: center; }
   .eyebrow-row { display: flex; align-items: center; }
-  .os-chip { display: inline-grid; place-items: center; height: 22px; padding: 0 7px; margin-right: 10px; background: var(--primary); }
-  .os-chip img { display: block; height: 12px; width: auto; }
+  /* The {Pattern.OS} wordmark (brand/pattern-os-wordmark.svg, from the Figma file) in the panel's ink. */
+  .wordmark { display: block; height: 15px; aspect-ratio: 671 / 109; margin-right: 10px; background: var(--text);
+    -webkit-mask: url(./brand/pattern-os-wordmark.svg) center / contain no-repeat; mask: url(./brand/pattern-os-wordmark.svg) center / contain no-repeat; }
   .eyebrow { font: 10.5px var(--mono); letter-spacing: .12em; text-transform: uppercase; color: var(--muted); }
   .history { display: flex; gap: 2px; }
   .history button { width: 32px; height: 32px; display: grid; place-items: center; transition: background .2s var(--ease); }
@@ -438,7 +439,7 @@
 <aside class="panel glass" id="panel" aria-label="Pattern controls">
   <div class="panel-head">
     <div class="head-top">
-      <span class="eyebrow-row"><span class="os-chip"><img src="./brand/onesyntax-os-monogram.svg" alt="{OS}"></span><span class="eyebrow" id="eyebrow">Generative system / 01</span></span>
+      <span class="eyebrow-row"><span class="wordmark" role="img" aria-label="Pattern.OS"></span><span class="eyebrow" id="eyebrow">/ 01</span></span>
       <span class="history">
         <button id="motionSwitch" class="motion-switch" aria-pressed="false" aria-label="Motion" title="Motion (M)"></button>
         <span class="divider" aria-hidden="true"></span>
@@ -726,7 +727,7 @@ const rebrandHex = (hex) => OLD_COLOURS[String(hex).toUpperCase()] || hex;
 // ---------- Wave Rows ----------
 const ROW_DEFAULTS = {
   rows: 24, items: 32, itemStep: 0,
-  margin: 90, gapX: 0.25, gapY: 0.35, radius: 0,
+  margin: 90, gapX: 0.25, gapY: 0.35, radius: 0, rotation: 0,
   opacityMin: 0.05, opacityMax: 1, sizeMin: 1, sizeMax: 1,
   frequency: 2, phase: 0, rowShift: 15, frequencyStep: 0, sharpness: 1, speed: 0, shape: 'sine', harmonics: 8,
   ...rowsPalette('Mono Light'), format: '1:1', seed: 1,
@@ -745,16 +746,16 @@ const ROW_PRESETS = [
     rows: 44, items: 3, margin: 80, gapX: 0.02, gapY: 0.45, opacityMin: 0.08,
     frequency: 1.2, rowShift: 18, sharpness: 1.4, ...rowsPalette('Midnight') } },
   { name: 'Dot Notation', params: {
-    rows: 33, items: 33, margin: 80, gapX: 0.3, gapY: 0.3, radius: 1, opacityMin: 0,
+    rows: 33, items: 33, margin: 80, gapX: 0.3, gapY: 0.3, opacityMin: 0,
     frequency: 1.5, rowShift: 20, sharpness: 1, ...rowsPalette('Blue on White') } },
   { name: 'Async', params: {
-    rows: 25, items: 20, itemStep: 0.6, margin: 65, gapX: 0.3, gapY: 0.55, radius: 1, opacityMin: 0.1,
+    rows: 25, items: 20, itemStep: 0.6, margin: 65, gapX: 0.3, gapY: 0.55, opacityMin: 0.1,
     frequency: 2.5, rowShift: -20, frequencyStep: 0.04, sharpness: 1.2, ...rowsPalette('Ice') } },
   { name: 'Night Build', params: {
-    rows: 40, items: 12, itemStep: 1.5, radius: 1, opacityMin: 0,
+    rows: 40, items: 12, itemStep: 1.5, opacityMin: 0,
     frequency: 3.5, rowShift: -25, sharpness: 2.4, speed: 0.5, ...rowsPalette('Midnight') } },
   { name: 'Heartbeat', params: {
-    rows: 28, items: 28, margin: 90, gapX: 0.1, gapY: 0.1, radius: 1, opacityMin: 0.35,
+    rows: 28, items: 28, margin: 90, gapX: 0.1, gapY: 0.1, opacityMin: 0.35,
     sizeMin: 0.15, sizeMax: 1, frequency: 1.5, rowShift: 24, sharpness: 1.3, speed: 1, ...rowsPalette('Ember') } },
   { name: 'Stdout', params: {
     rows: 31, items: 4, margin: 95, gapX: 0.15, gapY: 0.35, opacityMin: 0.15,
@@ -763,13 +764,13 @@ const ROW_PRESETS = [
 // Each studio pattern's built-in look, by pattern name.
 const STUDIO_LOOKS = {
   'Eddy': 'Data Flow', Barcode: 'Bitstream', 'Threshold Stripes': 'Stack Trace',
-  'Halftone Diagonal': 'Gradient Descent', 'Contour Field': 'Schema', Strands: 'Threads', 'Kaleido Pixels': 'Recursion', 'Stack': 'Call Stack',
+  'Halftone Diagonal': 'Gradient Descent', Strands: 'Threads', 'Kaleido Pixels': 'Recursion',
 };
 // Looks renamed in the brand vocabulary; a session left on an old name follows it to the new one.
 const RENAMED_LOOKS = {
   'Soft Wave': 'Hello World', 'Meter Rows': 'Throughput', 'Barcode Rows': 'Checksum', 'Threshold Rows': 'Pipeline', 'Halftone Dots': 'Dot Notation',
   'Azure Drift': 'Async', 'Night Tide': 'Night Build', 'Pulse Dots': 'Heartbeat', 'RFD Rows': 'Stdout',
-  'Sinky Meter': 'Bitstream', 'Amaya Flow': 'Data Flow', 'RFD Stack': 'Call Stack', 'Vector Field': 'Schema',
+  'Sinky Meter': 'Bitstream', 'Amaya Flow': 'Data Flow', 'RFD Stack': 'Gradient Descent', 'Vector Field': 'Data Flow',
   ...STUDIO_LOOKS, Cymatics: 'Resonance', Interference: 'Concurrency', 'Logo Field': 'Source',
   // Gauge was removed on 7 October; a session left on it or its presets opens Barcode's first.
   Gauge: 'Bitstream', Telemetry: 'Bitstream', Uptime: 'Bitstream', Benchmark: 'Bitstream',
@@ -778,12 +779,17 @@ const RENAMED_LOOKS = {
   ...Object.fromEntries(['Threshold Stripes', 'Stack Trace', 'Bandwidth', 'Packet', 'Strands', 'Threads', 'Protocol', 'Socket'].map((n) => [n, 'Merge'])),
   // 8 October: Silhouette keeps only Merge.
   Interface: 'Merge', Branch: 'Merge',
-  'Call Stack': 'Deploy', Buffer: 'Deploy', Register: 'Deploy', 'Sinky Meter': 'Query',
+  'Sinky Meter': 'Query',
+  // 10 October: Contour Field's looks open Eddy's first, Stack's open Halftone Diagonal's, and Bracket keeps Scope and
+  // Compile.
+  ...Object.fromEntries(['Contour Field', 'Schema', 'Heap', 'Closure'].map((n) => [n, 'Data Flow'])),
+  ...Object.fromEntries(['Stack', 'Call Stack', 'Buffer', 'Register', 'Deploy', 'Release', 'Cache', 'Rollout'].map((n) => [n, 'Gradient Descent'])),
+  Render: 'Scope', Loop: 'Scope',
 };
 // The studio patterns keep their geometry and move onto the closest brand palette.
 const STUDIO_PALETTES = {
   'Eddy': 'Ice', Barcode: 'Mono Light', 'Threshold Stripes': 'Midnight', 'Halftone Diagonal': 'Blue on White',
-  'Contour Field': 'Blueprint', Strands: 'Primary', 'Kaleido Pixels': 'Ocean', 'Stack': 'Midnight',
+  Strands: 'Primary', 'Kaleido Pixels': 'Ocean',
 };
 
 function rowWave(v, u, r, time, wave) {
@@ -812,7 +818,13 @@ function rowsGeometry(v, time, pool) {
   const instances = E.instanceBuffer(pool, counts.reduce((a, b) => a + b, 0) * STRIDE);
   const [red, green, blue] = E.colourRGB(v.ink);
   const m = Math.min(v.margin, width / 2 - 1, height / 2 - 1);
-  const innerW = width - 2 * m, rowH = (height - 2 * m) / rows, h = rowH * (1 - v.gapY);
+  // Rotation lays the rows out in a frame turned about the page's centre, sized to cover the margin's box once
+  // turned, and the margin cuts them: the rows run edge to edge of the box at any angle.
+  const turn = (v.rotation || 0) * Math.PI / 180, cos = Math.cos(turn), sin = Math.sin(turn), turned = Math.abs(sin) > 1e-9 || cos < 0;
+  const boxW = width - 2 * m, boxH = height - 2 * m;
+  const innerW = boxW * Math.abs(cos) + boxH * Math.abs(sin), innerH = boxW * Math.abs(sin) + boxH * Math.abs(cos);
+  const left = (width - innerW) / 2, top = (height - innerH) / 2, cx = width / 2, cy = height / 2;
+  const rowH = innerH / rows, h = rowH * (1 - v.gapY);
   const wave = E.waveFn(v.shape, v.harmonics);
   let count = 0, id = 0;  // ids number every item, shown or not, so animated SVG can follow each one
   for (let r = 0; r < rows; r++) {
@@ -822,11 +834,13 @@ function rowsGeometry(v, time, pool) {
       const opacity = Math.min(1, v.opacityMin + (v.opacityMax - v.opacityMin) * k);
       const size = Math.max(0, v.sizeMin + (v.sizeMax - v.sizeMin) * k);
       if (opacity <= 0.002 || size <= 0.001) continue;
-      putMark(instances, count++, m + (i + 0.5) * cellW, m + (r + 0.5) * rowH, w * size, h * size, 0, v.radius * Math.min(w, h) * size / 2, 0, red, green, blue, opacity, 1, id);
+      const dx = left + (i + 0.5) * cellW - cx, dy = top + (r + 0.5) * rowH - cy;
+      putMark(instances, count++, cx + dx * cos - dy * sin, cy + dx * sin + dy * cos, w * size, h * size, turn, v.radius * Math.min(w, h) * size / 2, 0, red, green, blue, opacity, 1, id);
     }
   }
   const params = { name: 'Wave Rows', seed: 0, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
-  return { instances, count, markCount: count, width, height, params };
+  return { instances, count, markCount: count, width, height, params, rowGrid: rows > 1 && !turned ? { origin: m, pitch: rowH } : undefined,
+    clip: turned && m > 0 ? [m, m, width - m, height - m] : undefined };
 }
 
 // ---------- Pulse: the Wave Rows idea, laid over any studio pattern ----------
@@ -1041,16 +1055,11 @@ function markGeometry(v, time, pool) {
   return { instances, count, markCount: count, width, height, params };
 }
 
-// Four starting points: the brand's pixel and line marks, a build-in, and the mark repeated as a pattern.
+// Two starting points (Render and Loop were dropped on 10 October): the brand's pixel mark, and a build-in.
 const MARK_PRESETS = [
   { name: 'Scope', params: { texture: 'pixel', weight: 1, effect: 'wave', depth: 0.3, frequency: 1, direction: 90, affects: 'size',
     palette: 'Custom', background: '#67B6FF', ink: '#0082FD', ink2: '#BDDFFF', highlight: '#FCFCFC' } },
-  // Render (redone 7 October; the scan's colour sweep was not liked): Loop's calm, in the brand's line version.
-  { name: 'Render', params: { columns: 3, rows: 3, gap: 4, margin: 0.1, texture: 'line', weight: 0.7, effect: 'ripple', speed: 0.5, frequency: 1,
-    depth: 0.45, affects: 'size', ...markPalette('Mono Dark') } },
   { name: 'Compile', params: { texture: 'pixel', weight: 0.84, effect: 'build', direction: 0, depth: 1, affects: 'both', ...markPalette('Mono Dark') } },
-  { name: 'Loop', params: { columns: 4, rows: 4, gap: 4, margin: 0.08, texture: 'pixel', weight: 0.82, effect: 'wave', frequency: 1.5, direction: 45,
-    depth: 0.55, affects: 'size', ...markPalette('Blue on White') } },
 ];
 const MARK_HINT = 'Pixel and Line are the brand\'s two versions of the mark. Detail splits each cell into finer pixels or scanlines.';
 const EFFECT_HINT = 'Every effect loops: whole speeds repeat in 5 s, half speeds in 10 s.';
@@ -1076,7 +1085,7 @@ const EFFECT_HINT = 'Every effect loops: whole speeds repeat in 5 s, half speeds
 // Motion is a wave (sine, or a Fourier shape) with a whole number of cycles per loop: through the dash lengths, outward from the centre
 // (Ripple) or round it (Sweep), or through α itself (Twist), so the field breathes between inward and outward spirals.
 const VECTOR_DEFAULTS = {
-  spiral: 0, centreX: 0, centreY: 0, core: 2, columns: 12, rows: 34, gapX: 0.45, gapY: 0.865, overlap: 0.15, radius: 1, opacity: 1, margin: 0,
+  spiral: 0, centreX: 0, centreY: 0, core: 2, columns: 12, rows: 34, gapX: 0.45, gapY: 0.865, overlap: 0.15, radius: 0, opacity: 1, margin: 0,
   perspective: 0.86, ellipse: 2.2, motion: 'none', speed: 1, depth: 0.4, waves: 3, shape: 'sine', harmonics: 8,
   palette: 'Mono Dark', background: '#151515', ink: '#FCFCFC', ink2: '#FCFCFC', format: '1:1', seed: 1,
 };
@@ -1190,7 +1199,7 @@ const ORBIT_DEFAULTS = {
   layout: 'arcs',
   centreX: 0, centreY: 0, driftX: 0, driftY: 0, stretch: 1.3, rotation: 0, twist: 0, perspective: 0,
   lines: 46, crowding: 2.2, inner: 0, spacing: 0.1, growth: 0.15, bend: 0.3,
-  length: 0.055, thickness: 0.15, radius: 1, taper: 0.3, margin: 0, motion: 'none', speed: 1, depth: 0.3,
+  length: 0.055, thickness: 0.15, radius: 0, taper: 0.3, margin: 0, motion: 'none', speed: 1, depth: 0.3,
   pulse: { ...PULSE_DEFAULTS },
   grid: ORBIT_GRID_DEFAULTS,
   palette: 'Mono Dark', background: '#151515', ink: '#FCFCFC', ink2: '#FCFCFC', format: '1:1', seed: 1,
@@ -1394,6 +1403,7 @@ const turnControl = range('layout.rotation', 'Rotation', -180, 180, 1, deg);
 // Roundness: a share of fully round for lines and pills (square ends at 0), a corner radius for bars and pixels.
 const roundness = range('marks.roundness', 'Roundness', 0, 1, 0.01, pct);
 const cornerRadius = { ...range('marks.radius', 'Roundness', 0, 30, 0.5, px), when: (v) => v.marks.shape !== 'Dot' };
+const cellSized = (v) => !!v.marks.cellSized;
 const waveFrequency = range('field.waveA.frequency', 'Frequency', 0, 12, 0.05, times);
 const waveDirection = range('field.waveA.direction', 'Direction', -180, 180, 1, deg);
 const secondWave = range('field.waveB.weight', 'Second wave', 0, 3, 0.01, f2);
@@ -1702,7 +1712,7 @@ function silhouetteGeometry(v, time, pool) {
 // down them and a seeded grain set the levels, so the rows ramp from dots to bars and step like a printout; Mirror
 // folds it about the middle. Motion sends the wave through.
 const READOUT_DEFAULTS = {
-  columns: 36, rows: 18, margin: 0.1, glyphs: 'ascii', slope: 0.6, slopeDirection: 0, wave: 0.7, frequency: 1.2, direction: 90,
+  columns: 36, rows: 18, margin: 0.1, gap: 0.28, rotation: 0, glyphs: 'ascii', slope: 0.6, slopeDirection: 0, wave: 0.7, frequency: 1.2, direction: 90,
   grain: 0.15, contrast: 1.2, mirror: 'none', speed: 0.5,
   palette: 'Grape', background: '#120033', ink: '#B48CFF', ink2: '#B48CFF', format: '1:1', seed: 1,
 };
@@ -1711,12 +1721,22 @@ const PIXEL_DIGITS = { 0: ['111', '101', '101', '101', '111'], 1: ['010', '110',
 function readoutGeometry(v, time, pool) {
   const [width, height] = FORMATS[v.format] || FORMATS['1:1'], side = Math.min(width, height), margin = E.clamp(v.margin, 0, 0.45) * side;
   const columns = Math.max(2, Math.min(160, Math.round(v.columns))), rows = Math.max(1, Math.min(120, Math.round(v.rows)));
-  const cw = (width - 2 * margin) / columns, ch = (height - 2 * margin) / rows, digits = v.glyphs === 'digits';
+  // Rotation turns the grid about the page's centre in a frame that covers the margin's box once turned, and the
+  // margin cuts it, as Wave Rows does.
+  const turn = (v.rotation || 0) * Math.PI / 180, cos = Math.cos(turn), sin = Math.sin(turn), turned = Math.abs(sin) > 1e-9 || cos < 0;
+  const boxW = width - 2 * margin, boxH = height - 2 * margin, cx = width / 2, cy = height / 2;
+  const innerW = boxW * Math.abs(cos) + boxH * Math.abs(sin), innerH = boxW * Math.abs(sin) + boxH * Math.abs(cos);
+  const left = (width - innerW) / 2, top = (height - innerH) / 2;
+  const cw = innerW / columns, ch = innerH / rows, digits = v.glyphs === 'digits';
   const random = seededRandom(v.seed * 7919 + 17), grain = Array.from({ length: columns * rows }, () => random() - 0.5);
   const sd = v.slopeDirection * Math.PI / 180, wd = v.direction * Math.PI / 180, phase = 2 * Math.PI * v.speed * time / 5;
   const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.ink2);
   const instances = E.instanceBuffer(pool, columns * rows * (digits ? 15 : 2) * STRIDE);
   let count = 0;
+  const put = (px, py, w, h, rgb, id) => {
+    const dx = px - cx, dy = py - cy;
+    putMark(instances, count++, cx + dx * cos - dy * sin, cy + dx * sin + dy * cos, w, h, turn, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id);
+  };
   for (let r = 0; r < rows; r++) for (let c = 0; c < columns; c++) {
     let u = (c + 0.5) / columns;
     if (v.mirror === 'x') u = Math.abs(u - 0.5) * 2;
@@ -1727,29 +1747,31 @@ function readoutGeometry(v, time, pool) {
     const gc = v.mirror === 'x' ? Math.min(c, columns - 1 - c) : c;
     let value = (v.slope * slope + v.wave * wave) / Math.max(1e-6, v.slope + v.wave) + v.grain * grain[r * columns + gc];
     value = E.clamp((value - 0.5) * v.contrast + 0.5);
-    const level = Math.min(4, Math.floor(value * 5)), x = margin + c * cw, y = margin + r * ch, mid = y + ch / 2;
+    const level = Math.min(4, Math.floor(value * 5)), x = left + c * cw, y = top + r * ch, mid = y + ch / 2;
     const rgb = level >= 4 ? ink : ink2, id = (r * columns + c) * 16;
     if (!level) continue;
     if (digits) {
       // A pixel 1 for the strongest cells, a 0 for the middle, a dot for the faintest.
-      if (level === 1) { const d = ch * 0.12; putMark(instances, count++, x + cw / 2, mid + ch * 0.25, d, d, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id); continue; }
+      if (level === 1) { const d = ch * 0.12; put(x + cw / 2, mid + ch * 0.25, d, d, rgb, id); continue; }
       const glyph = PIXEL_DIGITS[level >= 3 ? 1 : 0], px = Math.min(cw / 4, ch / 6);
       const gx = x + (cw - 3 * px) / 2, gy = y + (ch - 5 * px) / 2;
       glyph.forEach((row, gr) => [...row].forEach((on, gc) => {
-        if (on === '1') putMark(instances, count++, gx + (gc + 0.5) * px, gy + (gr + 0.5) * px, px * 1.02, px * 1.02, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id + gr * 3 + gc);
+        if (on === '1') put(gx + (gc + 0.5) * px, gy + (gr + 0.5) * px, px * 1.02, px * 1.02, rgb, id + gr * 3 + gc);
       }));
       continue;
     }
-    const line = Math.max(0.6, ch * 0.12), dash = cw * 0.72;
-    if (level === 1) putMark(instances, count++, x + cw / 2, mid + ch * 0.18, line, line, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id);
-    else if (level === 2) putMark(instances, count++, x + cw / 2, mid, dash, line, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id);
+    // Gap is the space between neighbouring dashes, as a share of the cell.
+    const line = Math.max(0.6, ch * 0.12), dash = cw * (1 - E.clamp(v.gap, 0, 0.9));
+    if (level === 1) put(x + cw / 2, mid + ch * 0.18, line, line, rgb, id);
+    else if (level === 2) put(x + cw / 2, mid, dash, line, rgb, id);
     else if (level === 3) {
-      putMark(instances, count++, x + cw / 2, mid - line * 1.1, dash, line, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id);
-      putMark(instances, count++, x + cw / 2, mid + line * 1.1, dash, line, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id + 1);
-    } else putMark(instances, count++, x + cw / 2, mid, cw * 1.01, ch * 0.5, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, id);  // bars meet their neighbours
+      put(x + cw / 2, mid - line * 1.1, dash, line, rgb, id);
+      put(x + cw / 2, mid + line * 1.1, dash, line, rgb, id + 1);
+    } else put(x + cw / 2, mid, cw * 1.01, ch * 0.5, rgb, id);  // bars meet their neighbours
   }
   const params = { name: 'Readout', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
-  return { instances, count, markCount: count, width, height, params };
+  return { instances, count, markCount: count, width, height, params, rowGrid: turned ? undefined : { origin: margin, pitch: ch },
+    clip: turned && margin > 0 ? [margin, margin, width - margin, height - margin] : undefined };
 }
 
 // The flat pattern kinds added on 7 October, so each hook (sanitising, drawing, palettes, remix, motion, sticker
@@ -1782,7 +1804,8 @@ const PATTERNS = [
     sections: [
       ['Grid', [range('rows', 'Rows', 1, 120, 1, int), range('items', 'Items', 1, 160, 1, int),
         range('itemStep', 'Items / row', -4, 4, 0.1, signed), range('margin', 'Margin', 0, 300, 1, px),
-        range('gapX', 'Item gap', 0, 0.95, 0.01, pct), range('gapY', 'Row gap', 0, 0.95, 0.01, pct), range('radius', 'Roundness', 0, 1, 0.01, pct)]],
+        range('gapX', 'Item gap', 0, 0.95, 0.01, pct), range('gapY', 'Row gap', 0, 0.95, 0.01, pct), range('rotation', 'Rotation', -180, 180, 1, deg),
+        range('radius', 'Roundness', 0, 1, 0.01, pct)]],
       ['Opacity & size', [range('opacityMin', 'Min opacity', 0, 1, 0.01, pct), range('opacityMax', 'Max opacity', 0, 1, 0.01, pct),
         range('sizeMin', 'Min size', 0, 2, 0.01, pct), range('sizeMax', 'Max size', 0, 2, 0.01, pct)]],
       ['Wave', [range('frequency', 'Frequency', 0, 12, 0.05, times), range('phase', 'Phase', 0, 360, 1, deg),
@@ -1802,8 +1825,9 @@ const PATTERNS = [
   { name: 'Readout', kind: 'readout', group: 'Studio patterns',
     description: 'Rows of dots, dashes and bars, like a printout of a running system.',
     sections: [
-      ['Grid', [range('columns', 'Columns', 4, 120, 1, int), range('rows', 'Rows', 2, 80, 1, int), range('margin', 'Margin', 0, 0.45, 0.01, pct)]],
-      ['Glyphs', [choice('glyphs', 'Draw as', [['Dashes', 'ascii'], ['Digits', 'digits']]), range('contrast', 'Contrast', 0.3, 4, 0.01, f2),
+      ['Grid', [range('columns', 'Columns', 4, 120, 1, int), range('rows', 'Rows', 2, 80, 1, int), range('margin', 'Margin', 0, 0.45, 0.01, pct),
+        { ...range('gap', 'Gap', 0, 0.9, 0.01, pct), when: (v) => v.glyphs !== 'digits' }, range('rotation', 'Rotation', -180, 180, 1, deg)]],
+      ['Glyphs', [{ ...choice('glyphs', 'Draw as', [['Dashes', 'ascii'], ['Digits', 'digits']]), rebuild: true }, range('contrast', 'Contrast', 0.3, 4, 0.01, f2),
         range('grain', 'Grain', 0, 1, 0.01, pct), choice('mirror', 'Mirror', [['None', 'none'], ['Sides', 'x']])],
         'Each cell is a dot, a dash, a double dash or a bar by its strength, or a 0 or a 1 as digits.'],
       ['Wave', [range('slope', 'Slope', 0, 3, 0.01, f2), range('slopeDirection', 'Slope direction', -180, 180, 1, deg),
@@ -1838,27 +1862,17 @@ const PATTERNS = [
         { ...range('field.waveA.frequency', 'Ripple freq.', 0, 12, 0.05, times), when: rippleOn }, { ...animate, when: rippleOn }],
         'The gradient itself stays still: Speed moves the ripple, so turn Ripple up to animate (or use Pulse).'],
     ], look: studioLook(), shapeWhen: rippleOn },
-  { name: 'Contour Field', sections: [
-      ['Grid', [columns(), rowsCount(), margin, turnControl]],
-      ['Marks', [range('mappings.length.min', 'Shortest', 0, 120, 0.5, px), range('mappings.length.max', 'Longest', 0, 120, 0.5, px),
-        range(both('mappings.thickness'), 'Thickness', 0.2, 30, 0.1, px), roundness]],
-      ['Field', [waveFrequency, waveDirection, secondWave, range('field.radial.weight', 'Ripple', 0, 3, 0.01, f2),
-        range('shaping.warp', 'Warp', 0, 0.75, 0.01, f2), animate]],
-    ], look: studioLook() },
   { name: 'Kaleido Pixels', sections: [
-      ['Grid', [range(['layout.columns', 'layout.rows'], 'Pixels across', 2, 120, 1, int),
-        range([...both('mappings.thickness'), ...both('mappings.length')], 'Pixel size', 1, 80, 0.5, px), margin, turnControl, cornerRadius]],
+      // Pixels fill their cells less the gaps; saves from before that keep their pixel size.
+      ['Grid', [{ ...columns('Columns', 160), when: cellSized }, { ...rowsCount('Rows', 160), when: cellSized },
+        { ...range('marks.cellGapX', 'Column gap', 0, 0.9, 0.01, pct), when: cellSized }, { ...range('marks.cellGapY', 'Row gap', 0, 0.9, 0.01, pct), when: cellSized },
+        { ...range(['layout.columns', 'layout.rows'], 'Pixels across', 2, 120, 1, int), when: (v) => !cellSized(v) },
+        { ...range([...both('mappings.thickness'), ...both('mappings.length')], 'Pixel size', 1, 80, 0.5, px), when: (v) => !cellSized(v) },
+        margin, turnControl, cornerRadius]],
       ['Field', [waveFrequency, range('field.waveB.frequency', 'Second freq.', 0, 12, 0.05, times), range('field.noise.weight', 'Noise', 0, 3, 0.01, f2),
         choice('shaping.mirror', 'Mirror', [['None', 'none'], ['Sides', 'X'], ['Top', 'Y'], ['Both', 'XY']]),
         range('shaping.quantise', 'Colour steps', 0, 16, 1, stepsFmt), animate]],
     ], look: studioLook() },
-  { name: 'Stack', sections: [
-      ['Grid', [columns('Columns', 20), rowsCount('Rows', 100), margin, range('layout.gutterX', 'Column gap', 0, 100, 1, px), turnControl]],
-      ['Bars', [range(both('mappings.thickness'), 'Thickness', 0.5, 40, 0.5, px), range('mappings.length.min', 'Shortest', 0, 600, 1, px),
-        range('mappings.length.max', 'Longest', 0, 600, 1, px), cornerRadius]],
-      // Deploy's bars read nothing from the wave (their sizes and colour are fixed), so the wave's controls hide.
-      ['Wave', [waveFrequency, waveDirection, secondWave, steps, animate], undefined, fieldShows],
-    ], look: studioLook(), shapeWhen: fieldShows },
 
   { name: 'Orbit', kind: 'orbit', group: 'Studio patterns',
     description: 'Dashes sweeping round nested arcs, crowding into fine lines towards the top.',
@@ -1948,7 +1962,10 @@ const PATTERN_GROUPS = GROUPS.map((g) => [g, PATTERNS.filter((p) => p.group === 
 // from the original studio).
 // Gauge (once Sinky Meter) was removed on 7 October: its saves and links open as Barcode.
 // Barcode, Threshold Stripes and Strands were retired on 7 October: Readout and Silhouette take their saves.
-const PATTERN_ALIASES = { 'Sinky Meter': 'Readout', Gauge: 'Readout', Barcode: 'Readout', 'Threshold Stripes': 'Silhouette', Strands: 'Silhouette', 'Amaya Flow': 'Eddy', 'RFD Stack': 'Stack', 'Vector Field': 'Orbit', Horizon: 'Orbit' };
+// Contour Field and Stack were dropped on 10 October: Eddy (marks along a flow) and Halftone Diagonal (a grid of bars)
+// take theirs, which keep their own settings and so open looking as they did.
+const PATTERN_ALIASES = { 'Sinky Meter': 'Readout', Gauge: 'Readout', Barcode: 'Readout', 'Threshold Stripes': 'Silhouette', Strands: 'Silhouette', 'Amaya Flow': 'Eddy', 'Vector Field': 'Orbit', Horizon: 'Orbit',
+  'Contour Field': 'Eddy', Stack: 'Halftone Diagonal', 'RFD Stack': 'Halftone Diagonal' };
 const patternOf = (name) => PATTERNS.find((p) => p.name === (PATTERN_ALIASES[name] || name)) || PATTERNS[0];
 const kindOf = (st) => patternOf(st.pattern).kind;
 const isRows = (st) => kindOf(st) === 'rows';
@@ -2094,7 +2111,7 @@ const ORBIT_PRESETS = [
   { name: 'Event Queue', params: { layout: 'arcs', centreX: -0.057, centreY: -0.141, driftX: -0.882, driftY: 0.401, stretch: 2.414, rotation: 9.4, perspective: 0.79,
     lines: 73, crowding: 1.36, inner: 0.014, spacing: 0.147, growth: 0.35, length: 0.055, thickness: 0.28, taper: 0.4, bend: 0.5, ...orbitPalette('Mono Dark') } },
   { name: 'Event Loop', params: { layout: 'grid', ...orbitPalette('Mono Dark'),
-    grid: { spiral: 0, centreX: 0, centreY: 0, columns: 12, rows: 34, gapX: 0.45, gapY: 0.865, overlap: 0.15, core: 2, radius: 1, perspective: 0.86, ellipse: 2.2 } } },
+    grid: { spiral: 0, centreX: 0, centreY: 0, columns: 12, rows: 34, gapX: 0.45, gapY: 0.865, overlap: 0.15, core: 2, radius: 0, perspective: 0.86, ellipse: 2.2 } } },
 ];
 
 // Readout, after the four RFD cards (in brand colours).
@@ -2110,8 +2127,9 @@ const SILHOUETTE_PRESETS = [
 ];
 const BUILT_INS = [
   ...ROW_PRESETS.map((p) => ({ name: p.name, group: 'Wave Rows', pattern: 'Wave Rows', values: sanitizeRows(p.params) })),
-  // Gauge, Barcode, Threshold Stripes and Strands were retired (Readout and Silhouette replaced two of them).
-  ...E.PRESETS.filter((p) => !['Gauge', 'Barcode', 'Threshold Stripes', 'Strands'].includes(p.name)).map((p) => {
+  // Gauge, Barcode, Threshold Stripes and Strands were retired (Readout and Silhouette replaced two of them); Contour
+  // Field and Stack on 10 October.
+  ...E.PRESETS.filter((p) => !['Gauge', 'Barcode', 'Threshold Stripes', 'Strands', 'Contour Field', 'Stack'].includes(p.name)).map((p) => {
     const values = studioPalette(normaliseStudio(structuredClone(p)), STUDIO_PALETTES[p.name]);
     // A light ripple over the gradient, so Speed and the ripple controls do something from the start.
     if (p.name === 'Halftone Diagonal') values.field.waveA.weight = 0.15;
@@ -2137,41 +2155,10 @@ const MORE_PRESETS = [
     'mappings.length.min': 20, 'mappings.length.max': 20, 'marks.fixedAngle': 45, 'field.gradient.direction': 135, 'shaping.gamma': 0.8, 'field.waveA.weight': 0.3, 'field.waveA.frequency': 2.5 } },
   { name: 'Throttle', from: 'Gradient Descent', palette: 'Coral', set: { 'layout.columns': 22, 'layout.rows': 22, 'mappings.thickness.min': 1.5, 'mappings.thickness.max': 20,
     'mappings.length.min': 44, 'mappings.length.max': 44, 'marks.fixedAngle': -30, 'field.gradient.direction': 0, 'shaping.gamma': 2, 'field.waveA.weight': 0.15 } },
-  { name: 'Heap', from: 'Schema', palette: 'Midnight', set: { 'layout.columns': 44, 'layout.rows': 44, 'mappings.length.min': 8, 'mappings.length.max': 24,
-    'mappings.thickness.min': 3.6, 'mappings.thickness.max': 3.6, 'field.waveA.frequency': 2.4, 'field.waveA.direction': 120, 'field.waveB.weight': 0.9, 'field.radial.weight': 0.5, 'shaping.warp': 0.12 } },
-  { name: 'Closure', from: 'Schema', palette: 'Grape', set: { 'layout.columns': 30, 'layout.rows': 30, 'mappings.length.min': 10, 'mappings.length.max': 34,
-    'mappings.thickness.min': 4, 'mappings.thickness.max': 4, 'field.waveA.frequency': 0.8, 'field.waveA.direction': 10, 'field.waveB.weight': 0.3, 'field.radial.weight': 0.1, 'shaping.warp': 0.04 } },
-  { name: 'Deploy', from: 'Call Stack', palette: 'Coral', set: { 'layout.columns': 7, 'layout.rows': 9, 'layout.margin': 150, 'layout.gutterX': 14,
-    'marks.shape': 'Parallelogram', 'marks.skew': 0.42, 'marks.angleMode': 'fixed', 'marks.fixedAngle': 90, 'marks.threshold': 0,
-    'mappings.offsetY.source': 'x', 'mappings.offsetY.min': 36, 'mappings.offsetY.max': -36,
-    'mappings.length.source': 'constant', 'mappings.length.min': 74, 'mappings.length.max': 74, 'mappings.thickness.min': 112, 'mappings.thickness.max': 112,
-    'field.waveA.frequency': 0.5, 'field.waveA.direction': 90, 'field.waveB.weight': 0.5, 'field.waveB.frequency': 2.3, 'field.waveB.direction': 0, 'shaping.quantise': 0,
-    'colour.background': '#FF5620', 'colour.stop1': '#FCFCFC', 'colour.stop2': '#FCFCFC' } },
-  // After the One Grove card: thick stripes with a stepped gap down the middle.
-  // After two violet references: slanted bars in columns, shaded light to dark across the grid (Release), and a dense
-  // see-through version whose bars overlap into depth (Cache).
-  { name: 'Release', from: 'Deploy', palette: 'Grape', set: { 'layout.columns': 8, 'layout.rows': 10, 'layout.margin': 140, 'layout.gutterX': 10,
-    'mappings.offsetY.min': 28, 'mappings.offsetY.max': -28, 'mappings.length.min': 62, 'mappings.length.max': 62, 'mappings.thickness.min': 82, 'mappings.thickness.max': 82,
-    'field.gradient.enabled': true, 'field.gradient.weight': 1, 'field.gradient.direction': 135, 'field.waveA.weight': 0.35, 'field.waveA.frequency': 0.8, 'field.waveA.direction': 0,
-    'field.waveB.weight': 0, 'mappings.opacity.source': 'field', 'mappings.opacity.min': 0.3, 'mappings.opacity.max': 1,
-    'colour.source': 'field', 'colour.stops': 2, 'colour.background': '#120033', 'colour.stop1': '#7B33FF', 'colour.stop2': '#E9DDFF', 'motion.speed': 0.5 } },
-  { name: 'Cache', from: 'Deploy', palette: 'Grape', set: { 'layout.columns': 16, 'layout.rows': 10, 'layout.margin': 110, 'layout.gutterX': 10,
-    'mappings.offsetY.min': 20, 'mappings.offsetY.max': -20, 'mappings.length.min': 64, 'mappings.length.max': 64, 'mappings.thickness.min': 46, 'mappings.thickness.max': 46,
-    'field.gradient.enabled': true, 'field.gradient.weight': 1, 'field.gradient.direction': 45, 'field.waveA.weight': 0.5, 'field.waveA.frequency': 1.2, 'field.waveA.direction': 90,
-    'field.waveB.weight': 0, 'mappings.opacity.source': 'field', 'mappings.opacity.min': 0.25, 'mappings.opacity.max': 0.75,
-    'colour.source': 'field', 'colour.stops': 2, 'colour.background': '#120033', 'colour.stop1': '#7B33FF', 'colour.stop2': '#E9DDFF', 'motion.speed': 0.5 } },
-  // The studio's own look (8 October): Deploy's slanted bars in a tall, dense grid, in Midnight, a pulse of light
-  // running through them. Its bars keep Deploy's cell (816/7 by 100) as their reference, so they shrink into the
-  // smaller cells rather than spill over them.
-  { name: 'Rollout', from: 'Deploy', palette: 'Midnight', set: { 'layout.columns': 9, 'layout.rows': 33, 'layout.margin': 100, 'layout.gutterX': 9,
-    'layout.fitWidth': 816 / 7, 'layout.fitHeight': 100,
-    'mappings.thickness.min': 111, 'mappings.thickness.max': 111, 'mappings.length.min': 0, 'mappings.length.max': 99,
-    'colour.background': '#001931', 'colour.stop1': '#0A89FF', 'colour.stop2': '#BDDFFF', 'colour.stop3': '#67B6FF', 'colour.accent': '#FF8A65',
-    'pulse.enabled': true, 'pulse.opacityMin': 0.26, 'pulse.frequency': 4.1, 'pulse.direction': 67, 'pulse.speed': 2 } },
-  { name: 'Kernel', from: 'Recursion', palette: 'Coral', set: { 'motion.speed': 1, 'layout.columns': 24, 'layout.rows': 24, 'mappings.thickness.min': 40, 'mappings.thickness.max': 40,
-    'mappings.length.min': 40, 'mappings.length.max': 40, 'field.waveA.frequency': 1.4, 'field.waveB.frequency': 3.2, 'field.noise.weight': 0.1, 'shaping.mirror': 'X', 'shaping.quantise': 4 } },
-  { name: 'Mutex', from: 'Recursion', palette: 'Violet', set: { 'motion.speed': 0.5, 'layout.columns': 64, 'layout.rows': 64, 'mappings.thickness.min': 16, 'mappings.thickness.max': 16,
-    'mappings.length.min': 16, 'mappings.length.max': 16, 'field.waveA.frequency': 3.4, 'field.waveB.frequency': 2.2, 'field.noise.weight': 0.4, 'shaping.mirror': 'XY', 'shaping.quantise': 8 } },
+  { name: 'Kernel', from: 'Recursion', palette: 'Coral', set: { 'motion.speed': 1, 'layout.columns': 24, 'layout.rows': 24, 'marks.cellGapX': 0.11, 'marks.cellGapY': 0.11,
+    'field.waveA.frequency': 1.4, 'field.waveB.frequency': 3.2, 'field.noise.weight': 0.1, 'shaping.mirror': 'X', 'shaping.quantise': 4 } },
+  { name: 'Mutex', from: 'Recursion', palette: 'Violet', set: { 'motion.speed': 0.5, 'layout.columns': 64, 'layout.rows': 64, 'marks.cellGapX': 0.05, 'marks.cellGapY': 0.05,
+    'field.waveA.frequency': 3.4, 'field.waveB.frequency': 2.2, 'field.noise.weight': 0.4, 'shaping.mirror': 'XY', 'shaping.quantise': 8 } },
   { name: 'Overflow', from: 'Resonance', palette: 'Ember', set: { 'field.plate.n': 5, 'field.plate.m': 2, 'field.plate.mix': -20, 'shaping.gamma': 6,
     'layout.columns': 90, 'layout.rows': 90, 'mappings.thickness.max': 9, 'mappings.length.max': 9, 'mappings.opacity.min': 0.1 } },
   { name: 'Daemon', from: 'Resonance', palette: 'Ice', set: { 'field.plate.n': 6, 'field.plate.m': 9, 'field.plate.mix': 30, 'shaping.gamma': 3,
@@ -2199,10 +2186,11 @@ for (const p of MORE_PRESETS) {
   if (values.colour.source === 'constant') values.colour.stop2 = values.colour.stop1;
   BUILT_INS.splice(BUILT_INS.findLastIndex((b) => b.pattern === source.pattern) + 1, 0, { name: p.name, group: source.group, pattern: source.pattern, values });
 }
-// Deploy (made from Call Stack) now leads Stack; Call Stack itself is retired (7 October).
-BUILT_INS.splice(BUILT_INS.findIndex((b) => b.name === 'Call Stack'), 1);
 // Each preset whose bars follow their space measures its own cell as their reference (see fitReference).
 for (const b of BUILT_INS) if (b.values.layout) fixFitReference(b.values);
+// Presets run in the pattern menu's order, each pattern's together (Refactor, made from Eddy later, beside Data Flow),
+// so the presets window, the arrows and the dots all follow one order. The sort keeps each pattern's own order.
+BUILT_INS.sort((a, b) => PATTERNS.indexOf(patternOf(a.pattern)) - PATTERNS.indexOf(patternOf(b.pattern)));
 const firstPreset = (pattern) => BUILT_INS.find((b) => b.pattern === pattern);
 const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, orbit: ORBIT_DEFAULTS, silhouette: SILHOUETTE_DEFAULTS, readout: READOUT_DEFAULTS };
 const defaultsFor = (pattern) => FLAT_DEFAULTS[patternOf(pattern).kind] || firstPreset(pattern).values;
@@ -2262,7 +2250,7 @@ function guessPattern(p) {
   if (p.layout && p.layout.mode === 'Strands') return 'Strands';
   if (p.layout && p.layout.mode === 'Rows') return 'Threshold Stripes';
   if (p.shaping && p.shaping.mirror && p.shaping.mirror !== 'none') return 'Kaleido Pixels';
-  if (p.marks && p.marks.angleMode === 'flow') return 'Contour Field';
+  if (p.marks && p.marks.angleMode === 'flow') return 'Eddy';
   if (p.marks && p.marks.shape === 'Line') return 'Halftone Diagonal';
   return 'Barcode';
 }
@@ -2586,10 +2574,19 @@ function stickerState(st) {
   }
   return out;
 }
-/** How the pattern covers the band: its scale and top-left corner, on the sticker. */
+/** How the pattern covers the band: its scale and top-left corner, on the sticker. A pattern in level rows shows a
+ *  whole number of them: the band's top and bottom fall midway between rows, so no row is cut and the space above
+ *  the first matches the space below the last. It takes as many rows as still cover the band's width, round the
+ *  middle. Rows come from the layout, not from the marks, so the crop holds still while the pattern moves. */
 function stickerCover(parts, geo) {
-  const [bx, by, bw, bh] = parts.band, k = Math.max(bw / geo.width, bh / geo.height);
-  return { k, x: bx + (bw - geo.width * k) / 2, y: by + (bh - geo.height * k) / 2 };
+  const [bx, by, bw, bh] = parts.band, grid = geo.rowGrid;
+  let k = Math.max(bw / geo.width, bh / geo.height), top = (geo.height - bh / k) / 2;
+  if (grid && grid.pitch > 0) {
+    const rows = Math.max(1, Math.floor(geo.width * bh / bw / grid.pitch + 1e-6)), span = rows * grid.pitch;
+    k = bh / span;
+    top = grid.origin + Math.round((geo.height / 2 - span / 2 - grid.origin) / grid.pitch) * grid.pitch;
+  }
+  return { k, x: bx + (bw - geo.width * k) / 2, y: by - top * k };
 }
 // The {OS} monogram, from the brand file, recoloured per ink (its paths are drawn white).
 const MONOGRAM_SRC = './brand/onesyntax-os-monogram.svg', monogramByInk = new Map();
@@ -3447,7 +3444,7 @@ function remixVector(v, pick, palette) {
   const [centreX, centreY] = pick([[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0], [0, 0.5]]);
   return Object.assign(v, {
     centreX, centreY, spiral: pick([0, 0, 0, 15, -15, 35]), perspective: pick([0.8, 0.86, 0.9]), ellipse: pick([1.6, 2.2, 2.8]),
-    columns: pick([10, 12, 15]), rows: pick([28, 34, 40]), gapX: pick([0.3, 0.45, 0.55]), gapY: pick([0.82, 0.865, 0.9]), radius: pick([1, 1, 0.5, 0]), ...vectorPalette(palette.name),
+    columns: pick([10, 12, 15]), rows: pick([28, 34, 40]), gapX: pick([0.3, 0.45, 0.55]), gapY: pick([0.82, 0.865, 0.9]), radius: 0, ...vectorPalette(palette.name),
   });
 }
 
@@ -3469,9 +3466,7 @@ function remixRows(v, pick, palette) {
   const rows = pick([12, 16, 20, 24, 32]);
   const cell = pick([
     { items: rows, gapX: 0.2, gapY: 0.2, radius: 0 },                     // squares
-    { items: rows, gapX: 0.28, gapY: 0.28, radius: 1 },                   // dots
     { items: rows / 2, gapX: 0.16, gapY: 0.42, radius: 0 },               // dashes
-    { items: rows / 2, gapX: 0.16, gapY: 0.42, radius: 1 },               // pills
     { items: Math.max(2, rows / 4), gapX: 0.06, gapY: 0.5, radius: 0 },   // bars
   ]);
   // Whole wave cycles with at least six cells each; fewer and the wave aliases into noise.
@@ -3536,6 +3531,17 @@ function remixStudio(pattern, v, base, pick, random, palette) {
       Object.assign(v.attractor, { x: 0.5, y: 0.5 }); break;
     case 'Halftone Diagonal':
       f.gradient.direction = pick([0, 45, 90, 135, 180]); v.marks.fixedAngle = pick([-45, 45, 0, 90]); v.shaping.gamma = pick([1, 1.35, 1.8]); break;
+    case 'Kaleido Pixels': {
+      // Square cells in the current format, a fold on both axes most of the time, a few clean colour steps, and a
+      // gap that reads as pixels. Smooth waves only: square and triangle shapes turn the folds into blocks.
+      const page = state.values.canvas || v.canvas, across = pick([16, 20, 24, 32, 40]);
+      v.layout.columns = across; v.layout.rows = Math.max(2, Math.round(across * page.height / page.width));
+      if (v.marks.cellSized) { const g = pick([0, 0.06, 0.1, 0.16]); v.marks.cellGapX = g; v.marks.cellGapY = g; }
+      v.shaping.mirror = pick(['XY', 'XY', 'X', 'Y']); v.shaping.quantise = pick([3, 4, 5, 6]);
+      Object.assign(f.waveA, { frequency: pick([1.5, 2, 2.5, 3]) }); Object.assign(f.waveB, { frequency: pick([1.5, 2, 3, 3.5]) });
+      f.noise.weight = pick([0, 0, 0.1]); f.shape = 'sine';
+      break;
+    }
     case 'Strands': v.layout.rotation = pick([0, 0, -45, 45, 90]); v.marks.threshold = pick([0.44, 0.5, 0.56]); f.waveA.direction = pick([80, 90, 100]); break;
     case 'Cymatics': {
       const [n, m] = pick(PLATE_MODES);
@@ -3557,7 +3563,16 @@ function remixStudio(pattern, v, base, pick, random, palette) {
     });
   }
   // One brand palette. A pattern with a single mark colour keeps it an exact brand colour.
-  studioPalette(v, palette.name);
+  if (pattern === 'Kaleido Pixels') {
+    // Kaleido shows its field through colour alone, so it takes a palette whose mark colours span dark to light, and
+    // uses all three as one ramp in that order.
+    const ramp = (p) => [p.stop1, p.stop2, p.stop3].sort((a, b) => luminance(a) - luminance(b));
+    palette = pick(BRAND_PALETTES.filter((p) => { const r = ramp(p); return luminance(r[2]) - luminance(r[0]) >= 0.45; }));
+    studioPalette(v, palette.name);
+    const [dark, mid, light] = ramp(palette);
+    Object.assign(v.colour, { stops: 3, stop1: dark, stop2: mid, stop3: light });
+    v.shaping.contrast = pick([1.2, 1.35, 1.5]);
+  } else studioPalette(v, palette.name);
   if (v.colour.source === 'constant') v.colour.stop2 = v.colour.stop1;
   return v;
 }
@@ -3593,7 +3608,7 @@ function shuffle() {
 function updateHeader() {
   const pattern = patternOf(state.pattern);
   const preset = presetState(current);
-  document.getElementById('eyebrow').textContent = `Generative system / ${String(PATTERNS.indexOf(pattern) + 1).padStart(2, '0')}`;
+  document.getElementById('eyebrow').textContent = `/ ${String(PATTERNS.indexOf(pattern) + 1).padStart(2, '0')}`;
   document.getElementById('title').textContent = preset && preset.pattern === state.pattern ? label(current) : pattern.name;
   document.getElementById('lede').textContent = pattern.description;
   updateDots();
@@ -3864,7 +3879,7 @@ function renderLooks() {
     ? `<div class="looks-grid">${entries.map((e) => card(prefix + e.name, e, removable)).join('')}</div>`
     : `<p class="looks-empty">${empty}</p>`}`;
   body.innerHTML = group('Saved', saved, 'saved:', true, 'Press Save preset to keep one here.')
-    + GROUPS.map((g) => group(g, BUILT_INS.filter((b) => b.group === g), 'builtin:', false)).join('');
+    + PATTERNS.map((p) => group(p.name, BUILT_INS.filter((b) => patternOf(b.pattern) === p), 'builtin:', false)).join('');  // a heading per pattern
   document.getElementById('exportPresets').disabled = !saved.length;
   renderLooksNav();
   const picks = [...body.querySelectorAll('.pick')];
@@ -4149,7 +4164,7 @@ function orbitSVG(st, t, { transparent = false } = {}) {
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 <title>${escape(document.getElementById('title').textContent)} · OneSyntax</title>
-<desc>${outlines.length} dashes, each one closed path. Generated with the OneSyntax Pattern Generator.</desc>
+<desc>${outlines.length} dashes, each one closed path. Made with Pattern.OS by OneSyntax.</desc>
 <metadata id="onesyntax-preset">${escape(JSON.stringify(st))}</metadata>
 ${clip ? `<defs><clipPath id="frame"><rect x="${clip[0]}" y="${clip[1]}" width="${clip[2] - clip[0]}" height="${clip[3] - clip[1]}"/></clipPath></defs>\n` : ''}${transparent ? '' : `<rect id="background" width="${width}" height="${height}" fill="${st.values.background}"/>\n`}<g id="dashes"${clip ? ' clip-path="url(#frame)"' : ''}>
 ${[...groups].map(([fill, paths]) => `<g fill="${fill}">\n${paths.join('\n')}\n</g>`).join('\n')}

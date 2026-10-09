@@ -1,4 +1,4 @@
-# OneSyntax Pattern Generator
+# Pattern.OS (OneSyntax)
 
 > **Internal to Haux Studio.** These notes (README, BUILD, PROGRESS, MEMORY) record how the patterns are made: the studio's
 > own knowledge. Keep them up to date and never hand them over to the client. The panel text in the app says what each
@@ -15,12 +15,13 @@ seamless video loops.
 
 ## What it does
 
-- **13 pattern types in four groups**
-  - *Wave Rows*: rows of items whose opacity and size follow a sine wave.
+- **11 pattern types in four groups**
+  - *Wave Rows*: rows of items whose opacity and size follow a sine wave, turned to any angle.
   - *Studio patterns*: Eddy, Readout (rows of dots, dashes and bars), Silhouette (stripes breaking round a shape),
-    Halftone Diagonal, Contour Field, Kaleido Pixels, Stack (ported from the original studio, where Eddy and Stack were
-    Amaya Flow and RFD Stack; Gauge, Barcode, Threshold Stripes and Strands were retired on 7 October and their saves
-    open in Readout and Silhouette), and Orbit: dashes round nested arcs, in two
+    Halftone Diagonal, Kaleido Pixels (ported from the original studio, where Eddy was Amaya Flow; Gauge, Barcode,
+    Threshold Stripes and Strands were retired on 7 October and their saves open in Readout and Silhouette; Contour
+    Field and Stack were dropped on 10 October and theirs open in Eddy and Halftone Diagonal), and Orbit: dashes round
+    nested arcs, in two
     layouts. Arcs lays curved dashes along ellipses whose centre shifts as they grow, on a plane receding towards
     the top (Event Stream, Event Queue); Grid (once the Horizon pattern) sets straight dashes on a grid, each laid
     along F(x, y) = ⟨−y, x⟩ (the rotation field, turned towards a spiral by α) on a plane receding towards
@@ -30,9 +31,9 @@ seamless video loops.
   - *Bracket*: the brand's `{ }` mark on its own Geist Pixel grid (9 × 23 cells, read from the Figma file), drawn
     as pixels, lines, dots or slashes, alone or repeated in columns and rows, with looping effects: wave, scan,
     build, glitch, ripple, sparkle.
-- **43 built-in presets named in code vocabulary:** Hello World, Throughput, Checksum, Bitstream, Stack
-  Trace, Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Render, Compile,
-  Loop and more; every pattern has at least three but Silhouette, which keeps one (Merge). Refactor (Eddy) twists a bar grid round a quiet centre; Event
+- **35 built-in presets named in code vocabulary, listed pattern by pattern:** Hello World, Throughput, Checksum,
+  Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Compile
+  and more; most patterns have three or more, Silhouette keeps one (Merge) and Bracket two. Refactor (Eddy) twists a bar grid round a quiet centre; Event
   Stream, Event Queue and Event Loop are Orbit.
 - **Wave shapes:** every wave can be a sine, triangle, square or sawtooth, built from a Fourier series with a
   chosen number of harmonics.

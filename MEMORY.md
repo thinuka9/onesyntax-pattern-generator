@@ -106,6 +106,23 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   pattern and wave study now has Rotation; Roundness on all but the dot patterns. Lines and pills were always
   fully round; their Roundness (`marks.roundness`, 0–1) defaults to 1, so old saves look the same. Readout,
   Silhouette, Bracket, Wave Rows and Orbit's Grid were left as they are.
+- **10 October:** "always roundness to 0": every default, preset and remix is square; the Roundness sliders stay.
+  Contour Field "not pretty or tidy": it now draws the field's own contour lines, dashed to fit each line (Draw as
+  Lines, the default), with the old marks kept as Grid, their directions smoothed so neighbours agree. Sticker rows
+  were cut at the band's top and bottom: patterns in level rows now show whole rows, cut midway between them.
+  Kaleido Pixels: Columns, Rows and both gaps (pixels fill their cells); its remixes use a dark-to-light ramp.
+  Wave Rows got Rotation. The app is named **Pattern.OS** (wordmark {Pattern.OS} from the Figma file, node 885:774, in brand/) ("a pattern engine, not a generator"; picked over Syntex,
+  Pattern Syntax, Parsely and Runtime): tab title, panel eyebrow, export notes and the handover zip. The live
+  address still says pattern-generator (renaming means renaming the Cloudflare project). Reference: Calendly's Patternly (six patterns, few plain controls):
+  narrow ours to six, and simplify the controls. "We don't use dots": Cymatics and Interference go with the cut.
+- **10 October, the cut:** asked to narrow to six like Patternly, the studio chose instead: "keep all of them", drop
+  Contour Field (even after its new contour-lines style; that code is in `PLUGIN\_archive\contour-lines-2026-10-10.js`)
+  and Stack, and Bracket keeps Scope and Compile (Render and Loop dropped). The dot patterns, Cymatics and
+  Interference, stay for now ("keep all of them" came after "we don't use dots": ask before removing them). Old saves
+  open in Eddy (Contour Field) and Halftone Diagonal (Stack); `RENAMED_LOOKS` forwards the dropped presets. Presets are
+  now listed pattern by pattern: one heading each in the presets window, and `BUILT_INS` sorted to the menu's order.
+  The panel header shows the {Pattern.OS} wordmark. Readout got Rotation and Gap. Not given rotation, on purpose:
+  Bracket (the brand mark), Silhouette (its fold breaks round the shape; Across/Down only), Orbit's Grid layout.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

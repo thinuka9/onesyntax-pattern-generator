@@ -155,7 +155,7 @@ await check('Exports: PNG, SVG and animated SVG', async () => {
   await page.evaluate(() => applyPreset('builtin:Hello World'));
   const png = await download(() => exportPNG(1));
   expect(png.name.endsWith('.png') && png.bytes > 10000, `PNG looks empty (${png.bytes} bytes)`);
-  for (const name of ['Hello World', 'Event Stream', 'Schema', 'Scope']) {
+  for (const name of ['Hello World', 'Event Stream', 'Data Flow', 'Scope']) {
     await page.evaluate((n) => applyPreset('builtin:' + n), name);
     const svg = await download(() => exportSVG());
     expect(await parses(await svg.text()), `${name}: the SVG does not parse`);
@@ -228,11 +228,12 @@ await check('Presets window opens on the current pattern, with its group bar', a
   await page.waitForTimeout(900);
   const view = await page.evaluate(() => {
     const d = document.getElementById('looks'), card = d.querySelector('.look-card.current'), box = d.getBoundingClientRect(), r = card.getBoundingClientRect();
-    return { shown: r.top >= box.top && r.bottom <= box.bottom, group: document.querySelector('#looksNav [aria-current="true"]')?.textContent, groups: document.querySelectorAll('#looksNav button').length };
+    return { shown: r.top >= box.top && r.bottom <= box.bottom, group: document.querySelector('#looksNav [aria-current="true"]')?.textContent, groups: document.querySelectorAll('#looksNav button').length, patterns: PATTERNS.length };
   });
   await page.keyboard.press('Escape');
   expect(view.shown, 'the current preset is not in view');
-  expect(view.group === 'Wave studies' && view.groups === 5, `group bar shows ${view.group} of ${view.groups} groups`);
+  // A heading per pattern, after Saved; Cluster is an Interference preset.
+  expect(view.group === 'Interference' && view.groups === view.patterns + 1, `group bar shows ${view.group} of ${view.groups} groups`);
 });
 
 await check('Sticker: link round-trip and exports', async () => {
@@ -500,27 +501,6 @@ await check('The centre knob shows where it can be grabbed, and moves the centre
   }
   await page.click('[data-view="fill"]');
   expect(!wrong.length, wrong.join('\n'));
-});
-
-await check("Stack's bars never touch or overlap, in any format", async () => {
-  // Each bar drawn white at half opacity, 1 px of the page bigger all round: anywhere two come within 2 px of each
-  // other shows brighter.
-  const touching = await page.evaluate(() => {
-    const out = [];
-    for (const b of BUILT_INS.filter((x) => x.pattern === 'Stack')) for (const f of Object.keys(FORMATS)) {
-      applyPreset('builtin:' + b.name); setFormat(f);
-      const geo = geometryFor(state, 0), s = 2000 / Math.max(geo.width, geo.height), I = geo.instances, grow = 2;
-      for (let n = 0; n < geo.count; n++) { const o = n * STRIDE; I[o + 8] = I[o + 9] = I[o + 10] = 1; I[o + 11] = 0.5; I[o + 2] += grow; I[o + 3] += grow; }
-      geo.params = { ...geo.params, colour: { ...geo.params.colour, background: '#000000', source: 'constant', continuous: false } };
-      const c = document.createElement('canvas'); c.width = Math.round(geo.width * s); c.height = Math.round(geo.height * s);
-      const g = c.getContext('2d', { willReadFrequently: true }); g.fillStyle = '#000'; g.fillRect(0, 0, c.width, c.height); draw(g, geo, s);
-      const d = g.getImageData(0, 0, c.width, c.height).data; let any = 0, both = 0;
-      for (let i = 0; i < d.length; i += 4) { if (d[i] > 100) any++; if (d[i] > 170) both++; }
-      if (both / Math.max(1, any) > 0.001) out.push(`${b.name} ${f}: ${(100 * both / any).toFixed(1)}% of its bars touch`);
-    }
-    return out;
-  });
-  expect(!touching.length, touching.join('\n'));
 });
 
 await check('The motion switch turns every look off and on, and back to its preset', async () => {

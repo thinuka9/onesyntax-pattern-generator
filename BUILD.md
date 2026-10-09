@@ -76,7 +76,7 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
 6. PNG, SVG and animated SVG exports download and parse, for every moving preset.
 7. Orbit's animated SVG (Flow, Sway, and Pulse) and Silhouette's (Roll and Drift), frozen at set moments, match
    the app within 4/255 and loop without a seam.
-8. The presets window opens on the current preset, with the group bar on its group.
+8. The presets window opens on the current preset, with the bar (a heading per pattern) on its pattern.
 9. The sticker survives a share link and exports as PNG, SVG and animated SVG, cut out (transparent round its
    outline, Transparent on or off); the seed dice never turns it back on.
 10. Silhouette's fold: stripes edge to edge, bars thickest away from the fold; Roll and Drift loop one way and
@@ -91,7 +91,6 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
     - a returning session opens an untouched built-in preset as it is now (so fixes reach it) and keeps edits;
     - the centre knob (Orbit, Eddy, Silhouette) shows uncovered in Fill and Fit, a click leaves the centre alone,
       and dragging it moves the centre;
-    - Stack's bars never come within 2 px of each other, in any format;
     - the motion switch turns every preset off and on and back to the preset, or is unavailable with a reason.
 12. With `--dist`: the published `index.html` and `engine.js` carry no comments.
 
@@ -147,7 +146,7 @@ powershell -ExecutionPolicy Bypass -File handover.ps1
 ```
 
 It downloads the site exactly as served (comments already stripped), checks no comment slipped through, adds a
-short hosting note (README.txt) and zips it as `OneSyntax-Pattern-Generator.zip` beside this folder. If the client
+short hosting note (README.txt) and zips it as `OneSyntax-Pattern-OS.zip` beside this folder. If the client
 wants a repository, make a new one from that folder, so it starts with no history.
 
 ### Saving changes to GitHub
