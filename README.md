@@ -32,7 +32,7 @@ seamless video loops.
   - *Bracket*: the brand's `{ }` mark on its own Geist Pixel grid (9 × 23 cells, read from the Figma file), drawn
     as pixels, lines, dots or slashes, alone or repeated in columns and rows, with looping effects: wave, scan,
     build, glitch, ripple, sparkle.
-- **38 built-in presets named in code vocabulary, listed pattern by pattern:** Hello World, Throughput, Checksum,
+- **39 built-in presets named in code vocabulary, listed pattern by pattern:** Hello World, Throughput, Checksum,
   Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Compile
   and more; most patterns have three or more, Silhouette keeps one (Merge) and Bracket two. Refactor (Eddy) twists a bar grid round a quiet centre; Event
   Stream, Event Queue and Event Loop are Orbit.

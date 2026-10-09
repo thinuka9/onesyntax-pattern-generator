@@ -1798,8 +1798,8 @@ function readoutGeometry(v, time, pool) {
 // Wave runs a ripple across the columns, each rising in turn. Both loop seamlessly, and the lines never move, so no
 // line ever slides under the frame's edge.
 const SKYLINE_DEFAULTS = {
-  lines: 48, columns: 7, margin: 0.08, rotation: 0, profile: 'arch', start: 0.12, spread: 0.55, curve: 1.6,
-  thin: 0.04, floor: 0.3, thick: 0.96, motion: 'rise', speed: 0.5, depth: 0.12,
+  lines: 48, columns: 7, margin: 0.08, rotation: 0, profile: 'arch', start: 0.04, spread: 0.6, curve: 0.9,
+  thin: 0.03, floor: 0.16, thick: 0.98, motion: 'rise', speed: 0.5, depth: 0.1,
   palette: 'Mono Light', background: '#FCFCFC', ink: '#151515', ink2: '#151515', format: '1:1', seed: 1,
 };
 function skylineGeometry(v, time, pool) {
