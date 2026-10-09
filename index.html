@@ -700,7 +700,44 @@ const BRAND_PALETTES = [
   brandPalette('Grape', '#120033', '#B48CFF', '#E9DDFF', '#7B33FF', '#FFD036'),
 ];
 const paletteNamed = (name) => BRAND_PALETTES.find((p) => p.name === name);
-const rowsPalette = (name) => { const p = paletteNamed(name); return { palette: p.name, background: p.background, ink: p.stop1 }; };
+// A palette given by name (a brand palette) or as itself (one a remix put together, named Custom).
+const paletteOf = (p) => (typeof p === 'string' ? paletteNamed(p) : p);
+
+// Remixes also put palettes together from the brand colours, so seeds are not held to the thirteen above. Colours fall
+// in families (each a tint, a mid, a bright and a deep, blue with its Primary Blue, neutrals from white to black), and
+// each family has a complement, as the brand palettes pair them: blue with coral, violet with amber.
+const COLOUR_FAMILIES = {
+  warm: ['#FFCFBF', '#FF8A65', '#FF5620', '#3D0F00'], yellow: ['#FFF3CC', '#FFE17D', '#FFD036', '#291F00'],
+  blue: ['#BDDFFF', '#67B6FF', '#0082FD', '#0A89FF', '#001931'], violet: ['#E9DDFF', '#B48CFF', '#7B33FF', '#120033'],
+  neutral: ['#FCFCFC', '#E7E7E7', '#A2A2A2', '#727272', '#404040', '#151515'],
+};
+const COMPLEMENT = { warm: 'blue', blue: 'warm', violet: 'yellow', yellow: 'violet' };
+// Backgrounds come from the ends of each family and the brights; mid tones and mid greys only make marks (as grounds
+// they turn muddy, and leave too few colours that stand clear of them).
+const BACKGROUNDS = ['#FCFCFC', '#E7E7E7', '#151515', '#FFCFBF', '#FFF3CC', '#BDDFFF', '#E9DDFF', '#3D0F00', '#291F00', '#001931', '#120033',
+  '#0A89FF', '#FF5620', '#7B33FF', '#FFD036'];
+const familyOf = (hex) => Object.keys(COLOUR_FAMILIES).find((f) => COLOUR_FAMILIES[f].includes(hex));
+/**
+ * A palette for a remix: a background from any family, and marks that match it (tonal: its own family), complement
+ * it (the opposite family), or stand plain on it (neutral marks; on a neutral background, any family's). The first
+ * mark colour stands well clear of the background, the second clear enough to read, and the accent comes from the
+ * marks' complement. `single` (Wave Rows) needs only the first.
+ */
+function mixedPalette(pick, single) {
+  const families = Object.keys(COLOUR_FAMILIES), hues = families.filter((f) => f !== 'neutral');
+  for (let attempt = 0; attempt < 16; attempt++) {
+    const background = pick(BACKGROUNDS), home = familyOf(background), scheme = pick(['tonal', 'tonal', 'complement', 'neutral']);
+    const family = home === 'neutral' ? pick(hues) : scheme === 'tonal' ? home : scheme === 'complement' ? COMPLEMENT[home] : 'neutral';
+    const clearOf = (min) => COLOUR_FAMILIES[family].filter((hex) => hex !== background && Math.abs(luminance(hex) - luminance(background)) >= min);
+    const strong = clearOf(0.36), fair = clearOf(0.25);
+    if (!strong.length) continue;
+    const stop1 = pick(strong), stop2 = single ? stop1 : pick(fair), rest = fair.filter((hex) => hex !== stop1 && hex !== stop2);
+    const accents = COLOUR_FAMILIES[family === 'neutral' ? pick(hues) : COMPLEMENT[family]].filter((hex) => Math.abs(luminance(hex) - luminance(background)) >= 0.3);
+    return { name: 'Custom', background, stop1, stop2, stop3: rest.length ? pick(rest) : stop2, accent: accents.length ? pick(accents) : stop1, stops: 2 };
+  }
+  return null;
+}
+const rowsPalette = (name) => { const p = paletteOf(name); return { palette: p.name, background: p.background, ink: p.stop1 }; };
 
 // Looks made before the rebrand used the old studio colours; they map onto their nearest brand colour.
 const OLD_COLOURS = {
@@ -914,7 +951,7 @@ const MARK_DEFAULTS = {
   palette: 'Ice', background: '#BDDFFF', ink: '#0082FD', ink2: '#0A89FF', highlight: '#151515', format: '1:1', seed: 1,
 };
 // The marks run from the palette's first colour at the top to its second at the bottom; the accent highlights.
-const markPalette = (name) => { const p = paletteNamed(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2, highlight: p.accent }; };
+const markPalette = (name) => { const p = paletteOf(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2, highlight: p.accent }; };
 
 const solidGlyph = (inner) => `<svg class="glyph solid" viewBox="0 0 24 12" aria-hidden="true">${inner}</svg>`;
 const TEXTURE_OPTIONS = [
@@ -1075,7 +1112,7 @@ const VECTOR_DEFAULTS = {
   perspective: 0.86, ellipse: 2.2, motion: 'none', speed: 1, depth: 0.4, waves: 3, shape: 'sine', harmonics: 8,
   palette: 'Mono Dark', background: '#151515', ink: '#FCFCFC', ink2: '#FCFCFC', format: '1:1', seed: 1,
 };
-const vectorPalette = (name) => { const p = paletteNamed(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2 }; };
+const vectorPalette = (name) => { const p = paletteOf(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2 }; };
 const VECTOR_MOTIONS = [['Still', 'none'], ['Ripple', 'ripple'], ['Sweep', 'sweep'], ['Twist', 'twist']];
 const vectorMoves = (v) => v.motion !== 'none';
 const vectorWaves = (v) => v.motion === 'ripple' || v.motion === 'sweep';
@@ -1190,7 +1227,7 @@ const ORBIT_DEFAULTS = {
   grid: ORBIT_GRID_DEFAULTS,
   palette: 'Mono Dark', background: '#151515', ink: '#FCFCFC', ink2: '#FCFCFC', format: '1:1', seed: 1,
 };
-const orbitPalette = (name) => { const p = paletteNamed(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2 }; };
+const orbitPalette = (name) => { const p = paletteOf(name); return { palette: p.name, background: p.background, ink: p.stop1, ink2: p.stop2 }; };
 /** Orbit's values, from any save: Horizon (once Vector Field) states become the Grid layout, and arcs saved with
  *  Line gap get the same strokes from Thickness. */
 function sanitizeOrbit(params, from) {
@@ -1870,9 +1907,9 @@ const FLAT_KINDS = {
       const shape = pick(['symbol', 'symbol', 'monogram', 'mark']), simple = shape === 'symbol';
       const inside = simple ? pick(['fold', 'fold', 'bars', 'rise', 'rise']) : shape === 'mark' ? 'rise' : pick(['fold', 'bars', 'rise']);
       const fold = inside === 'fold', rise = inside === 'rise';
-      const p = paletteNamed(palette.name), clear = (hex) => Math.abs(luminance(hex) - luminance(p.background));
+      const p = paletteOf(palette), clear = (hex) => Math.abs(luminance(hex) - luminance(p.background));
       const [strong, next] = [p.stop1, p.stop2, p.stop3].sort((a, b) => clear(b) - clear(a));
-      const colours = { ...orbitPalette(palette.name), ink2: strong, ink: rise || clear(next) < 0.3 ? strong : next };
+      const colours = { ...orbitPalette(palette), ink2: strong, ink: rise || clear(next) < 0.3 ? strong : next };
       if (rise) {
         return Object.assign(v, colours, {
           shape, inside, lines: simple ? pick([40, 52]) : pick([56, 64]), size: simple ? pick([0.55, 0.62, 0.72]) : pick([0.7, 0.78]),
@@ -1900,7 +1937,7 @@ const FLAT_KINDS = {
     // A remix keeps the lines and the motion's character: another profile, column count and pace of thickening, in
     // the palette's colour that stands out most from its background.
     remix: (v, pick, palette) => {
-      const p = paletteNamed(palette.name), clear = (hex) => Math.abs(luminance(hex) - luminance(p.background));
+      const p = paletteOf(palette), clear = (hex) => Math.abs(luminance(hex) - luminance(p.background));
       const ink = [p.stop1, p.stop2, p.stop3].sort((a, b) => clear(b) - clear(a))[0];
       return Object.assign(v, { palette: p.name, background: p.background, ink, ink2: ink,
         profile: pick(['arch', 'arch', 'valley', 'ramp']), columns: pick([5, 7, 9, 11]), lines: pick([40, 48, 56]),
@@ -1911,7 +1948,7 @@ const FLAT_KINDS = {
   readout: {
     defaults: READOUT_DEFAULTS, geometry: readoutGeometry,
     speeds: (v) => [v.speed],
-    remix: (v, pick, palette) => Object.assign(v, orbitPalette(palette.name), {
+    remix: (v, pick, palette) => Object.assign(v, orbitPalette(palette), {
       glyphs: pick(['ascii', 'ascii', 'digits']), mirror: pick(['none', 'none', 'x']), frequency: pick([0.5, 1, 1.5, 2]),
       slopeDirection: pick([0, 180, 90]), direction: pick([90, 0, 45]), columns: pick([28, 36, 44]), rows: pick([14, 18, 22]) }),
   },
@@ -2131,7 +2168,7 @@ function normaliseStudio(p) {
 }
 
 function studioPalette(values, name) {
-  const p = paletteNamed(name);
+  const p = paletteOf(name);
   if (p) { const { name: paletteName, ...colours } = p; Object.assign(values.colour, colours, { palette: paletteName }); }
   // A pattern drawn by its colours alone would go flat in a palette with one mark colour (Mono Light on Kaleido
   // Pixels): the palette's third colour stands in as its second.
@@ -3556,10 +3593,12 @@ function variationOf(pattern, base, seed) {
   const pick = (list) => list[Math.floor(random() * list.length)];
   const next = structuredClone(base);
   next.seed = seed;
-  // Only palettes whose mark colours stand clear of the background (Wave Rows uses just the first).
+  // Only palettes whose mark colours stand clear of the background (Wave Rows uses just the first): a brand palette a
+  // third of the time, otherwise one put together from the brand colours (tonal, complementary or neutral marks).
   const rows = patternOf(pattern).kind === 'rows';
   const clear = (p, hex) => Math.abs(luminance(p.background) - luminance(hex)) >= 0.36;
-  const palette = pick(BRAND_PALETTES.filter((p) => clear(p, p.stop1) && (rows || clear(p, p.stop2))));
+  const brand = () => pick(BRAND_PALETTES.filter((p) => clear(p, p.stop1) && (rows || clear(p, p.stop2))));
+  const palette = random() < 1 / 3 ? brand() : mixedPalette(pick, rows) || brand();
   if (rows) return remixRows(next, pick, palette);
   if (patternOf(pattern).kind === 'mark') return remixMark(next, pick, palette);
   if (patternOf(pattern).kind === 'orbit') return remixOrbit(next, pick, palette);
@@ -3578,7 +3617,7 @@ function remixOrbit(v, pick, palette) {
   const [centreX, centreY] = pick([[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0], [0, 0.5]]);
   return Object.assign(v, {
     centreX, centreY, stretch: pick([1, 1.3, 1.7]), twist: pick([0, 0, 20, -20]), lines: pick([30, 40, 52]), crowding: pick([1.3, 1.6, 2]),
-    bend: pick([0.2, 0.3, 0.5, -0.3]), growth: pick([0.2, 0.35, 0.5]), length: pick([0.045, 0.055, 0.07]), taper: pick([0, 0.3, 0.6]), ...orbitPalette(palette.name),
+    bend: pick([0.2, 0.3, 0.5, -0.3]), growth: pick([0.2, 0.35, 0.5]), length: pick([0.045, 0.055, 0.07]), taper: pick([0, 0.3, 0.6]), ...orbitPalette(palette),
   });
 }
 
@@ -3586,7 +3625,7 @@ function remixVector(v, pick, palette) {
   const [centreX, centreY] = pick([[0, 0], [1, 0], [0, 1], [1, 1], [0.5, 0], [0, 0.5]]);
   return Object.assign(v, {
     centreX, centreY, spiral: pick([0, 0, 0, 15, -15, 35]), perspective: pick([0.8, 0.86, 0.9]), ellipse: pick([1.6, 2.2, 2.8]),
-    columns: pick([10, 12, 15]), rows: pick([28, 34, 40]), gapX: pick([0.3, 0.45, 0.55]), gapY: pick([0.82, 0.865, 0.9]), radius: 0, ...vectorPalette(palette.name),
+    columns: pick([10, 12, 15]), rows: pick([28, 34, 40]), gapX: pick([0.3, 0.45, 0.55]), gapY: pick([0.82, 0.865, 0.9]), radius: 0, ...vectorPalette(palette),
   });
 }
 
@@ -3599,7 +3638,7 @@ function remixMark(v, pick, palette) {
     texture, weight, detail: pick([1, 1, 2, 2, 3]),
     effect, depth: pick([0.5, 0.7, 0.9]), frequency: pick([1, 1.5, 2, 3]), direction: pick([0, 45, 90, 135, 180, 270]),
     affects: effect === 'build' || effect === 'scan' ? 'both' : pick(['opacity', 'size', 'both']),
-    ...markPalette(palette.name),
+    ...markPalette(palette),
   });
 }
 
@@ -3709,12 +3748,13 @@ function remixStudio(pattern, v, base, pick, random, palette) {
     // Kaleido shows its field through colour alone, so it takes a palette whose mark colours span dark to light, and
     // uses all three as one ramp in that order.
     const ramp = (p) => [p.stop1, p.stop2, p.stop3].sort((a, b) => luminance(a) - luminance(b));
-    palette = pick(BRAND_PALETTES.filter((p) => { const r = ramp(p); return luminance(r[2]) - luminance(r[0]) >= 0.45; }));
-    studioPalette(v, palette.name);
+    const spans = (p) => { const r = ramp(p); return luminance(r[2]) - luminance(r[0]) >= 0.45; };
+    if (!spans(palette)) palette = pick(BRAND_PALETTES.filter(spans));
+    studioPalette(v, palette);
     const [dark, mid, light] = ramp(palette);
     Object.assign(v.colour, { stops: 3, stop1: dark, stop2: mid, stop3: light });
     v.shaping.contrast = pick([1.2, 1.35, 1.5]);
-  } else studioPalette(v, palette.name);
+  } else studioPalette(v, palette);
   if (v.colour.source === 'constant') v.colour.stop2 = v.colour.stop1;
   return v;
 }

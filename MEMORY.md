@@ -155,6 +155,11 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   it, every mark keeping its number (seams and a broken animated SVG came from joining pieces). The SVG exporter no
   longer renders files with hairlines crisp (it rounded them away). Silhouette also got Lines from (stripes start
   partway down) and gives the sticker a between-rows crop (the band's top line touched its edge).
+- **10 October, colours:** "random seed, not enough colour combos" (remixes drew from the 13 brand palettes, filtered
+  further per pattern). A third of remixes still take a brand palette; the rest put one together from the brand
+  colours (`mixedPalette`): a background from the ends of each family or the brights (no mid tones or mid greys:
+  muddy), marks tonal, complementary (blue/warm, violet/yellow) or neutral, each clear of the background. The panel
+  shows them as Custom colours. Palette helpers take a name or a palette (`paletteOf`).
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped
