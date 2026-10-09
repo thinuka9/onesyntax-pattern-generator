@@ -1478,7 +1478,8 @@ const ORBIT_GRID_SECTIONS = [
 // stripe draws both sides of the shape, so as it crosses an edge its bar grows out of its line (10 October: Stairs,
 // Gap and Drift drew one side only, and their crossings could only thin, fade or jump, so they went).
 const SILHOUETTE_DEFAULTS = {
-  lines: 22, margin: 0.08, weight: 0.12, shape: 'symbol', size: 0.74, x: 0.5, y: 0.5, gap: 0.03, inside: 'fold', innerWeight: 0.62, bottomWeight: 0.5,
+  lines: 22, margin: 0.08, start: 0, weight: 0.12, shape: 'symbol', size: 0.74, x: 0.5, y: 0.5, gap: 0.03, inside: 'fold', innerWeight: 0.62,
+  bottomWeight: 0.5, emerge: 1,
   fold: 0.5, direction: 'across', motion: 'roll', speed: 0.5, depth: 0.4,
   palette: 'Midnight', background: '#001931', ink: '#BDDFFF', ink2: '#BDDFFF', format: '1:1', seed: 1,
 };
@@ -1521,10 +1522,12 @@ function silhouetteGeometry(v, time, pool) {
   const [width, height] = FORMATS[v.format] || FORMATS['1:1'], down = v.direction === 'down';
   // Upright stripes are laid out across the page turned a quarter (its width and height swapped), then turned back.
   const W = down ? height : width, H = down ? width : height, side = Math.min(W, H), margin = E.clamp(v.margin, 0, 0.45) * side;
-  const lines = Math.max(2, Math.min(240, Math.round(v.lines))), pitch = (H - 2 * margin) / lines;
+  const lines = Math.max(2, Math.min(240, Math.round(v.lines)));
   const tau = v.speed * time / 5, swing = Math.sin(2 * Math.PI * tau) * E.clamp(v.depth);
   const breathe = v.motion === 'breathe', size = Math.max(0.02, v.size * (breathe ? 1 + 0.35 * swing : 1)) * side;
   const left = margin, right = W - margin, top = margin, bottom = H - margin, span = right - left, reach = bottom - top;
+  // Lines from: the stripes start that far down the page (a share of it inside the margins), leaving the top empty.
+  const band = top + E.clamp(v.start, 0, 0.9) * reach, pitch = (bottom - band) / lines;
   // The shape is placed and read on the page, so upright stripes neither move nor mirror it.
   const picked = (SILHOUETTE_SHAPES[v.shape] || SILHOUETTE_SHAPES.symbol)(), fold = v.inside === 'fold', rise = v.inside === 'rise';
   const shape = down ? (u, w) => picked.test(w, u) : picked.test;
@@ -1587,8 +1590,10 @@ function silhouetteGeometry(v, time, pool) {
       // thickens faster, to Inside at bottom, so the shape rises out of the lines. Easing the lines' growth keeps the
       // top airy and lets the weight gather towards the bottom. The inside starts thickening at the shape's own top,
       // where it matches the lines, so the shape emerges rather than starting with a step.
-      const t = E.clamp((y - top) / reach), lineShare = v.weight + (Math.max(v.weight, v.bottomWeight) - v.weight) * t ** 1.4;
-      const shapeTop = cy - halfDepth, rising = E.clamp((y - shapeTop) / Math.max(pitch, bottom - shapeTop));
+      const t = E.clamp((y - band) / (bottom - band)), lineShare = v.weight + (Math.max(v.weight, v.bottomWeight) - v.weight) * t ** 1.4;
+      // Emerge sets how gradually: at full, the inside starts at the lines' weight at the shape's top; at none it is at
+      // its full weight from the top, which keeps a detailed shape ({OS}, the S mark) legible all the way down.
+      const shapeTop = cy - halfDepth, rising = 1 - E.clamp(v.emerge) * (1 - E.clamp((y - shapeTop) / Math.max(pitch, bottom - shapeTop)));
       thinW = thick(lineShare);
       fatW = Math.max(thinW, thick(lineShare + (Math.max(lineShare, v.innerWeight) - lineShare) * rising));
     } else { thinW = thick(v.weight); fatW = Math.max(thinW, thick(v.innerWeight)); }
@@ -1596,7 +1601,7 @@ function silhouetteGeometry(v, time, pool) {
       // Full at its place half a stripe in, just the line by the time the line touches the edge (no bar is thicker
       // than the stripe's spacing, so none reaches the edge before it has eased down).
       const base = thick(v.weight), room = Math.max(1e-6, (pitch - base) / 2);
-      const ease = Math.min(E.clamp((y - top - base / 2) / room), E.clamp((bottom - y - base / 2) / room));
+      const ease = Math.min(E.clamp((y - band - base / 2) / room), E.clamp((bottom - y - base / 2) / room));
       thinW = base + (thinW - base) * ease; fatW = base + (fatW - base) * ease;
     }
     // How each side is drawn: [width, colour, layer]. Fold's thick side is inside the shape below the fold and round
@@ -1657,7 +1662,7 @@ function silhouetteGeometry(v, time, pool) {
     const rects = [];
     const add = (a, b, width, inside) => {
       let y0 = y - width / 2, y1 = y + width / 2;
-      if (edge) { y0 = Math.max(y0, top); y1 = Math.min(y1, bottom); }
+      if (edge) { y0 = Math.max(y0, band); y1 = Math.min(y1, bottom); }
       // Touching pieces drawn alike join into one bar: no seam between them, and fewer marks.
       const last = rects[rects.length - 1];
       if (last && last.inside === inside && Math.abs(last.b - a) < 1e-6 && Math.abs(last.y0 - y0) < 1e-6 && Math.abs(last.y1 - y1) < 1e-6) last.b = b;
@@ -1702,17 +1707,18 @@ function silhouetteGeometry(v, time, pool) {
       bar(r.a, r.b, r.y0, r.y1, r.style[1], r.style[2], n);
     }
   }
-  if (!roll) for (let i = 0; i < lines; i++) stripe(top + (i + 0.5) * pitch, i * 48, breathe, false);
+  if (!roll) for (let i = 0; i < lines; i++) stripe(band + (i + 0.5) * pitch, i * 48, breathe, false);
   // Rolling stripes, one each side beyond the frame, cut to it as they slide in and out.
   else {
     for (let j = -2; j <= lines; j++) {
-      const y = top + (j + 0.5 + offset) * pitch;
-      if (y + pitch / 2 > top && y - pitch / 2 < bottom) stripe(y, (100000 + j - passed) * 48, true, true);
+      const y = band + (j + 0.5 + offset) * pitch;
+      if (y + pitch / 2 > band && y - pitch / 2 < bottom) stripe(y, (100000 + j - passed) * 48, true, true);
     }
   }
   const params = { name: 'Silhouette', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
-  // Breathing splits and joins a stripe's pieces as the shape grows, so its animated SVG follows marks by place.
-  return { instances, count, markCount: count, width, height, params, followShapes: breathe };
+  // Breathing splits and joins a stripe's pieces as the shape grows, so its animated SVG follows marks by place. Level
+  // stripes give the sticker's band their rows, so it cuts between stripes with even space above and below.
+  return { instances, count, markCount: count, width, height, params, followShapes: breathe, rowGrid: down ? undefined : { origin: band, pitch } };
 }
 
 // ---------- Readout (7 October; replaced Barcode) ----------
@@ -1783,6 +1789,72 @@ function readoutGeometry(v, time, pool) {
     clip: turned && margin > 0 ? [margin, margin, width - margin, height - margin] : undefined };
 }
 
+// ---------- Skyline (10 October; after the "Vector Transition" poster) ----------
+// Lines run edge to edge across the page, thin at the top. The page is split into upright columns, and each column
+// thickens its lines from its own depth down, so a stepped silhouette builds out of weight alone: Arch thickens the
+// middle first and the sides later, Valley the sides first, Ramp from left to right. Every line also thickens a
+// little down the whole page (Lines at bottom), as on the poster. A column's thickening eases in (Curve), so its top
+// emerges from the lines rather than starting with a step. Motion: Rise lifts the silhouette and lets it sink back;
+// Wave runs a ripple across the columns, each rising in turn. Both loop seamlessly, and the lines never move, so no
+// line ever slides under the frame's edge.
+const SKYLINE_DEFAULTS = {
+  lines: 48, columns: 7, margin: 0.08, rotation: 0, profile: 'arch', start: 0.12, spread: 0.55, curve: 1.6,
+  thin: 0.04, floor: 0.3, thick: 0.96, motion: 'rise', speed: 0.5, depth: 0.12,
+  palette: 'Mono Light', background: '#FCFCFC', ink: '#151515', ink2: '#151515', format: '1:1', seed: 1,
+};
+function skylineGeometry(v, time, pool) {
+  const [width, height] = FORMATS[v.format] || FORMATS['1:1'], side = Math.min(width, height), m = E.clamp(v.margin, 0, 0.45) * side;
+  const lines = Math.max(2, Math.min(200, Math.round(v.lines))), columns = Math.max(1, Math.min(40, Math.round(v.columns)));
+  // Rotation lays the columns out in a frame turned about the page's centre, covering the margin's box once turned,
+  // and the margin cuts them, as in Wave Rows.
+  const turn = (v.rotation || 0) * Math.PI / 180, cos = Math.cos(turn), sin = Math.sin(turn), turned = Math.abs(sin) > 1e-9 || cos < 0;
+  const boxW = width - 2 * m, boxH = height - 2 * m, cx = width / 2, cy = height / 2;
+  const innerW = boxW * Math.abs(cos) + boxH * Math.abs(sin), innerH = boxW * Math.abs(sin) + boxH * Math.abs(cos);
+  const left = (width - innerW) / 2, top = (height - innerH) / 2, pitch = innerH / lines, colW = innerW / columns;
+  const rgb = E.colourRGB(v.ink), tau = v.speed * time / 5, depth = E.clamp(v.depth, 0, 0.5);
+  // Where each column starts to thicken, as a share of the frame's height: its place in the profile (0 first, 1 last).
+  const order = (p) => (v.profile === 'valley' ? 1 - Math.abs(p - 0.5) * 2 : v.profile === 'ramp' ? p : Math.abs(p - 0.5) * 2);
+  const starts = Array.from({ length: columns }, (_, c) => {
+    const p = columns > 1 ? c / (columns - 1) : 0.5;
+    const swing = v.motion === 'rise' ? Math.sin(2 * Math.PI * tau) : v.motion === 'wave' ? Math.sin(2 * Math.PI * (tau - p)) : 0;
+    return E.clamp(v.start + v.spread * order(p) - depth * swing, 0, 0.98);
+  });
+  const share = (x) => Math.max(0.005, Math.min(0.98, x));
+  const instances = E.instanceBuffer(pool, lines * (columns + 1) * STRIDE);
+  let count = 0;
+  for (let r = 0; r < lines; r++) {
+    const f = (r + 0.5) / lines, base = v.thin + (Math.max(v.thin, v.floor) - v.thin) * f ** 1.4;
+    const heights = starts.map((s) => {
+      const grown = E.clamp((f - s) / Math.max(1e-6, 1 - s)) ** Math.max(0.2, v.curve);
+      return share(base + (Math.max(base, v.thick) - base) * grown) * pitch;
+    });
+    // The line runs unbroken edge to edge at its thinnest column's weight, and each thicker column lays its own piece
+    // over it, a hair wider than the column so neighbours meet without a seam. Every mark keeps its number all loop
+    // (line r, column c), so an animated file follows each one exactly; a column's piece shows only while it is
+    // thicker than the line, and as it appears it is the line's own thickness, hidden in it.
+    const lineH = Math.min(...heights), dy = top + (r + 0.5) * pitch - cy, place = (x0, x1) => {
+      const dx = (x0 + x1) / 2 - cx;
+      return [cx + dx * cos - dy * sin, cy + dx * sin + dy * cos];
+    };
+    const [lx, ly] = place(left, left + innerW);
+    putMark(instances, count++, lx, ly, innerW, lineH, turn, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, r * 64);
+    heights.forEach((h, c) => {
+      if (h - lineH < 0.05) return;
+      const x0 = left + c * colW - (c ? 0.25 : 0), x1 = left + (c + 1) * colW + (c < columns - 1 ? 0.25 : 0), [px, py] = place(x0, x1);
+      putMark(instances, count++, px, py, x1 - x0, h, turn, 0, 0, rgb[0], rgb[1], rgb[2], 1, 1, r * 64 + 1 + c);
+    });
+  }
+  const params = { name: 'Skyline', seed: v.seed, canvas: { width, height }, colour: flatColour(v.background), mappings: { colour: { source: 'constant', min: 0, max: 1 } } };
+  return { instances, count, markCount: count, width, height, params,
+    rowGrid: turned ? undefined : { origin: top, pitch }, clip: turned && m > 0 ? [m, m, width - m, height - m] : undefined };
+}
+// Skyline's presets: Gateway, the poster's arch; Firewall, its inverse, the sides building first; Ramp Up, rising
+// from left to right in finer columns.
+const SKYLINE_PRESETS = [
+  { name: 'Gateway', params: { ...SKYLINE_DEFAULTS } },
+  { name: 'Firewall', params: { ...SKYLINE_DEFAULTS, profile: 'valley', columns: 9, lines: 56, start: 0.18, spread: 0.5, curve: 1.3, floor: 0.25, motion: 'wave', depth: 0.1, ...orbitPalette('Mono Dark') } },
+  { name: 'Ramp Up', params: { ...SKYLINE_DEFAULTS, profile: 'ramp', columns: 12, lines: 44, start: 0.08, spread: 0.7, curve: 1.8, floor: 0.2, thick: 0.9, motion: 'wave', depth: 0.08, ...orbitPalette('Grape') } },
+];
 // The flat pattern kinds added on 7 October, so each hook (sanitising, drawing, palettes, remix, motion, sticker
 // colours) handles them in one place.
 const FLAT_KINDS = {
@@ -1791,23 +1863,27 @@ const FLAT_KINDS = {
     speeds: (v) => [v.motion !== 'none' ? v.speed : 0],
     // Only combinations that read and move cleanly. Fold, Bars and Rise draw both sides of every stripe, so a stripe
     // crossing the shape's edge grows out of its line. {OS} and the S mark have fine detail: they take more stripes,
-    // drawn large and across (upright stripes cut the letters apart), and the S mark reads only in Rise, where the
-    // weight builds it up.
+    // across (upright stripes cut the letters apart), sized to stay inside the margins, and the S mark reads only in
+    // Rise; in Rise they emerge quickly, so they read from their top. The shape takes the palette's colour that
+    // stands out most from the background, so it is never fainter than the lines round it.
     remix: (v, pick, palette) => {
       const shape = pick(['symbol', 'symbol', 'monogram', 'mark']), simple = shape === 'symbol';
       const inside = simple ? pick(['fold', 'fold', 'bars', 'rise', 'rise']) : shape === 'mark' ? 'rise' : pick(['fold', 'bars', 'rise']);
       const fold = inside === 'fold', rise = inside === 'rise';
+      const p = paletteNamed(palette.name), clear = (hex) => Math.abs(luminance(hex) - luminance(p.background));
+      const [strong, next] = [p.stop1, p.stop2, p.stop3].sort((a, b) => clear(b) - clear(a));
+      const colours = { ...orbitPalette(palette.name), ink2: strong, ink: rise || clear(next) < 0.3 ? strong : next };
       if (rise) {
-        return Object.assign(v, orbitPalette(palette.name), {
-          shape, inside, lines: simple ? pick([40, 52]) : pick([56, 64]), size: simple ? pick([0.55, 0.62, 0.72]) : pick([0.72, 0.86]),
-          y: pick([0.62, 0.68]), weight: pick([0.05, 0.07, 0.1]), bottomWeight: pick([0.35, 0.42, 0.5]), innerWeight: pick([0.9, 0.96]), direction: 'across' });
+        return Object.assign(v, colours, {
+          shape, inside, lines: simple ? pick([40, 52]) : pick([56, 64]), size: simple ? pick([0.55, 0.62, 0.72]) : pick([0.7, 0.78]),
+          x: 0.5, y: 0.5, start: 0, weight: pick([0.05, 0.07, 0.1]), bottomWeight: pick([0.35, 0.42, 0.5]), innerWeight: pick([0.9, 0.96]),
+          emerge: simple ? pick([0.6, 1]) : pick([0, 0.25]), direction: 'across' });
       }
-      return Object.assign(v, orbitPalette(palette.name), {
-        shape, lines: simple ? pick([18, 22, 26, 32]) : pick([36, 44, 52]), inside, size: simple ? pick([0.6, 0.74, 0.9]) : pick([0.8, 0.9]),
-        weight: fold ? pick([0.1, 0.12, 0.16]) : pick([0.2, 0.32, 0.5]), innerWeight: fold ? pick([0.5, 0.62, 0.75]) : 0.6,
+      return Object.assign(v, colours, {
+        shape, lines: simple ? pick([18, 22, 26, 32]) : pick([36, 44, 52]), inside, size: simple ? pick([0.6, 0.74, 0.84]) : pick([0.7, 0.78]),
+        x: 0.5, y: 0.5, start: 0, weight: fold ? pick([0.1, 0.12, 0.16]) : pick([0.2, 0.32, 0.5]), innerWeight: fold ? pick([0.5, 0.62, 0.75]) : 0.6,
         direction: simple ? pick(['across', 'across', 'down']) : 'across' });
     },
-    // Shapes retired on 8 October (steps, diamond, circle; the V before them) open as the symbol.
     // Shapes retired on 8 October (steps, diamond, circle; the V before them) open as the symbol. Stairs, Gap and Drift
     // were dropped on 10 October (each drew one side of a stripe, which could not cross the shape's edge cleanly):
     // their saves open as Bars and Roll.
@@ -1816,6 +1892,20 @@ const FLAT_KINDS = {
       if (v.inside === 'shift' || v.inside === 'gap') v.inside = 'bars';
       if (v.motion === 'drift') v.motion = 'roll';
       return v;
+    },
+  },
+  skyline: {
+    defaults: SKYLINE_DEFAULTS, geometry: skylineGeometry,
+    speeds: (v) => [v.motion !== 'none' ? v.speed : 0],
+    // A remix keeps the lines and the motion's character: another profile, column count and pace of thickening, in
+    // the palette's colour that stands out most from its background.
+    remix: (v, pick, palette) => {
+      const p = paletteNamed(palette.name), clear = (hex) => Math.abs(luminance(hex) - luminance(p.background));
+      const ink = [p.stop1, p.stop2, p.stop3].sort((a, b) => clear(b) - clear(a))[0];
+      return Object.assign(v, { palette: p.name, background: p.background, ink, ink2: ink,
+        profile: pick(['arch', 'arch', 'valley', 'ramp']), columns: pick([5, 7, 9, 11]), lines: pick([40, 48, 56]),
+        start: pick([0.08, 0.12, 0.18]), spread: pick([0.45, 0.55, 0.65]), curve: pick([1.2, 1.6, 2]), floor: pick([0.2, 0.3]),
+        motion: pick(['rise', 'wave']) });
     },
   },
   readout: {
@@ -1867,7 +1957,8 @@ const PATTERNS = [
     description: 'Stripes that break round a shape, so the shape stands out of them.',
     sections: [
       ['Stripes', [range('lines', 'Stripes', 2, 120, 1, int), range('weight', 'Weight', 0.02, 1, 0.01, pct),
-        choice('direction', 'Direction', [['Across', 'across'], ['Down', 'down']]), range('margin', 'Margin', 0, 0.45, 0.01, pct)]],
+        choice('direction', 'Direction', [['Across', 'across'], ['Down', 'down']]), range('margin', 'Margin', 0, 0.45, 0.01, pct),
+        range('start', 'Lines from', 0, 0.8, 0.01, pct)]],
       ['Shape', [choice('shape', 'Shape', [['Symbol', 'symbol'], ['S mark', 'mark'], ['{OS}', 'monogram']]),
         range('size', 'Size', 0.05, 1.6, 0.01, pct), range('x', 'Across', 0, 1, 0.01, pct), range('y', 'Down', 0, 1, 0.01, pct),
         { ...choice('inside', 'Inside', [['Fold', 'fold'], ['Bars', 'bars'], ['Rise', 'rise']]), rebuild: true },
@@ -1875,6 +1966,7 @@ const PATTERNS = [
         { ...range('innerWeight', 'Thickest', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'fold' },
         { ...range('bottomWeight', 'Lines at bottom', 0.02, 0.96, 0.01, pct), when: (v) => v.inside === 'rise' },
         { ...range('innerWeight', 'Inside at bottom', 0.02, 0.96, 0.01, pct), when: (v) => v.inside === 'rise' },
+        { ...range('emerge', 'Emerge', 0, 1, 0.01, pct), when: (v) => v.inside === 'rise' },
         { ...range('fold', 'Fold at', 0, 1, 0.01, pct), when: (v) => v.inside === 'fold' },
         { ...range('gap', 'Gap', 0, 0.2, 0.005, pct), when: (v) => v.inside === 'bars' }],
         'Inside the shape the stripes become bars in the second colour. Fold lays thick bars round the shape above the fold and inside it below, thicker away from the fold. Rise thickens every stripe down the page, faster inside the shape, so the shape rises out of the lines.'],
@@ -1883,6 +1975,20 @@ const PATTERNS = [
         'Breathe grows and shrinks the shape. Roll runs the stripes down through the shape, one way, looping without swinging back.'],
     ],
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Stripe colour'), colour('ink2', 'Shape colour'), FORMAT] },
+  { name: 'Skyline', kind: 'skyline', group: 'Studio patterns',
+    description: 'Lines that thicken column by column, so a stepped silhouette rises out of their weight.',
+    sections: [
+      ['Lines', [range('lines', 'Lines', 8, 160, 1, int), range('columns', 'Columns', 1, 40, 1, int), range('margin', 'Margin', 0, 0.45, 0.01, pct),
+        range('rotation', 'Rotation', -180, 180, 1, deg)]],
+      ['Weight', [range('thin', 'Thinnest', 0.005, 0.5, 0.005, pct), range('floor', 'Lines at bottom', 0.005, 0.98, 0.01, pct),
+        range('thick', 'Thickest', 0.05, 0.98, 0.01, pct), range('curve', 'Curve', 0.3, 4, 0.05, f2)]],
+      ['Shape', [choice('profile', 'Shape', [['Arch', 'arch'], ['Valley', 'valley'], ['Ramp', 'ramp']]), range('start', 'Starts at', 0, 0.9, 0.01, pct),
+        range('spread', 'Steps', 0, 1, 0.01, pct)]],
+      ['Motion', [{ ...choice('motion', 'Motion', [['Still', 'none'], ['Rise', 'rise'], ['Wave', 'wave']]), rebuild: true },
+        { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: (v) => v.motion !== 'none' },
+        { ...range('depth', 'Strength', 0, 0.5, 0.01, pct), when: (v) => v.motion !== 'none' }]],
+    ],
+    look: [PALETTE, colour('background', 'Background'), colour('ink', 'Line colour'), FORMAT] },
   { name: 'Halftone Diagonal', sections: [
       ['Grid', [columns(), rowsCount(), margin, turnControl]],
       ['Lines', [range('mappings.thickness.min', 'Thinnest', 0.2, 40, 0.1, px), range('mappings.thickness.max', 'Thickest', 0.2, 40, 0.1, px),
@@ -2157,7 +2263,7 @@ const READOUT_PRESETS = [
 const SILHOUETTE_PRESETS = [
   { name: 'Merge', params: { ...SILHOUETTE_DEFAULTS } },
   { name: 'Migration', params: { ...SILHOUETTE_DEFAULTS, ...orbitPalette('Mono Light'), inside: 'rise', lines: 52, weight: 0.07, bottomWeight: 0.42,
-    innerWeight: 0.96, shape: 'symbol', size: 0.62, y: 0.68, motion: 'roll', speed: 0.5 } },
+    innerWeight: 0.96, shape: 'symbol', size: 0.62, x: 0.5, y: 0.5, motion: 'roll', speed: 0.5 } },
 ];
 const BUILT_INS = [
   ...ROW_PRESETS.map((p) => ({ name: p.name, group: 'Wave Rows', pattern: 'Wave Rows', values: sanitizeRows(p.params) })),
@@ -2180,6 +2286,7 @@ const BUILT_INS = [
   ...ORBIT_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Orbit', values: sanitizeOrbit(p.params) })),
   ...READOUT_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Readout', values: sanitizeFlat(READOUT_DEFAULTS, p.params) })),
   ...SILHOUETTE_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Silhouette', values: sanitizeFlat(SILHOUETTE_DEFAULTS, p.params) })),
+  ...SKYLINE_PRESETS.map((p) => ({ name: p.name, group: 'Studio patterns', pattern: 'Skyline', values: sanitizeFlat(SKYLINE_DEFAULTS, p.params) })),
   ...MARK_PRESETS.map((p) => ({ name: p.name, group: 'Bracket', pattern: 'Bracket', values: sanitizeMark(p.params) })),
 ];
 // Two more presets for each pattern that had one, each drawn from that pattern's first: another density, wave
@@ -2226,7 +2333,7 @@ for (const b of BUILT_INS) if (b.values.layout) fixFitReference(b.values);
 // so the presets window, the arrows and the dots all follow one order. The sort keeps each pattern's own order.
 BUILT_INS.sort((a, b) => PATTERNS.indexOf(patternOf(a.pattern)) - PATTERNS.indexOf(patternOf(b.pattern)));
 const firstPreset = (pattern) => BUILT_INS.find((b) => b.pattern === pattern);
-const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, orbit: ORBIT_DEFAULTS, silhouette: SILHOUETTE_DEFAULTS, readout: READOUT_DEFAULTS };
+const FLAT_DEFAULTS = { rows: ROW_DEFAULTS, mark: MARK_DEFAULTS, orbit: ORBIT_DEFAULTS, silhouette: SILHOUETTE_DEFAULTS, readout: READOUT_DEFAULTS, skyline: SKYLINE_DEFAULTS };
 const defaultsFor = (pattern) => FLAT_DEFAULTS[patternOf(pattern).kind] || firstPreset(pattern).values;
 
 /** Any save, session, link or import made safe; a sticker, when there is one, comes along. */
@@ -4487,8 +4594,11 @@ function animatedSVG(st, { transparent = false } = {}) {
     const turn = series(d, [A], KEYFRAME_TOLERANCE.angle, (p) => num(d[p + A], 1), null, 'rotate');
     const alpha = series(d, [O], KEYFRAME_TOLERANCE.opacity, (p) => num(d[p + O], 2), 'fill-opacity');
     const fill = series(d, [RED, GREEN, BLUE], KEYFRAME_TOLERANCE.colour, (p) => hex(d[p + RED], d[p + GREEN], d[p + BLUE]), 'fill');
-    // Marks that travel stay smooth: crisp edges would snap them a whole pixel at a time.
-    if (track.shape !== 0 || rounded >= 0.05 || track.skew || turn.animation || turn.value !== '0' || xMoves || yMoves) crisp = false;
+    // Marks that travel stay smooth: crisp edges would snap them a whole pixel at a time. So do fine marks (under two
+    // pixels at their thinnest, as Skyline's hairlines): crisp edges would round them to a whole pixel, or to nothing.
+    let finest = Infinity;
+    for (let k = 0; k < S; k++) finest = Math.min(finest, d[k * F + W], d[k * F + H]);
+    if (track.shape !== 0 || rounded >= 0.05 || track.skew || turn.animation || turn.value !== '0' || xMoves || yMoves || finest < 2) crisp = false;
 
     // Marks are written once each layer's most common fill is known, so that colour can sit on the layer.
     const element = (tag, attributes, children) => `<${tag}${attributes}${children ? `>${children}</${tag}>` : '/>'}`;
@@ -5066,9 +5176,9 @@ playButton.addEventListener('click', () => {
 // preset changed this way reads as edited. The pause button under the art only pauses the preview.
 const SPEED_KEYS = {
   studio: ['motion.speed', 'pulse.speed', 'field.ripples.orbit'], rows: ['speed'], mark: ['speed'],
-  orbit: ['speed', 'grid.speed', 'pulse.speed'], silhouette: ['speed'], readout: ['speed'],
+  orbit: ['speed', 'grid.speed', 'pulse.speed'], silhouette: ['speed'], readout: ['speed'], skyline: ['speed'],
 };
-const MOTION_CHOICES = { studio: ['field.motion'], mark: ['effect'], orbit: ['motion', 'grid.motion'], silhouette: ['motion'] };
+const MOTION_CHOICES = { studio: ['field.motion'], mark: ['effect'], orbit: ['motion', 'grid.motion'], silhouette: ['motion'], skyline: ['motion'] };
 // What moved before the look was held still, and how it sat still before it was set moving, by preset and pattern.
 const motionSwitch = document.getElementById('motionSwitch'), motionMemory = new Map(), stillMemory = new Map();
 const motionKeys = (st) => [...(SPEED_KEYS[kindOf(st)] || []), ...(MOTION_CHOICES[kindOf(st)] || [])].filter((k) => getPath(st.values, k) !== undefined);
@@ -5091,6 +5201,7 @@ function withMotion(st) {
   else if (kind === 'orbit' && v.layout === 'grid') { if (v.grid.motion === 'none') v.grid.motion = 'ripple'; slow('grid.speed'); }
   else if (kind === 'orbit') { if (v.motion === 'none') v.motion = 'flow'; slow('speed'); }
   else if (kind === 'silhouette') { if (v.motion === 'none') v.motion = 'roll'; slow('speed'); }
+  else if (kind === 'skyline') { if (v.motion === 'none') v.motion = 'rise'; slow('speed'); }
   return out;
 }
 /** Whether a look changes on screen over its loop. */

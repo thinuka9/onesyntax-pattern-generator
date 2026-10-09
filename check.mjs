@@ -172,11 +172,12 @@ await check('Exports: PNG, SVG and animated SVG', async () => {
   return `animated: ${notes.join(', ')}`;
 });
 
-await check('Orbit and Silhouette animated SVGs match the app frame by frame', async () => {
+await check('Orbit, Silhouette and Skyline animated SVGs match the app frame by frame', async () => {
   const view = await browser.newPage({ viewport: { width: 700, height: 700 } });
   const shot = async (svg, t) => {
     await view.setContent(`<body style="margin:0">${svg.replace('<svg ', '<svg id="s" style="width:600px;height:600px;display:block" ')}</body>`);
-    if (t != null) await view.evaluate((at) => { const s = document.getElementById('s'); s.pauseAnimations(); s.setCurrentTime(at); }, t);
+    // SMIL animations follow the SVG's clock; CSS ones (marks sharing a motion) are set to the same moment.
+    if (t != null) await view.evaluate((at) => { const s = document.getElementById('s'); s.pauseAnimations(); s.setCurrentTime(at); for (const a of document.getAnimations()) { a.pause(); a.currentTime = at * 1000; } }, t);
     return (await view.locator('#s').screenshot()).toString('base64');
   };
   const difference = (a, b) => page.evaluate(async ([a, b]) => {
@@ -203,8 +204,9 @@ await check('Orbit and Silhouette animated SVGs match the app frame by frame', a
     const seam = await difference(await shot(files.svg, 0), await shot(files.svg, files.loop));
     expect(seam < 0.2, `${name} ${settings.motion}: the loop shows a seam (${seam.toFixed(2)}/255)`);
   }
-  // Silhouette's stripes move through the shape (Roll) or the shape grows and shrinks (Breathe); the file follows.
-  for (const [preset, motion] of [['Merge', 'roll'], ['Merge', 'breathe'], ['Migration', 'roll'], ['Migration', 'breathe']]) {
+  // Silhouette's stripes move through the shape (Roll) or the shape grows and shrinks (Breathe); Skyline's columns rise
+  // and ripple (lines that only thicken, so their files lean on CSS animation and must not snap to whole pixels).
+  for (const [preset, motion] of [['Merge', 'roll'], ['Merge', 'breathe'], ['Migration', 'roll'], ['Migration', 'breathe'], ['Gateway', 'rise'], ['Firewall', 'wave'], ['Ramp Up', 'wave']]) {
     const files = await page.evaluate(([p, m]) => {
       applyPreset('builtin:' + p); state.values.motion = m;
       const { svg, loop } = animatedSVG(state), still = (t) => { const g = geometryFor(state, t); return E.toSVG(g, g.params, state, {}); };

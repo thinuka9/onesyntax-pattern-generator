@@ -15,9 +15,10 @@ seamless video loops.
 
 ## What it does
 
-- **11 pattern types in four groups**
+- **12 pattern types in four groups**
   - *Wave Rows*: rows of items whose opacity and size follow a sine wave, turned to any angle.
   - *Studio patterns*: Eddy, Readout (rows of dots, dashes and bars), Silhouette (stripes breaking round a shape),
+    Skyline (lines thickening column by column into a stepped silhouette: Gateway, Firewall, Ramp Up),
     Halftone Diagonal, Kaleido Pixels (ported from the original studio, where Eddy was Amaya Flow; Gauge, Barcode,
     Threshold Stripes and Strands were retired on 7 October and their saves open in Readout and Silhouette; Contour
     Field and Stack were dropped on 10 October and theirs open in Eddy and Halftone Diagonal), and Orbit: dashes round
@@ -31,7 +32,7 @@ seamless video loops.
   - *Bracket*: the brand's `{ }` mark on its own Geist Pixel grid (9 × 23 cells, read from the Figma file), drawn
     as pixels, lines, dots or slashes, alone or repeated in columns and rows, with looping effects: wave, scan,
     build, glitch, ripple, sparkle.
-- **35 built-in presets named in code vocabulary, listed pattern by pattern:** Hello World, Throughput, Checksum,
+- **38 built-in presets named in code vocabulary, listed pattern by pattern:** Hello World, Throughput, Checksum,
   Gradient Descent, Recursion, Resonance, Concurrency, Source, Refactor, Event Loop, Scope, Compile
   and more; most patterns have three or more, Silhouette keeps one (Merge) and Bracket two. Refactor (Eddy) twists a bar grid round a quiet centre; Event
   Stream, Event Queue and Event Loop are Orbit.

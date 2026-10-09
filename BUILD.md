@@ -74,8 +74,8 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
 5. Share links and preset JSON round-trip for every preset, and a save from before the `plate` rename still opens;
    a link copied from an edited look opens exactly that look.
 6. PNG, SVG and animated SVG exports download and parse, for every moving preset.
-7. Orbit's animated SVG (Flow, Sway, and Pulse) and Silhouette's (Roll and Drift), frozen at set moments, match
-   the app within 4/255 and loop without a seam.
+7. Orbit's animated SVG (Flow, Sway, and Pulse), Silhouette's (Merge and Migration, Roll and Breathe) and Skyline's (Rise
+   and Wave), frozen at set moments (SMIL and CSS animations alike), match the app within 4/255 and loop without a seam.
 8. The presets window opens on the current preset, with the bar (a heading per pattern) on its pattern.
 9. The sticker survives a share link and exports as PNG, SVG and animated SVG, cut out (transparent round its
    outline, Transparent on or off); the seed dice never turns it back on.

@@ -144,6 +144,17 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   marks by place (`followShapes`), with pieces that split off or join into a like mark held opaque across the change.
   The release check compares Merge and Migration, Roll and Breathe, at five moments a loop. Its remaining ~3.6/255 on
   Migration is edge smoothing (moving SVG marks are antialiased; the still is crisp), not a fault.
+- **10 October, Skyline:** Migration "not centred" (it sat low and ran past the margin): centred, as are Rise remixes.
+  {OS} and the S mark in Rise were illegible (their tops barely thickened) and could be cut by the margins: Rise got
+  Emerge (how gradually the shape rises; remixes use little for detailed shapes), detailed shapes are sized to fit,
+  and remixes draw the shape in the palette's colour that stands out most. A Tower shape and a Bootstrap preset were
+  tried for the "Vector Transition" poster and removed at once ("remove this"); a close crop showed the poster's real
+  structure, so it became its own pattern, **Skyline**: lines edge to edge, the page split into columns, each
+  thickening from its own depth (Arch, Valley, Ramp), Rise and Wave motions with the lines still. Presets Gateway,
+  Firewall, Ramp Up. Each line is one full-width mark at its thinnest column's weight with thicker columns laid over
+  it, every mark keeping its number (seams and a broken animated SVG came from joining pieces). The SVG exporter no
+  longer renders files with hairlines crisp (it rounded them away). Silhouette also got Lines from (stripes start
+  partway down) and gives the sticker a between-rows crop (the band's top line touched its edge).
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped
