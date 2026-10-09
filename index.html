@@ -1491,7 +1491,7 @@ const ORBIT_GRID_SECTIONS = [
 // Motion: Breathe grows and shrinks the shape. Roll and Drift move the lines instead, one way and never back: Roll
 // runs every stripe down through the shape, Drift only the stripes inside it.
 const SILHOUETTE_DEFAULTS = {
-  lines: 22, margin: 0.08, weight: 0.12, shape: 'symbol', size: 0.74, x: 0.5, y: 0.5, gap: 0.03, inside: 'fold', innerWeight: 0.62,
+  lines: 22, margin: 0.08, weight: 0.12, shape: 'symbol', size: 0.74, x: 0.5, y: 0.5, gap: 0.03, inside: 'fold', innerWeight: 0.62, bottomWeight: 0.5,
   fold: 0.5, direction: 'across', motion: 'roll', speed: 0.5, depth: 0.4,
   palette: 'Midnight', background: '#001931', ink: '#BDDFFF', ink2: '#BDDFFF', format: '1:1', seed: 1,
 };
@@ -1544,13 +1544,13 @@ function silhouetteGeometry(v, time, pool) {
   const cx = (down ? v.y : v.x) * W, cy = (down ? v.x : v.y) * H;
   // How far the shape reaches across the stripes from its middle.
   const halfDepth = size * (down ? Math.min(1, picked.aspect) : Math.min(1, 1 / picked.aspect)) / 2;
-  const gap = fold ? 0 : Math.max(0, v.gap) * side, samples = 480;
+  const rise = v.inside === 'rise', gap = fold || rise ? 0 : Math.max(0, v.gap) * side, samples = 480;
   // The fold: below it the bars thicken inside the shape, above it round the shape. They are at their thickest as
   // far from the fold as the shape reaches, so a short shape ({OS}) is as clear as a tall one.
   const foldAt = E.clamp(v.fold, 0, 1) * reach + top, ramp = E.clamp(halfDepth, pitch, reach / 2);
   const foldLevel = (y) => E.clamp((y - foldAt) / ramp, -1, 1);
   const thick = (share) => Math.max(0.2, Math.min(0.96, E.clamp(share, 0.02, 1)) * pitch);
-  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' || fold ? v.ink2 : v.ink);
+  const ink = E.colourRGB(v.ink), ink2 = E.colourRGB(v.inside === 'bars' || fold || rise ? v.ink2 : v.ink);
   // Roll and Drift move the stripes, never the shape or the fold: Roll sends every stripe down the page through the
   // shape, Drift only the stripes inside it, past the still ones round it. Two stripes a beat (one every 5 s at
   // Speed 0.5, in step with the other patterns' slowest), so a loop always ends on whole stripes; each slides out
@@ -1560,12 +1560,16 @@ function silhouetteGeometry(v, time, pool) {
   const offset = moved - Math.floor(moved), passed = Math.floor(moved);
   const most = (2 * lines + 2) * 48, instances = E.instanceBuffer(pool, most * STRIDE);
   let count = 0;
-  const bar = (x0, x1, y0, y1, rgb, layer, id) => {
-    if (x1 - x0 < 0.5 || y1 - y0 < 0.02 || count >= most) return;
+  const bar = (x0, x1, y0, y1, rgb, layer, id, opacity = 1) => {
+    if (x1 - x0 < 0.5 || y1 - y0 < 0.02 || opacity < 0.02 || count >= most) return;
     const mx = (x0 + x1) / 2, my = (y0 + y1) / 2;
-    if (down) putMark(instances, count++, my, mx, y1 - y0, x1 - x0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
-    else putMark(instances, count++, mx, my, x1 - x0, y1 - y0, 0, 0, 0, rgb[0], rgb[1], rgb[2], 1, layer, id);
+    if (down) putMark(instances, count++, my, mx, y1 - y0, x1 - x0, 0, 0, 0, rgb[0], rgb[1], rgb[2], opacity, layer, id);
+    else putMark(instances, count++, mx, my, x1 - x0, y1 - y0, 0, 0, 0, rgb[0], rgb[1], rgb[2], opacity, layer, id);
   };
+  // A bar that is only partly there (sliding under the frame's edge, or crossing out of the side it draws) fades with
+  // how much of it is there instead of thinning: no hairlines, and the stripes come and go smoothly.
+  // Quick, centred on half: a bar is nearly always all there or gone, so a still frame shows no half-faded bars.
+  const fade = (share) => { const s = E.clamp((share - 0.3) / 0.4); return s * s * (3 - 2 * s); };
   const at = (x, y) => shape((x - (cx - size / 2)) / size, (y - (cy - size / 2)) / size);
   /** Where a line at height y crosses the shape's edge, found to a fraction of a pixel (sampled, then halved down). */
   function crossings(y, into) {
@@ -1593,6 +1597,15 @@ function silhouetteGeometry(v, time, pool) {
     if (fold) {
       const level = foldLevel(y), t = thick(v.weight);
       thinW = t; fatW = t + Math.max(0, thick(v.innerWeight) - t) * Math.abs(level); round = level < 0;
+    } else if (rise) {
+      // Rise: every stripe thickens down the page, from Weight at the top to Lines at bottom, and inside the shape it
+      // thickens faster, to Inside at bottom, so the shape rises out of the lines. Easing the lines' growth keeps the
+      // top airy and lets the weight gather towards the bottom. The inside starts thickening at the shape's own top,
+      // where it matches the lines, so the shape emerges rather than starting with a step.
+      const t = E.clamp((y - top) / reach), lineShare = v.weight + (Math.max(v.weight, v.bottomWeight) - v.weight) * t ** 1.4;
+      const shapeTop = cy - halfDepth, rising = E.clamp((y - shapeTop) / Math.max(pitch, bottom - shapeTop));
+      thinW = thick(lineShare);
+      fatW = Math.max(thinW, thick(lineShare + (Math.max(lineShare, v.innerWeight) - lineShare) * rising));
     } else { thinW = thick(v.weight); fatW = thick(v.inside === 'shift' ? v.weight : v.innerWeight); }
     // How each side is drawn: [width, colour, layer], or null for nothing (Gap's inside).
     const look = (inside) => fold
@@ -1645,22 +1658,27 @@ function silhouetteGeometry(v, time, pool) {
     // Gaps (Bars, Stairs, Gap) open on the stripes round the shape, beside each piece inside it.
     const sideOf = (k) => (k >= 0 && k < pieces.length ? pieces[k].mid : null);
     const rects = [];
-    const add = (a, b, y0, y1, inside, style) => {
-      if (clip) { y0 = Math.max(y0, top); y1 = Math.min(y1, bottom); }
+    const add = (a, b, y0, y1, inside, style, opacity = 1) => {
+      if (clip) {
+        // Under the frame's edge the bar is cut, and fades with the share of it still showing.
+        const full = y1 - y0;
+        y0 = Math.max(y0, top); y1 = Math.min(y1, bottom);
+        if (full > 0) opacity *= fade((y1 - y0) / full);
+      }
       // Touching pieces drawn alike join into one bar: no seam between them, and fewer marks.
       const last = rects[rects.length - 1];
-      if (last && last.inside === inside && Math.abs(last.b - a) < 1e-6 && Math.abs(last.y0 - y0) < 1e-6 && Math.abs(last.y1 - y1) < 1e-6) last.b = b;
-      else rects.push({ a, b, y0, y1, inside, style });
+      if (last && last.inside === inside && Math.abs(last.b - a) < 1e-6 && Math.abs(last.y0 - y0) < 1e-6 && Math.abs(last.y1 - y1) < 1e-6 && Math.abs(last.opacity - opacity) < 1e-6) last.b = b;
+      else rects.push({ a, b, y0, y1, inside, style, opacity });
     };
     pieces.forEach((piece, k) => {
       let { a, b } = piece;
       if (gap && !piece.mid) { if (sideOf(k - 1)) a += gap; if (sideOf(k + 1)) b -= gap; }
       if (!fold) {
         // One bar on the stripe. Bars thickens it from the stripe's weight to the inner weight as it crosses, in the
-        // inner colour from half way. A stripe drawing one side only (Gap, each of Stairs' two sets, Drift's) thins
-        // its bar as the stripe crosses out of that side, and leaves it out before it is a hairline.
+        // inner colour from half way. A stripe drawing one side only (Gap, each of Stairs' two sets, Drift's) keeps
+        // its bar's thickness and fades it as the stripe crosses out of that side.
         const share = piece.share;
-        if (parts === 'all' && v.inside === 'bars') {
+        if (parts === 'all' && (v.inside === 'bars' || rise)) {
           const inside = share >= 0.5, style = look(inside), width = thinW + (fatW - thinW) * share;
           add(a, b, y - width / 2, y + width / 2, inside, style);
           return;
@@ -1668,25 +1686,39 @@ function silhouetteGeometry(v, time, pool) {
         const inside = parts === 'in';
         const cover = inside ? share : 1 - share, style = look(inside);
         if (!style || cover <= 0) return;
-        const width = style[0] * cover;
-        if (width < 0.4 * thinW) return;  // gone before it is a hairline
-        add(a, b, y - width / 2, y + width / 2, inside, style);
+        add(a, b, y - style[0] / 2, y + style[0] / 2, inside, style, fade(cover));
         return;
       }
-      // Fold: each side's bar as thick as its share of the stripe, centred; only the thicker shows, so only it is drawn.
-      // A stripe drawing one side only (Drift's) thins as it crosses out of that side, gone before it is a hairline.
+      // Fold, drawing both sides: the thin line runs on, and the thick bar grows out of it with the share of the stripe
+      // on the thick side, so a stripe crossing the shape's flat edge never draws thinner than its line.
+      const one = parts !== 'all';
+      if (!one) {
+        const thickSide = !round, grown = thickSide ? piece.share : 1 - piece.share, width = thinW + (fatW - thinW) * grown;
+        const inside = grown >= 0.5 ? thickSide : !thickSide;
+        add(a, b, y - width / 2, y + width / 2, inside, look(inside));
+        return;
+      }
+      // Drawing one side only (Drift's), a stripe keeps that side's thickness and fades as it crosses out of it.
       const sides = [[false, 1 - piece.share], [true, piece.share]]
         .filter(([inside, cover]) => cover > 0 && !(parts === 'in' && !inside) && !(parts === 'out' && inside))
-        .map(([inside, cover]) => ({ inside, style: look(inside), width: look(inside)[0] * cover }))
-        .filter((x) => parts === 'all' || x.width >= 0.4 * thinW);
+        .map(([inside, cover]) => ({ inside, style: look(inside), cover, width: look(inside)[0] * (one ? 1 : cover) }));
       if (!sides.length) return;
       const shown = sides.reduce((best, x) => (x.width > best.width ? x : best));
-      add(a, b, y - shown.width / 2, y + shown.width / 2, shown.inside, shown.style);
+      add(a, b, y - shown.width / 2, y + shown.width / 2, shown.inside, shown.style, one ? fade(shown.cover) : 1);
     });
     // Numbered by side and order, so a bar keeps its number as the stripe moves and its pieces change.
-    // A bar shorter than it is thick reads as a dot: left out.
+    // A bar standing alone and shorter than half a stripe's spacing, or than one and a half times its thickness, reads
+    // as a speck: left out. A bar at the frame's side (the page cuts it) keeps its length, and one touching the next
+    // piece of its stripe is part of a line, so leaving it out would open a hole.
     const counted = [0, 0];
-    for (const r of rects) if (r.b - r.a >= r.y1 - r.y0) bar(r.a, r.b, r.y0, r.y1, r.style[1], r.style[2], id + (r.inside ? 24 : 0) + Math.min(23, counted[r.inside ? 1 : 0]++));
+    for (let k = 0; k < rects.length; k++) {
+      const r = rects[k], n = id + (r.inside ? 24 : 0) + Math.min(23, counted[r.inside ? 1 : 0]++);
+      const atSide = r.a <= left + 1e-6 || r.b >= right - 1e-6;
+      const joined = (k > 0 && Math.abs(rects[k - 1].b - r.a) < 1e-6) || (k < rects.length - 1 && Math.abs(rects[k + 1].a - r.b) < 1e-6);
+      if (!atSide && !joined && r.b - r.a < Math.max(1.5 * (r.y1 - r.y0), 0.5 * pitch)) continue;
+      if (r.b - r.a < r.y1 - r.y0) continue;
+      bar(r.a, r.b, r.y0, r.y1, r.style[1], r.style[2], n, r.opacity);
+    }
   }
   // Stairs draws the shape's inside on stripes of its own, half a stripe on from the others and each cut where it
   // crosses the shape, so the shape sits exactly where it is (both sets stop at its edges).
@@ -1780,11 +1812,21 @@ const FLAT_KINDS = {
   silhouette: {
     defaults: SILHOUETTE_DEFAULTS, geometry: silhouetteGeometry,
     speeds: (v) => [v.motion !== 'none' ? v.speed : 0],
+    // Only combinations where the shape reads: {OS} has fine detail, so it takes more stripes, drawn large, and not
+    // Stairs or Gap (they break it into scattered pieces); the symbol's base reads every way. The S mark's cut-outs
+    // read only in Rise, where the weight builds them up.
     remix: (v, pick, palette) => {
-      const inside = pick(['fold', 'fold', 'fold', 'bars', 'shift']), fold = inside === 'fold';
+      const shape = pick(['symbol', 'symbol', 'monogram', 'mark']), simple = shape === 'symbol';
+      const inside = simple ? pick(['fold', 'fold', 'bars', 'shift', 'rise', 'rise']) : shape === 'mark' ? 'rise' : pick(['fold', 'bars', 'rise']);
+      const fold = inside === 'fold', rise = inside === 'rise';
+      if (rise) {
+        return Object.assign(v, orbitPalette(palette.name), {
+          shape, inside, lines: simple ? pick([40, 52]) : pick([56, 64]), size: simple ? pick([0.55, 0.62, 0.72]) : pick([0.72, 0.86]),
+          y: pick([0.62, 0.68]), weight: pick([0.05, 0.07, 0.1]), bottomWeight: pick([0.35, 0.42, 0.5]), innerWeight: pick([0.9, 0.96]), direction: 'across' });
+      }
       return Object.assign(v, orbitPalette(palette.name), {
-        shape: pick(['symbol', 'symbol', 'mark', 'monogram']), lines: pick([18, 22, 26, 32]), inside, size: pick([0.6, 0.74, 0.9]),
-        weight: fold ? pick([0.1, 0.12, 0.16]) : pick([0.2, 0.32, 0.5]), innerWeight: fold ? pick([0.5, 0.62, 0.75]) : 0.6,
+        shape, lines: simple ? pick([18, 22, 26, 32]) : pick([36, 44, 52]), inside, size: simple ? pick([0.6, 0.74, 0.9]) : pick([0.8, 0.9]),
+        weight: fold ? pick([0.1, 0.12, 0.16]) : inside === 'shift' ? pick([0.3, 0.4]) : pick([0.2, 0.32, 0.5]), innerWeight: fold ? pick([0.5, 0.62, 0.75]) : 0.6,
         direction: pick(['across', 'across', 'down']) });
     },
     // Shapes retired on 8 October (steps, diamond, circle; the V before them) open as the symbol.
@@ -1842,12 +1884,14 @@ const PATTERNS = [
         choice('direction', 'Direction', [['Across', 'across'], ['Down', 'down']]), range('margin', 'Margin', 0, 0.45, 0.01, pct)]],
       ['Shape', [choice('shape', 'Shape', [['Symbol', 'symbol'], ['S mark', 'mark'], ['{OS}', 'monogram']]),
         range('size', 'Size', 0.05, 1.6, 0.01, pct), range('x', 'Across', 0, 1, 0.01, pct), range('y', 'Down', 0, 1, 0.01, pct),
-        { ...choice('inside', 'Inside', [['Bars', 'bars'], ['Stairs', 'shift'], ['Gap', 'gap'], ['Fold', 'fold']]), rebuild: true },
+        { ...choice('inside', 'Inside', [['Bars', 'bars'], ['Stairs', 'shift'], ['Gap', 'gap'], ['Fold', 'fold'], ['Rise', 'rise']]), rebuild: true },
         { ...range('innerWeight', 'Inner weight', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'bars' },
         { ...range('innerWeight', 'Thickest', 0.02, 1, 0.01, pct), when: (v) => v.inside === 'fold' },
+        { ...range('bottomWeight', 'Lines at bottom', 0.02, 0.96, 0.01, pct), when: (v) => v.inside === 'rise' },
+        { ...range('innerWeight', 'Inside at bottom', 0.02, 0.96, 0.01, pct), when: (v) => v.inside === 'rise' },
         { ...range('fold', 'Fold at', 0, 1, 0.01, pct), when: (v) => v.inside === 'fold' },
-        { ...range('gap', 'Gap', 0, 0.2, 0.005, pct), when: (v) => v.inside !== 'fold' }],
-        'Inside the shape the stripes become bars in the second colour, step half a stripe down, or leave a gap. Fold lays thick bars round the shape above the fold and inside it below, thicker away from the fold.'],
+        { ...range('gap', 'Gap', 0, 0.2, 0.005, pct), when: (v) => v.inside !== 'fold' && v.inside !== 'rise' }],
+        'Inside the shape the stripes become bars in the second colour, step half a stripe down, or leave a gap. Fold lays thick bars round the shape above the fold and inside it below, thicker away from the fold. Rise thickens every stripe down the page, faster inside the shape, so the shape rises out of the lines.'],
       ['Motion', [{ ...choice('motion', 'Motion', [['Still', 'none'], ['Breathe', 'breathe'], ['Drift', 'drift'], ['Roll', 'roll']]), rebuild: true },
         { ...range('speed', 'Speed', -3, 3, 0.5, offOr), when: (v) => v.motion !== 'none' }, { ...range('depth', 'Strength', 0, 1, 0.01, pct), when: (v) => v.motion === 'breathe' }],
         'Breathe grows and shrinks the shape. Roll runs the stripes down through the shape; Drift runs only the stripes inside it. Both run one way and loop without swinging back.'],
@@ -2121,9 +2165,13 @@ const READOUT_PRESETS = [
   { name: 'Topology', params: { columns: 32, rows: 16, glyphs: 'ascii', slope: 1.2, slopeDirection: 180, wave: 0.6, frequency: 2, direction: 90, grain: 0.1, contrast: 1.5, speed: 0.5, ...orbitPalette('Grape') } },
   { name: 'Minibar', params: { columns: 36, rows: 18, glyphs: 'ascii', mirror: 'x', slope: 1, slopeDirection: 0, wave: 0.8, frequency: 1, direction: 90, grain: 0.08, contrast: 1.5, speed: 0.5, ...orbitPalette('Blueprint') } },
 ];
-// Silhouette keeps one preset (8 October): Merge, the Vonyes fold on the symbol's base, which is also its default.
+// Silhouette: Merge (8 October), the Vonyes fold on the symbol's base, which is also its default; and Migration (10
+// October), after a "Vector Transition" poster the studio loved: lines thickening down the page as the symbol rises
+// out of them.
 const SILHOUETTE_PRESETS = [
   { name: 'Merge', params: { ...SILHOUETTE_DEFAULTS } },
+  { name: 'Migration', params: { ...SILHOUETTE_DEFAULTS, ...orbitPalette('Mono Light'), inside: 'rise', lines: 52, weight: 0.07, bottomWeight: 0.42,
+    innerWeight: 0.96, shape: 'symbol', size: 0.62, y: 0.68, motion: 'roll', speed: 0.5 } },
 ];
 const BUILT_INS = [
   ...ROW_PRESETS.map((p) => ({ name: p.name, group: 'Wave Rows', pattern: 'Wave Rows', values: sanitizeRows(p.params) })),

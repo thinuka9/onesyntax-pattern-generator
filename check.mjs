@@ -319,18 +319,30 @@ await check('Silhouette Fold: thin stripes, thick bars round the shape above the
   // centred on a stripe of its own set (or is cut by the frame's edge), none is a hairline, and none is a dot.
   const loose = await page.evaluate(() => {
     const out = [];
-    for (const inside of ['fold', 'bars', 'shift', 'gap']) for (const shape of ['symbol', 'mark', 'monogram']) for (const direction of ['across', 'down']) for (const motion of ['none', 'roll', 'drift']) {
+    for (const inside of ['fold', 'bars', 'shift', 'gap', 'rise']) for (const shape of ['symbol', 'mark', 'monogram']) for (const direction of ['across', 'down']) for (const motion of ['none', 'roll', 'drift']) {
       const st = structuredClone(presetState('builtin:Merge'));
       Object.assign(st.values, { inside, shape, direction, motion, lines: 26, weight: inside === 'fold' ? 0.12 : 0.3 });
       const v = st.values, side = Math.min(...FORMATS[v.format]), margin = v.margin * side, span = FORMATS[v.format][direction === 'down' ? 0 : 1];
       const pitch = (span - 2 * margin) / 26, thin = Math.min(0.96, v.weight) * pitch, L = loopSeconds(st);
-      for (const t of motion === 'none' ? [0] : [0.13, 0.41, 0.77].map((f) => f * L)) {
+      for (const t of motion === 'none' ? [0] : Array.from({ length: 12 }, (_, k) => (k + 0.37) / 12 * L)) {
         const g = geometryFor(st, t), I = g.instances, middles = new Map(), label = `${inside} ${shape} ${direction} ${motion} at ${t.toFixed(2)} s`;
+        const along = FORMATS[v.format][direction === 'down' ? 1 : 0], ends = new Map();
+        // Each stripe's pieces end to end, so a short piece joined to the next is seen as part of a line, not a speck.
+        for (let n = 0; n < g.count; n++) {
+          const o = n * STRIDE, middle = direction === 'down' ? I[o + 1] : I[o], length = direction === 'down' ? I[o + 3] : I[o + 2], key = Math.floor(I[o + 13] / 48);
+          ends.set(key, (ends.get(key) || []).concat([[middle - length / 2, middle + length / 2]]));
+        }
         for (let n = 0; n < g.count; n++) {
           const o = n * STRIDE, across = direction === 'down' ? I[o] : I[o + 1], width = direction === 'down' ? I[o + 2] : I[o + 3], length = direction === 'down' ? I[o + 3] : I[o + 2];
+          const middle = direction === 'down' ? I[o + 1] : I[o], opacity = I[o + 11];
           const cut = across - width / 2 <= margin + 0.01 || across + width / 2 >= span - margin - 0.01;
-          if (cut) continue;
-          if (width < 0.4 * thin) { out.push(`${label}: a hairline ${width.toFixed(1)} px thick`); break; }
+          // A stripe sliding under the frame's edge fades out rather than showing as a sliver.
+          if (cut) { if (width < 0.3 * thin && opacity > 0.05) { out.push(`${label}: a sliver ${width.toFixed(1)} px thick at the frame's edge`); break; } continue; }
+          if (width < 0.99 * thin && opacity > 0.05) { out.push(`${label}: a hairline ${width.toFixed(1)} px thick`); break; }
+          // A speck: shorter than half a stripe's spacing or one and a half times its thickness, away from the page's sides.
+          const atSide = middle - length / 2 <= margin + 0.01 || middle + length / 2 >= along - margin - 0.01;
+          const joined = ends.get(Math.floor(I[o + 13] / 48)).some(([s, e]) => Math.abs(s - (middle + length / 2)) < 0.01 || Math.abs(e - (middle - length / 2)) < 0.01);
+          if (!atSide && !joined && length < Math.max(1.5 * width, 0.5 * pitch) - 0.01) { out.push(`${label}: a speck ${length.toFixed(1)} px long`); break; }
           if (length < width * 0.99) { out.push(`${label}: a dot ${length.toFixed(1)} px long`); break; }
           const stripe = Math.floor(I[o + 13] / 48);
           if (!middles.has(stripe)) middles.set(stripe, across);

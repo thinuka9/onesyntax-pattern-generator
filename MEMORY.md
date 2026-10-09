@@ -123,6 +123,14 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   now listed pattern by pattern: one heading each in the presets window, and `BUILT_INS` sorted to the menu's order.
   The panel header shows the {Pattern.OS} wordmark. Readout got Rotation and Gap. Not given rotation, on purpose:
   Bracket (the brand mark), Silhouette (its fold breaks round the shape; Across/Down only), Orbit's Grid layout.
+- **10 October, Silhouette:** "uneven, not balanced, not seeing through, line defects, not seamless" (screenshots of
+  remixes: Stairs on the S mark, rolling). Fixed: stripes sliding under the frame's edge, and one-sided stripes
+  crossing the shape's flat edges, now fade (quickly, centred on half) instead of thinning to hairlines; Fold's bars
+  grow out of the line instead of dipping below it; specks (a lone piece under half a stripe or 1.5× its thickness)
+  go. Remixes keep to combinations that read (no Stairs or Gap on {OS}; the S mark only in Rise). The release check
+  now fails any hairline, speck or edge sliver, at 12 moments a loop. The studio "loved" a "Vector Transition"
+  poster: built as Rise (stripes thicken down the page, faster inside the shape, which emerges from its own top)
+  and the Migration preset.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped
