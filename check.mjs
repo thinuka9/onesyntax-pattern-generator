@@ -224,6 +224,58 @@ await check('Orbit, Silhouette and Skyline animated SVGs match the app frame by 
   return `within ${Math.max(...results).toFixed(2)}/255`;
 });
 
+// Blender, After Effects and the like drop clip paths and nested files, so a still SVG must be cut in its own
+// geometry: no clip groups, no nested <svg>, no <use> or masks, its parts in named layers, and the same picture.
+await check('Still SVGs, plain and on a sticker, open cleanly in other tools and look like the app', async () => {
+  const result = await page.evaluate(async () => {
+    const real = window.download, wasPaused = paused;
+    let captured = null;
+    window.download = (blob) => { captured = blob; };
+    const load = (svg) => new Promise((resolve, reject) => { const i = new Image(); i.onload = () => resolve(i); i.onerror = reject; i.src = URL.createObjectURL(new Blob([svg], { type: 'image/svg+xml' })); });
+    const off = (a, b, [x, y, w, h]) => {
+      const da = a.getImageData(x, y, w, h).data, db = b.getImageData(x, y, w, h).data;
+      let sum = 0; for (let i = 0; i < da.length; i += 4) sum += (Math.abs(da[i] - db[i]) + Math.abs(da[i + 1] - db[i + 1]) + Math.abs(da[i + 2] - db[i + 2])) / 3;
+      return sum / (da.length / 4);
+    };
+    const broken = [], offs = [], compared = ['Event Queue', 'Data Flow', 'Merge', 'Gateway', 'Hello World', 'Scope'];
+    try {
+      for (const preset of BUILT_INS) {
+        for (const sticker of [false, true]) {
+          applyPreset('builtin:' + preset.name); paused = true; time = 1.3;
+          state.values.sticker = { ...STICKER_DEFAULTS, ...state.values.sticker, on: sticker ? 'on' : 'off', pattern: 'on' };
+          captured = null; exportSVG();
+          const svg = await captured.text(), tag = `${preset.name}${sticker ? ' sticker' : ''}`;
+          if (/clipPath|clip-path|<use\b|<mask\b|<symbol\b/.test(svg) || (svg.match(/<svg\b/g) || []).length > 1) broken.push(`${tag}: clips or nests`);
+          const layers = [...svg.matchAll(/<g id="([^"]+)"/g)].map((m) => m[1]);
+          if (sticker ? !['pattern', 'monogram'].every((l) => layers.includes(l)) : !layers.length) broken.push(`${tag}: layers ${layers.join(',') || 'none'}`);
+          if (!compared.includes(preset.name)) continue;
+          const st = sticker ? stickerState(state) : state, geo = geometryFor(st, time), a = document.createElement('canvas'), b = document.createElement('canvas');
+          let region;
+          if (sticker) {
+            const parts = stickerParts(state.values.sticker), k = 600 / parts.S, [bx, by, bw, bh] = parts.band;
+            a.width = b.width = a.height = b.height = 600;
+            drawSticker(a.getContext('2d'), state, geo, k, { page: null });
+            region = [bx * k, by * k, bw * k, bh * k].map(Math.round);
+          } else {
+            const k = 600 / Math.max(geo.width, geo.height);
+            a.width = b.width = Math.round(geo.width * k); a.height = b.height = Math.round(geo.height * k);
+            const g = a.getContext('2d'); g.fillStyle = css(E.colourRGB(geo.params.colour.background)); g.fillRect(0, 0, a.width, a.height);
+            draw(g, geo, k, { ox: 0, oy: 0 });
+            region = [0, 0, a.width, a.height];
+          }
+          b.getContext('2d').drawImage(await load(svg), 0, 0, b.width, b.height);
+          const d = off(a.getContext('2d'), b.getContext('2d'), region);
+          offs.push(d);
+          if (d > 3) broken.push(`${tag}: ${d.toFixed(2)}/255 from the app`);
+        }
+      }
+    } finally { window.download = real; paused = wasPaused; state.values.sticker.on = 'off'; }
+    return { broken, worst: Math.max(...offs), count: BUILT_INS.length * 2 };
+  });
+  expect(!result.broken.length, result.broken.join('\n'));
+  return `${result.count} files · within ${result.worst.toFixed(2)}/255`;
+});
+
 await check('Presets window opens on the current pattern, with its group bar', async () => {
   await page.evaluate(() => applyPreset('builtin:Cluster'));
   await page.click('#presetButton');
@@ -466,6 +518,7 @@ await check('Every control changes the drawing', async () => {
         for (const x of tries) {
           const st = structuredClone(start);
           for (const k of keys) setPath(st.values, k, c.type === 'range' ? x : (typeof now === 'number' ? Number(x) : x));
+          if (c.chosen) c.chosen(st.values);  // as the panel does after a choice
           try { if (sig(st) !== ref) changed = true; } catch (e) { thrown.push(`${bi.name} · ${c.label} = ${x}: ${e.message}`); }
         }
         if (tries.length && !changed) dead.push(`${bi.name} · ${section} · ${c.label}`);

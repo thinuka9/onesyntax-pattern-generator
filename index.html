@@ -1427,6 +1427,14 @@ const turnControl = range('layout.rotation', 'Rotation', -180, 180, 1, deg);
 const roundness = range('marks.roundness', 'Roundness', 0, 1, 0.01, pct);
 const cornerRadius = { ...range('marks.radius', 'Roundness', 0, 30, 0.5, px), when: (v) => v.marks.shape !== 'Dot' };
 const cellSized = (v) => !!v.marks.cellSized;
+// Eddy's dashes thicken evenly, or across or down the page. Turning a gradient on starts it at half the thickness
+// (else nothing would show); turning it off settles on the middle thickness, the one an even dash was drawn at.
+const evenThickness = (v) => v.mappings.thickness.source === 'constant';
+function spreadThickness(v) {
+  const m = v.mappings.thickness;
+  if (m.source === 'constant') m.min = m.max = Math.round((m.min + m.max) / 2 * 2) / 2;
+  else if (Math.abs(m.max - m.min) < 0.01) m.min = Math.max(0.5, Math.round(m.max / 2 * 2) / 2);
+}
 const waveFrequency = range('field.waveA.frequency', 'Frequency', 0, 12, 0.05, times);
 const waveDirection = range('field.waveA.direction', 'Direction', -180, 180, 1, deg);
 const secondWave = range('field.waveB.weight', 'Second wave', 0, 3, 0.01, f2);
@@ -1970,7 +1978,13 @@ const PATTERNS = [
     look: [PALETTE, colour('background', 'Background'), colour('ink', 'Item colour'), FORMAT] },
   { name: 'Eddy', sections: [
       ['Grid', [columns(), rowsCount(), margin, turnControl]],
-      ['Dashes', [range(both('mappings.length'), 'Length', 2, 160, 1, px), range(both('mappings.thickness'), 'Thickness', 0.5, 60, 0.5, px),
+      // Thickening: even, or growing across or down the page (Refactor's dashes thicken left to right); growing, the
+      // thinnest and thickest ends are set apart, so adjusting one keeps the gradient.
+      ['Dashes', [range(both('mappings.length'), 'Length', 2, 160, 1, px),
+        { ...choice('mappings.thickness.source', 'Thickening', [['Even', 'constant'], ['Across', 'x'], ['Down', 'y']]), rebuild: true, chosen: spreadThickness },
+        { ...range(both('mappings.thickness'), 'Thickness', 0.5, 60, 0.5, px), when: evenThickness },
+        { ...range('mappings.thickness.min', 'Thinnest', 0.5, 60, 0.5, px), when: (v) => !evenThickness(v) },
+        { ...range('mappings.thickness.max', 'Thickest', 0.5, 60, 0.5, px), when: (v) => !evenThickness(v) },
         cornerRadius]],
       ['Flow', [range('attractor.strength', 'Bend', -2, 2, 0.01, f2), range('attractor.radius', 'Bend size', 0.01, 1, 0.01, pct),
         range('attractor.x', 'Centre X', 0, 1, 0.01, pct), range('attractor.y', 'Centre Y', 0, 1, 0.01, pct),
@@ -3328,7 +3342,7 @@ function control(c) {
     mark();
     buttons.forEach((b) => b.addEventListener('click', () => {
       if (b.getAttribute('aria-checked') === 'true') return;
-      setPath(state.values, c.key, b.dataset.value); mark();
+      setPath(state.values, c.key, b.dataset.value); if (c.chosen) c.chosen(state.values); mark();
       placeIndicator(group, true);
       edit();
       // Controls that only apply to some choices appear or disappear once the block has slid across.
@@ -3339,7 +3353,7 @@ function control(c) {
     row.innerHTML = `<label for="${id}">${c.label}</label><span class="select"><select id="${id}">${c.options.map(([text, value]) => `<option value="${value}">${text}</option>`).join('')}</select>${icon('chevron-down')}</span>`;
     const select = row.querySelector('select');
     select.value = getPath(v, c.key);
-    select.addEventListener('change', () => { setPath(state.values, c.key, select.value); edit(); if (c.rebuild) buildPanel(); });
+    select.addEventListener('change', () => { setPath(state.values, c.key, select.value); if (c.chosen) c.chosen(state.values); edit(); if (c.rebuild) buildPanel(); });
   } else if (c.type === 'schemes') {
     // The sticker's colour schemes as tiles, like the palettes: each its fill with the pattern's colour in the corner.
     const chosen = getPath(v, c.key);
@@ -4252,38 +4266,61 @@ function exportSVG() {
   const sticker = stickerOn(state), st = sticker ? stickerState(state) : state, transparent = sticker || exportOptions.transparent;
   const geo = geometryFor(st, time);
   // Orbit's arcs export as one closed path per dash; everything else as its marks.
+  if (sticker) { download(new Blob([stickerSVG(null, geo, { st, t: time })], { type: 'image/svg+xml' }), fileBase() + '_sticker.svg'); return; }
   const svg = kindOf(st) === 'orbit' && st.values.layout !== 'grid'
     ? orbitSVG(st, time, { transparent })
     : E.toSVG(geo, geo.params, st, { transparent });
-  download(new Blob([sticker ? stickerSVG(svg, geo) : svg], { type: 'image/svg+xml' }), fileBase() + (sticker ? '_sticker' : '') + '.svg');
+  download(new Blob([svg], { type: 'image/svg+xml' }), fileBase() + '.svg');
+}
+
+/** The pattern's marks for a still sticker, placed into the band and cut to it in the geometry (no nested file, no
+ *  clip groups), as named layers: Orbit's arcs as one path per dash grouped by colour, other marks by layer. */
+function stickerMarks(st, t, geo, cover, band) {
+  const place = { k: cover.k, x: cover.x, y: cover.y };
+  if (kindOf(st) === 'orbit' && st.values.layout !== 'grid') {
+    const outlines = [];
+    orbitGeometry(st.values, t, undefined, outlines);
+    const placed = outlines.map(({ line, colour }) => ({ colour, line: line.map(([x, y, h]) => [place.x + x * place.k, place.y + y * place.k, h * place.k]) }));
+    const { groups } = orbitDashGroups(placed, E.clamp(st.values.radius), band, (x) => String(Math.round(x * 100) / 100));
+    return `<g id="dashes">\n${[...groups].map(([fill, paths]) => `<g fill="${fill}">\n${paths.join('\n')}\n</g>`).join('\n')}\n</g>`;
+  }
+  // On a sticker every stop is the scheme's one colour, so a screen gradient is that colour: plain fills, no defs.
+  const params = { ...geo.params, colour: { ...geo.params.colour, continuous: false } };
+  const layers = E.svgMarks(geo, params, { place, box: band });
+  return ['track', 'fill', 'cap', 'accent'].map((name, i) => (layers[i].length ? `<g id="${name}">\n${layers[i].join('\n')}\n</g>` : '')).filter(Boolean).join('\n');
 }
 
 /**
- * The sticker as a vector file around a pattern's own SVG (still or animated): the pattern's file nests as an inner
- * <svg> covering the band, cut to the outline and the band; the outline, {OS}, title and subtitle sit round it, the
- * text in Geist. Round the outline the file is empty, so the sticker is cut out (the app's grey is only its preview).
+ * The sticker as a vector file: the outline, the pattern in its band, {OS}, title and subtitle (the text in Geist).
+ * A still one (`still` gives its state and moment) carries the pattern's own marks, cut to the band, so it opens
+ * cleanly in tools that ignore clipping and nested files (Blender, After Effects). An animated one nests the
+ * pattern's animated file, whose motion lives there, cut to the band. Round the outline the file is empty, so the
+ * sticker is cut out (the app's grey is only its preview).
  */
-function stickerSVG(patternSVG, geo) {
+function stickerSVG(patternSVG, geo, still = null) {
   const s = state.values.sticker, parts = stickerParts(s), { S, scheme } = parts, cover = stickerCover(parts, geo), [bx, by, bw, bh] = parts.band;
   const n = (x) => String(Math.round(x * 100) / 100);
   const escape = (text) => text.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
-  const inner = patternSVG
+  const inner = still ? '' : patternSVG
     .replace(/^<\?xml[^>]*\?>\s*/, '')  // a declaration may only open a file
     .replace(/<title>[\s\S]*?<\/title>\n?|<desc>[\s\S]*?<\/desc>\n?|<metadata[\s\S]*?<\/metadata>\n?/g, '')
     .replace(/^<svg\b[^>]*>/, `<svg x="${n(cover.x)}" y="${n(cover.y)}" width="${n(geo.width * cover.k)}" height="${n(geo.height * cover.k)}" viewBox="0 0 ${geo.width} ${geo.height}">`);
+  const pattern = s.pattern !== 'on' ? ''
+    : still ? `<g id="pattern">\n${stickerMarks(still.st, still.t, geo, cover, [bx, by, bx + bw, by + bh])}\n</g>\n`
+    : `<defs><clipPath id="sticker-band"><rect x="${n(bx)}" y="${n(by)}" width="${n(bw)}" height="${n(bh)}"/></clipPath></defs>\n<g id="pattern" clip-path="url(#sticker-band)">\n${inner}\n</g>\n`;
   // The type sits exactly where the canvas puts it: measured from the same fonts.
   const measure = document.createElement('canvas').getContext('2d');
   const baseline = (line, font) => { measure.font = font; return stickerBaseline(measure, line); };
   const titleY = baseline(parts.title, `500 ${parts.title.size}px Geist, system-ui, sans-serif`);
   const subtitleY = baseline(parts.subtitle, `400 ${parts.subtitle.size}px "Geist Mono", ui-monospace, monospace`);
+  // {OS} as a plain group, scaled from its file's own units onto its place (no nested file).
   const markWidth = parts.mark.height * MONOGRAM_ASPECT, monogram = monogramSVG(scheme.mark);
-  const mark = monogram ? monogram.replace(/^<svg\b[^>]*>/, `<svg id="monogram" x="${n(parts.mark.right - markWidth)}" y="${n(parts.mark.top)}" width="${n(markWidth)}" height="${n(parts.mark.height)}" viewBox="0 0 633.616 272.482" fill="none">`) : '';
+  const mark = monogram ? `<g id="monogram" transform="translate(${n(parts.mark.right - markWidth)} ${n(parts.mark.top)}) scale(${n(markWidth / 633.616 * 1e4) / 1e4} ${n(parts.mark.height / 272.482 * 1e4) / 1e4})">\n${monogram.replace(/^<svg\b[^>]*>\s*/, '').replace(/\s*<\/svg>\s*$/, '')}\n</g>\n` : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">
 <title>${escape(s.title)} · OneSyntax sticker</title>
 <metadata id="onesyntax-preset">${escape(JSON.stringify(state))}</metadata>
-<defs><clipPath id="sticker-outline"><path d="${parts.outline}"/></clipPath><clipPath id="sticker-band"><rect x="${n(bx)}" y="${n(by)}" width="${n(bw)}" height="${n(bh)}"/></clipPath></defs>
 <path id="sticker" d="${parts.outline}" fill="${scheme.fill}"/>
-${s.pattern === 'on' ? `<g id="pattern" clip-path="url(#sticker-outline)"><g clip-path="url(#sticker-band)">\n${inner}\n</g></g>\n` : ''}${mark}
+${pattern}${mark}
 <text id="title" x="${n(parts.margin)}" y="${n(titleY)}" fill="${scheme.title}" font-family="Geist, system-ui, sans-serif" font-size="${n(parts.title.size)}" font-weight="500" letter-spacing="${n(parts.title.tracking)}">${escape(s.title)}</text>
 <text id="subtitle" x="${n(parts.margin)}" y="${n(subtitleY)}" fill="${scheme.subtitle}" fill-opacity="${parts.subtitle.alpha}" font-family="'Geist Mono', ui-monospace, monospace" font-size="${n(parts.subtitle.size)}" letter-spacing="${n(parts.subtitle.tracking)}">${escape(s.subtitle)}</text>
 </svg>`;
@@ -4331,27 +4368,69 @@ function dashPath(line, round, n) {
     + `${curve([...right].reverse())}${cap(right[0], left[0], line[0], [-sx, -sy])}z`;
 }
 
-/** Orbit's arcs as a vector file: one closed path per dash, grouped by colour, cut at the frame inside any margin. */
+/** A dash's outline as points: its two edges stepped finely between the line's samples, a point out at each end for a
+ *  round cap. For cutting a dash that crosses the frame; a dash inside it keeps its curves (dashPath). */
+function dashOutline(line, round) {
+  const m = line.length - 1, left = [], right = [];
+  const tangent = (i) => {
+    const [ax, ay] = line[Math.max(0, i - 1)], [bx, by] = line[Math.min(m, i + 1)], l = Math.hypot(bx - ax, by - ay) || 1;
+    return [(bx - ax) / l, (by - ay) / l];
+  };
+  for (let i = 0; i <= m; i++) {
+    const steps = i < m ? 4 : 1;
+    for (let s = 0; s < steps; s++) {
+      const f = s / steps, j = Math.min(m, i + 1), [x0, y0, h0] = line[i], [x1, y1, h1] = line[j], [u0, v0] = tangent(i), [u1, v1] = tangent(j);
+      const x = x0 + (x1 - x0) * f, y = y0 + (y1 - y0) * f, h = h0 + (h1 - h0) * f, ux = u0 + (u1 - u0) * f, uy = v0 + (v1 - v0) * f, l = Math.hypot(ux, uy) || 1;
+      left.push([x - uy / l * h, y + ux / l * h]); right.push([x + uy / l * h, y - ux / l * h]);
+    }
+  }
+  const [ex, ey] = tangent(m), [sx, sy] = tangent(0), [lx, ly, lh] = line[m], [fx, fy, fh] = line[0];
+  return [...left, ...(round > 0 ? [[lx + ex * round * lh, ly + ey * round * lh]] : []), ...right.reverse(), ...(round > 0 ? [[fx - sx * round * fh, fy - sy * round * fh]] : [])];
+}
+
+/** Orbit's arcs as a vector file: one closed path per dash, grouped by colour. Dashes are cut to the page and to the
+ *  frame inside any margin in the geometry itself, not with a clip path, so the file opens cleanly in tools that
+ *  ignore clipping (Blender, After Effects): a dash inside keeps its curves, one outside is left out, one crossing the
+ *  edge becomes its cut outline. */
 function orbitSVG(st, t, { transparent = false } = {}) {
   const outlines = [], geo = orbitGeometry(st.values, t, undefined, outlines), { width, height } = geo;
   const n = (x) => { const s = String(Math.round(x * 10) / 10); return s === '-0' ? '0' : s; };
-  const hex = (c) => '#' + c.map((x) => Math.round(E.clamp(x) * 255).toString(16).padStart(2, '0')).join('');
-  const groups = new Map();
-  for (const { line, colour } of outlines) {
-    const fill = hex(colour);
-    (groups.get(fill) || groups.set(fill, []).get(fill)).push(`<path d="${dashPath(line, E.clamp(st.values.radius), n)}"/>`);
-  }
+  const frame = geo.clip || [0, 0, width, height], box = [Math.max(0, frame[0]), Math.max(0, frame[1]), Math.min(width, frame[2]), Math.min(height, frame[3])];
+  const { groups, drawn } = orbitDashGroups(outlines, E.clamp(st.values.radius), box, n);
   const escape = (s) => s.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
-  const clip = geo.clip;
   return `<?xml version="1.0" encoding="UTF-8"?>
 <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
 <title>${escape(document.getElementById('title').textContent)} · OneSyntax</title>
-<desc>${outlines.length} dashes, each one closed path. Made with Pattern.OS by OneSyntax.</desc>
+<desc>${drawn} dashes, each one closed path. Made with Pattern.OS by OneSyntax.</desc>
 <metadata id="onesyntax-preset">${escape(JSON.stringify(st))}</metadata>
-${clip ? `<defs><clipPath id="frame"><rect x="${clip[0]}" y="${clip[1]}" width="${clip[2] - clip[0]}" height="${clip[3] - clip[1]}"/></clipPath></defs>\n` : ''}${transparent ? '' : `<rect id="background" width="${width}" height="${height}" fill="${st.values.background}"/>\n`}<g id="dashes"${clip ? ' clip-path="url(#frame)"' : ''}>
+${transparent ? '' : `<g id="background"><rect width="${width}" height="${height}" fill="${st.values.background}"/></g>\n`}<g id="dashes">
 ${[...groups].map(([fill, paths]) => `<g fill="${fill}">\n${paths.join('\n')}\n</g>`).join('\n')}
 </g>
 </svg>`;
+}
+
+/** Orbit's dashes (`outlines` from orbitGeometry) as closed paths cut to `box`, grouped by colour. */
+function orbitDashGroups(outlines, round, box, n) {
+  const hex = (c) => '#' + c.map((x) => Math.round(E.clamp(x) * 255).toString(16).padStart(2, '0')).join('');
+  const groups = new Map();
+  let drawn = 0;
+  for (const { line, colour } of outlines) {
+    const reach = Math.max(...line.map((p) => p[2])) * (1 + round);
+    const xs = line.map((p) => p[0]), ys = line.map((p) => p[1]);
+    const left = Math.min(...xs) - reach, right = Math.max(...xs) + reach, top = Math.min(...ys) - reach, bottom = Math.max(...ys) + reach;
+    if (right <= box[0] || left >= box[2] || bottom <= box[1] || top >= box[3]) continue;
+    let d;
+    if (left >= box[0] && right <= box[2] && top >= box[1] && bottom <= box[3]) d = dashPath(line, round, n);
+    else {
+      const cut = E.cutToBox(dashOutline(line, round), box);
+      if (cut.length < 3) continue;
+      d = `M${cut.map((p) => `${n(p[0])} ${n(p[1])}`).join(' L')} Z`;
+    }
+    const fill = hex(colour);
+    (groups.get(fill) || groups.set(fill, []).get(fill)).push(`<path d="${d}"/>`);
+    drawn++;
+  }
+  return { groups, drawn };
 }
 
 // ---------- Animated SVG ----------

@@ -160,6 +160,15 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   colours (`mixedPalette`): a background from the ends of each family or the brights (no mid tones or mid greys:
   muddy), marks tonal, complementary (blue/warm, violet/yellow) or neutral, each clear of the background. The panel
   shows them as Custom colours. Palette helpers take a name or a palette (`paletteOf`).
+- **10 October, Eddy thickness:** Refactor's lines thicken across the page, but dragging Thickness set both ends to
+  one value and the gradient was gone. Thickening (Even / Across / Down) now picks the spread; Even shows one
+  Thickness, the others Thinnest and Thickest. Switching keeps the look (a choice's `chosen` hook, `spreadThickness`).
+- **10 October, clean SVGs:** pattern and sticker SVGs "break" in Blender and After Effects: both drop clip paths
+  and nested `<svg>`. Still SVGs are now cut in the geometry (`E.svgMarks`, `E.cutToBox`; Orbit's `dashOutline`):
+  a mark inside the frame stays a plain rect, ellipse or curve, one outside is left out, one crossing becomes its
+  cut outline. The sticker SVG places the marks straight into the band and {OS} as a plain group, in layers
+  `sticker`, `pattern`, `monogram`, `title`, `subtitle`. Animated SVGs keep their clip (motion crosses the edge; they
+  are for the web). Text stays live text (Blender skips it: outline it in Illustrator or Figma first).
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

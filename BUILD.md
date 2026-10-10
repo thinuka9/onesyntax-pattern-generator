@@ -28,9 +28,9 @@ In Claude Code, the `app` entry in `.claude/launch.json` starts the same server.
 | Export | Notes |
 |---|---|
 | PNG 1× / 2× / 4× / 6× | Optional transparent background. Sizes below. |
-| SVG | Vector; the editable layers are `background`, `track`, `fill`, `cap`, `accent`. Orbit's arcs export each dash as one closed curve, grouped by colour. Margins clip every export to the frame. |
+| SVG | Vector; the editable layers are `background`, `track`, `fill`, `cap`, `accent`. Orbit's arcs export each dash as one closed curve, grouped by colour. Margins cut every export to the frame in the geometry itself (a mark crossing the edge becomes its cut outline), with no clip paths or nested files, so it opens cleanly in Blender, After Effects and other tools that drop clipping. |
 | Animated SVG | Built for the web: resolution-free, loops seamlessly, plays in browsers and `<img>` tags. Marks sharing a motion share one CSS animation; the rest keep only the keyframes they need. Most presets export at 15–400 KB. Orbit's arcs animate whole dashes (sliding with Flow, riding with Sway, fading and sizing with Pulse): Flow, Event Stream 0.37 MB and Event Queue 0.79 MB; Sway, Event Stream 0.71 MB and Event Queue 2.9 MB; with Pulse, 0.3–3.7 MB. Patterns with thousands of independently moving marks (Threads, Concurrency) stay heavy: use Video for those. Design tools import the first frame. |
-| Sticker | With the Sticker section on, every export is of the sticker: PNG and video painted, SVG and animated SVG with the pattern's own file nested in the band, the text in Geist. Transparent leaves the page round the outline empty. |
+| Sticker | With the Sticker section on, every export is of the sticker: PNG and video painted, SVG with the pattern's marks cut to the band in layers `sticker`, `pattern`, `monogram`, `title`, `subtitle` (no clip paths or nested files), animated SVG with the pattern's own file nested and clipped in the band (motion needs the clip), the text in Geist (live text: outline it in a design tool for Blender, which skips text). Transparent leaves the page round the outline empty. |
 | Video | MP4 (H.264), 30 fps, seamless 5 or 10 s loop, longest side up to 1920 px. Encoded frame by frame with WebCodecs, faster than real time and with the tab in the background (MP4 packing by mp4-muxer, MIT, loaded on first use). Browsers without it fall back to real-time recording (MP4 or WebM; keep the tab visible). |
 | Presets (JSON) | From the preset picker: Export / Import. Also imports preset JSON from the original studio. |
 | Copy link | A URL holding the exact preset. Works wherever the page is hosted. |
@@ -76,13 +76,15 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
 6. PNG, SVG and animated SVG exports download and parse, for every moving preset.
 7. Orbit's animated SVG (Flow, Sway, and Pulse), Silhouette's (Merge and Migration, Roll and Breathe) and Skyline's (Rise
    and Wave), frozen at set moments (SMIL and CSS animations alike), match the app within 4/255 and loop without a seam.
-8. The presets window opens on the current preset, with the bar (a heading per pattern) on its pattern.
-9. The sticker survives a share link and exports as PNG, SVG and animated SVG, cut out (transparent round its
-   outline, Transparent on or off); the seed dice never turns it back on.
-10. Silhouette's fold: stripes edge to edge, bars thickest away from the fold; Roll and Drift loop one way and
+8. Every still SVG, plain and on a sticker, has no clip paths, nested `<svg>`, `<use>` or masks, carries its named
+   layers, and (for six presets) matches the app within 3/255.
+9. The presets window opens on the current preset, with the bar (a heading per pattern) on its pattern.
+10. The sticker survives a share link and exports as PNG, SVG and animated SVG, cut out (transparent round its
+    outline, Transparent on or off); the seed dice never turns it back on.
+11. Silhouette's fold: stripes edge to edge, bars thickest away from the fold; Roll and Drift loop one way and
     smoothly (no frame jumps more than 1.7 times the typical change); in every inside, shape, direction and motion,
     no piece is a hairline, a dot or off its stripe.
-11. Hidden errors, the kind that pass a glance at the code but not someone using the app:
+12. Hidden errors, the kind that pass a glance at the code but not someone using the app:
     - every preset that moves moves on screen, and every still one keeps still (screenshots a second apart), and
       moving ones still move on the sticker;
     - seed remixes of a moving preset still move;
@@ -92,7 +94,7 @@ To use another browser, set `CHECK_BROWSER` to its path. It checks that:
     - the centre knob (Orbit, Eddy, Silhouette) shows uncovered in Fill and Fit, a click leaves the centre alone,
       and dragging it moves the centre;
     - the motion switch turns every preset off and on and back to the preset, or is unavailable with a reason.
-12. With `--dist`: the published `index.html` and `engine.js` carry no comments.
+13. With `--dist`: the published `index.html` and `engine.js` carry no comments.
 
 It ends with "All checks passed." (exit code 0), or names each failure. Still by hand, in the browser:
 

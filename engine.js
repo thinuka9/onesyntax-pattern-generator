@@ -829,22 +829,70 @@
     return `M${point(-hw + radius, -hh)} L${point(hw - radius, -hh)} ${arc} ${point(hw, -hh + radius)} L${point(hw, hh - radius)} ${arc} ${point(hw - radius, hh)} L${point(-hw + radius, hh)} ${arc} ${point(-hw, hh - radius)} L${point(-hw, -hh + radius)} ${arc} ${point(-hw + radius, -hh)} Z`;
   }
 
-  /** `metadata` is embedded as JSON so an exported SVG can be traced back to its settings. */
-  function toSVG(geometry, params, metadata = params, options = {}) {
+  /**
+   * A mark's outline as points (its corners; rounded corners and dots traced in short straight steps), for cutting.
+   * The affine (a, b, c, d) turns and skews the mark about its centre (x, y), as worldPath does.
+   */
+  function outline(x, y, width, height, angle, radius, skew, dot) {
+    const cos = Math.cos(angle), sin = Math.sin(angle), a = cos, b = sin, c = cos * skew - sin, d = sin * skew + cos;
+    const at = (px, py) => [x + a * px + c * py, y + b * px + d * py], hw = width / 2, hh = height / 2, points = [];
+    if (dot) { for (let i = 0; i < 48; i++) { const t = i / 48 * Math.PI * 2; points.push(at(hw * Math.cos(t), hh * Math.sin(t))); } return points; }
+    if (radius <= 0) return [at(-hw, -hh), at(hw, -hh), at(hw, hh), at(-hw, hh)];
+    for (const [cx, cy, from] of [[hw - radius, -hh + radius, -Math.PI / 2], [hw - radius, hh - radius, 0], [-hw + radius, hh - radius, Math.PI / 2], [-hw + radius, -hh + radius, Math.PI]]) {
+      for (let i = 0; i <= 8; i++) { const t = from + i / 8 * Math.PI / 2; points.push(at(cx + radius * Math.cos(t), cy + radius * Math.sin(t))); }
+    }
+    return points;
+  }
+  /** A polygon cut to a box [x0, y0, x1, y1] (Sutherland–Hodgman, one side of the box at a time). */
+  function cutToBox(points, [x0, y0, x1, y1]) {
+    const sides = [[(p) => p[0] >= x0, (p, q) => [x0, p[1] + (q[1] - p[1]) * (x0 - p[0]) / (q[0] - p[0])]],
+      [(p) => p[0] <= x1, (p, q) => [x1, p[1] + (q[1] - p[1]) * (x1 - p[0]) / (q[0] - p[0])]],
+      [(p) => p[1] >= y0, (p, q) => [p[0] + (q[0] - p[0]) * (y0 - p[1]) / (q[1] - p[1]), y0]],
+      [(p) => p[1] <= y1, (p, q) => [p[0] + (q[0] - p[0]) * (y1 - p[1]) / (q[1] - p[1]), y1]]];
+    for (const [inside, cross] of sides) {
+      const out = [];
+      for (let i = 0; i < points.length; i++) {
+        const p = points[i], q = points[(i + 1) % points.length];
+        if (inside(p)) { out.push(p); if (!inside(q)) out.push(cross(p, q)); } else if (inside(q)) out.push(cross(p, q));
+      }
+      points = out;
+      if (points.length < 3) return [];
+    }
+    return points;
+  }
+
+  /**
+   * The marks as SVG elements, by layer. `place` ({ k, x, y }) scales and moves them (the sticker's band), and `box`
+   * cuts them to a rectangle in the result's own coordinates. Cutting happens in the geometry, not with a clip path:
+   * a mark wholly inside stays a simple rect or ellipse, one wholly outside is left out, and one crossing the edge
+   * becomes a path of its cut outline. Files then open cleanly in tools that ignore clipping (Blender, After Effects).
+   */
+  function svgMarks(geometry, params, { place = { k: 1, x: 0, y: 0 }, box = null } = {}) {
     const layers = [[], [], [], []];
-    const names = ['track', 'fill', 'cap', 'accent'];
-    const instances = geometry.instances;
+    const instances = geometry.instances, { k, x: ox, y: oy } = place;
     const count = Math.min(geometry.count, Math.floor(instances.length / STRIDE));
     for (let index = 0; index < count; index++) {
       const offset = index * STRIDE;
-      const [x, y, width, height, angle, rawRadius, rawSkew, shape, red, green, blue, rawOpacity, rawLayer] = instances.subarray(offset, offset + STRIDE);
-      if (width <= 0 || height <= 0 || rawOpacity <= 0) continue;
+      const [rawX, rawY, rawWidth, rawHeight, angle, rawRadius, rawSkew, shape, red, green, blue, rawOpacity, rawLayer] = instances.subarray(offset, offset + STRIDE);
+      if (rawWidth <= 0 || rawHeight <= 0 || rawOpacity <= 0) continue;
+      const x = ox + rawX * k, y = oy + rawY * k, width = rawWidth * k, height = rawHeight * k;
       const layer = Math.round(clamp(rawLayer, 0, 3));
-      const radius = shape === 1 || shape === 3 ? Math.min(width, height) / 2 : clamp(rawRadius, 0, Math.min(width, height) / 2);
+      const radius = shape === 1 || shape === 3 ? Math.min(width, height) / 2 : clamp(rawRadius * k, 0, Math.min(width, height) / 2);
       const skew = shape === 2 ? rawSkew : 0;
       const continuous = params.colour.continuous && layer !== 3;
       const fill = continuous ? 'url(#screen-gradient)' : rgb([red, green, blue]);
-      const paint = `fill="${fill}" fill-opacity="${number(clamp(rawOpacity))}"`;
+      const paint = `fill="${fill}"${rawOpacity < 1 ? ` fill-opacity="${number(clamp(rawOpacity))}"` : ''}`;
+      if (box) {
+        const points = outline(x, y, width, height, angle, radius, skew, shape === 4);
+        const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
+        const left = Math.min(...xs), right = Math.max(...xs), top = Math.min(...ys), bottom = Math.max(...ys);
+        if (right <= box[0] || left >= box[2] || bottom <= box[1] || top >= box[3]) continue;  // wholly outside
+        if (left < box[0] - 1e-6 || right > box[2] + 1e-6 || top < box[1] - 1e-6 || bottom > box[3] + 1e-6) {
+          const cut = cutToBox(points, box);
+          if (cut.length >= 3) layers[layer].push(`<path d="M${cut.map((p) => `${number(p[0])} ${number(p[1])}`).join(' L')} Z" ${paint}/>`);
+          continue;
+        }
+      }
       if (continuous && (angle !== 0 || skew !== 0)) {
         layers[layer].push(`<path d="${worldPath(x, y, width, height, angle, radius, skew, shape === 4)}" ${paint}/>`);
         continue;
@@ -852,13 +900,23 @@
       const transform = angle !== 0 || skew !== 0 ? ` transform="translate(${number(x)} ${number(y)}) rotate(${number(angle * 180 / Math.PI)})${skew !== 0 ? ` skewX(${number(Math.atan(skew) * 180 / Math.PI)})` : ''}"` : '';
       const cx = transform ? 0 : x, cy = transform ? 0 : y;
       if (shape === 4) layers[layer].push(`<ellipse cx="${number(cx)}" cy="${number(cy)}" rx="${number(width / 2)}" ry="${number(height / 2)}"${transform} ${paint}/>`);
-      else layers[layer].push(`<rect x="${number(cx - width / 2)}" y="${number(cy - height / 2)}" width="${number(width)}" height="${number(height)}" rx="${number(radius)}"${transform} ${paint}/>`);
+      else layers[layer].push(`<rect x="${number(cx - width / 2)}" y="${number(cy - height / 2)}" width="${number(width)}" height="${number(height)}"${radius > 0 ? ` rx="${number(radius)}"` : ''}${transform} ${paint}/>`);
     }
+    return layers;
+  }
+
+  /** `metadata` is embedded as JSON so an exported SVG can be traced back to its settings. */
+  function toSVG(geometry, params, metadata = params, options = {}) {
+    const names = ['track', 'fill', 'cap', 'accent'];
     const { width, height } = params.canvas;
-    // A pattern's own frame (inside its margin) cuts the marks the same way the views do.
-    const clip = geometry.clip, clipDef = clip ? `<clipPath id="frame"><rect x="${number(clip[0])}" y="${number(clip[1])}" width="${number(clip[2] - clip[0])}" height="${number(clip[3] - clip[1])}"/></clipPath>` : '';
-    const defs = params.colour.continuous || clip ? `<defs>${params.colour.continuous ? gradientDefinition(params) : ''}${clipDef}</defs>\n` : '';
-    return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}" color-interpolation="sRGB">\n<title>${escape(params.name)} · OneSyntax</title>\n<desc>Seed ${params.seed}. ${geometry.markCount} marks. Made with Pattern.OS by OneSyntax.</desc>\n<metadata id="onesyntax-preset">${escape(JSON.stringify(metadata))}</metadata>\n${defs}<g id="background" data-name="background">${options.transparent ? '' : `<rect width="${number(width)}" height="${number(height)}" fill="${rgb(colourRGB(params.colour.background))}"/>`}</g>\n${names.map((name, layer) => `<g id="${name}" data-name="${name}"${clip ? ' clip-path="url(#frame)"' : ''}>\n${layers[layer].join('\n')}\n</g>`).join('\n')}\n</svg>`;
+    // Marks are cut to the page, and to a pattern's own frame inside its margin, the same way the views cut them.
+    const clip = geometry.clip || [0, 0, width, height];
+    const box = [Math.max(0, clip[0]), Math.max(0, clip[1]), Math.min(width, clip[2]), Math.min(height, clip[3])];
+    const layers = svgMarks(geometry, params, { box });
+    const defs = params.colour.continuous ? `<defs>${gradientDefinition(params)}</defs>\n` : '';
+    const groups = names.map((name, layer) => (layers[layer].length ? `<g id="${name}" data-name="${name}">\n${layers[layer].join('\n')}\n</g>` : '')).filter(Boolean).join('\n');
+    const background = options.transparent ? '' : `<g id="background" data-name="background"><rect width="${number(width)}" height="${number(height)}" fill="${rgb(colourRGB(params.colour.background))}"/></g>\n`;
+    return `<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" width="${number(width)}" height="${number(height)}" viewBox="0 0 ${number(width)} ${number(height)}" color-interpolation="sRGB">\n<title>${escape(params.name)} · OneSyntax</title>\n<desc>Seed ${params.seed}. ${geometry.markCount} marks. Made with Pattern.OS by OneSyntax.</desc>\n<metadata id="onesyntax-preset">${escape(JSON.stringify(metadata))}</metadata>\n${defs}${background}${groups}\n</svg>`;
   }
 
   // ---------- renderer.ts ----------
@@ -1092,6 +1150,6 @@ void main() {
 
   window.WaveEngine = {
     STRIDE, clamp, buildGeometry, instanceBuffer, motionCycles, waveFn, basePreset: base, PRESETS, PRESET_DESCRIPTIONS,
-    screenGradient, colourRGB, paletteAt, gradientStops, toSVG, Renderer,
+    screenGradient, colourRGB, paletteAt, gradientStops, toSVG, svgMarks, cutToBox, Renderer,
   };
 })();
