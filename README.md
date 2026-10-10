@@ -63,10 +63,11 @@ serve.ps1           Local preview server (Windows PowerShell, no Node needed).
 publish.sh          Hosting build step: installs terser and runs build.mjs.
 build.mjs           Writes the app into dist/ with every comment stripped (the published site).
 check.mjs           Release checks in a real browser (npm run check; see BUILD.md).
-package.json        Build and check tooling only (terser, playwright-core); the app itself needs no install.
+outlines.mjs        Writes the merged {OS} and Geist outlines that sticker SVGs are drawn with (npm run outlines).
+package.json        Build, check and outline tooling only; the app itself needs no install.
 handover.ps1        Downloads the live site and zips the client's copy (no notes, no history).
-brand/              Official OneSyntax logo files (from the Rebranding Figma file).
-vendor/             Geist fonts, Motion and mp4-muxer as they came from npm, with their licences.
+brand/              Official OneSyntax logo files (from the Rebranding Figma file), and the {OS} merged for export.
+vendor/             Geist fonts (and their outlines for sticker SVGs), Motion and mp4-muxer, with their licences.
 .claude/            Preview configuration for Claude Code.
 ```
 
@@ -81,6 +82,9 @@ makes no requests to other sites; the icons are part of the page:
 | [Lucide](https://lucide.dev) | 0.460.0 | ISC | Icons: the 24 the app uses are kept in the page, not loaded |
 | [Motion](https://motion.dev) | 12.23.12 | MIT | UI micro-animations (`vendor/motion.js`) |
 | [mp4-muxer](https://github.com/Vanilagy/mp4-muxer) | 5.2.1 | MIT | Packing fast video exports into MP4 (`vendor/mp4-muxer.js`, loaded only when exporting video) |
+
+Build tools only, never shipped: terser (build), playwright-core (checks), and for `outlines.mjs` fontkit (MIT),
+wawoff2 (MIT) and pathkit-wasm (Skia PathKit, BSD-3-Clause).
 
 To update one, replace its file from the npm package (`npm pack <name>@<version>`) and its licence, then change the
 version here.

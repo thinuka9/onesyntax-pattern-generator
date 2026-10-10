@@ -224,8 +224,10 @@ await check('Orbit, Silhouette and Skyline animated SVGs match the app frame by 
   return `within ${Math.max(...results).toFixed(2)}/255`;
 });
 
-// Blender, After Effects and the like drop clip paths and nested files, so a still SVG must be cut in its own
-// geometry: no clip groups, no nested <svg>, no <use> or masks, its parts in named layers, and the same picture.
+// Blender, After Effects and the like drop clip paths, nested files, text and opacity, read only plain colours, and
+// fill touching shapes as holes. So a still SVG is cut in its own geometry (no clip groups, nested <svg>, <use> or
+// masks), colours are #RRGGBB, and a sticker sets its type and {OS} as merged outlines with solid colours; each part
+// sits in a named layer, and the picture matches the app.
 await check('Still SVGs, plain and on a sticker, open cleanly in other tools and look like the app', async () => {
   const result = await page.evaluate(async () => {
     const real = window.download, wasPaused = paused;
@@ -243,19 +245,22 @@ await check('Still SVGs, plain and on a sticker, open cleanly in other tools and
         for (const sticker of [false, true]) {
           applyPreset('builtin:' + preset.name); paused = true; time = 1.3;
           state.values.sticker = { ...STICKER_DEFAULTS, ...state.values.sticker, on: sticker ? 'on' : 'off', pattern: 'on' };
-          captured = null; exportSVG();
+          captured = null; await exportSVG();
           const svg = await captured.text(), tag = `${preset.name}${sticker ? ' sticker' : ''}`;
           if (/clipPath|clip-path|<use\b|<mask\b|<symbol\b/.test(svg) || (svg.match(/<svg\b/g) || []).length > 1) broken.push(`${tag}: clips or nests`);
           const layers = [...svg.matchAll(/<g id="([^"]+)"/g)].map((m) => m[1]);
-          if (sticker ? !['pattern', 'monogram'].every((l) => layers.includes(l)) : !layers.length) broken.push(`${tag}: layers ${layers.join(',') || 'none'}`);
+          if (sticker ? !['pattern', 'monogram', 'title', 'subtitle'].every((l) => layers.includes(l)) : !layers.length) broken.push(`${tag}: layers ${layers.join(',') || 'none'}`);
+          if (/rgb\(/.test(svg)) broken.push(`${tag}: a colour other tools cannot read`);
+          if (sticker && /<text\b|opacity=/.test(svg)) broken.push(`${tag}: live text or see-through colour`);
+          if (sticker && !['brace-open', 'os', 'brace-close'].every((p) => svg.includes(`id="monogram-${p}"`))) broken.push(`${tag}: {OS} is not the merged outline`);
           if (!compared.includes(preset.name)) continue;
           const st = sticker ? stickerState(state) : state, geo = geometryFor(st, time), a = document.createElement('canvas'), b = document.createElement('canvas');
           let region;
           if (sticker) {
-            const parts = stickerParts(state.values.sticker), k = 600 / parts.S, [bx, by, bw, bh] = parts.band;
+            const parts = stickerParts(state.values.sticker), k = 600 / parts.S;
             a.width = b.width = a.height = b.height = 600;
             drawSticker(a.getContext('2d'), state, geo, k, { page: null });
-            region = [bx * k, by * k, bw * k, bh * k].map(Math.round);
+            region = [0, 0, 600, 600];  // the whole sticker: outline, pattern, {OS} and type
           } else {
             const k = 600 / Math.max(geo.width, geo.height);
             a.width = b.width = Math.round(geo.width * k); a.height = b.height = Math.round(geo.height * k);

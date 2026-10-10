@@ -168,7 +168,20 @@ Haux Studio builds the generator; OneSyntax is the client. The client gets the a
   a mark inside the frame stays a plain rect, ellipse or curve, one outside is left out, one crossing becomes its
   cut outline. The sticker SVG places the marks straight into the band and {OS} as a plain group, in layers
   `sticker`, `pattern`, `monogram`, `title`, `subtitle`. Animated SVGs keep their clip (motion crosses the edge; they
-  are for the web). Text stays live text (Blender skips it: outline it in Illustrator or Figma first).
+  are for the web).
+- **10 October, Blender test:** the studio's import showed only a broken {OS} and no type. Blender 5.2 is installed
+  here, so imports are now tested headless (`blender -b --factory-startup -P`, the curve importer, a top render).
+  Found and fixed:
+  - Colours were `rgb(r% g% b%)`, which the importer can't read (every mark came in grey): now `#RRGGBB`.
+  - Blender drops opacity: see-through marks on a background or sticker are written as the solid colour they show
+    (the subtitle's 64% too).
+  - Its fill treats touching or overlapping contours as holes: the {OS} braces (touching pixel squares) and Geist's
+    overlapping contours broke. `outlines.mjs` merges them (Skia PathKit): `brand/onesyntax-os-monogram-solid.svg`
+    (pixel-identical to the official file) and `vendor/fonts/geist-outlines.json` (fetched on a sticker SVG export).
+  - It skips `<text>`: the sticker's type is set from those outlines exactly as the canvas sets it (advances,
+    kerning classes, tracking; no ligatures, which tracking turns off), within 0.5/255 of the app.
+  - Not fixable in the file: Blender puts every shape at the same height, so stacked layers flicker in its viewport.
+    Nudge the upper layers up, or join and extrude. After Effects has not been tested here.
 - **Idea, not urgent:** a motion per pattern that brings out that pattern (Pulse stays on/off for all).
 
 ## Tried and dropped

@@ -800,7 +800,8 @@
 
   const number = (value) => Number(value.toFixed(5)).toString();
   const escape = (value) => value.replace(/[<>&"']/g, (character) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' })[character]);
-  const rgb = (value) => `rgb(${value.map((channel) => `${number(clamp(channel) * 100)}%`).join(' ')})`;
+  // Colours as #RRGGBB: the one form every tool reads (Blender's importer drops rgb() with percentages, uncoloured).
+  const rgb = (value) => '#' + value.map((channel) => Math.round(clamp(channel) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
 
   function gradientDefinition(params) {
     const spec = screenGradient(params);
@@ -866,8 +867,10 @@
    * cuts them to a rectangle in the result's own coordinates. Cutting happens in the geometry, not with a clip path:
    * a mark wholly inside stays a simple rect or ellipse, one wholly outside is left out, and one crossing the edge
    * becomes a path of its cut outline. Files then open cleanly in tools that ignore clipping (Blender, After Effects).
+   * `under` is the solid colour beneath (the background, or a sticker), when there is one: a see-through mark is then
+   * written as the colour it shows there, fully opaque, since those tools also drop opacity.
    */
-  function svgMarks(geometry, params, { place = { k: 1, x: 0, y: 0 }, box = null } = {}) {
+  function svgMarks(geometry, params, { place = { k: 1, x: 0, y: 0 }, box = null, under = null } = {}) {
     const layers = [[], [], [], []];
     const instances = geometry.instances, { k, x: ox, y: oy } = place;
     const count = Math.min(geometry.count, Math.floor(instances.length / STRIDE));
@@ -880,8 +883,9 @@
       const radius = shape === 1 || shape === 3 ? Math.min(width, height) / 2 : clamp(rawRadius * k, 0, Math.min(width, height) / 2);
       const skew = shape === 2 ? rawSkew : 0;
       const continuous = params.colour.continuous && layer !== 3;
-      const fill = continuous ? 'url(#screen-gradient)' : rgb([red, green, blue]);
-      const paint = `fill="${fill}"${rawOpacity < 1 ? ` fill-opacity="${number(clamp(rawOpacity))}"` : ''}`;
+      const opacity = clamp(rawOpacity), mixed = under && !continuous && opacity < 1;
+      const fill = continuous ? 'url(#screen-gradient)' : rgb(mixed ? [red, green, blue].map((c, i) => c * opacity + under[i] * (1 - opacity)) : [red, green, blue]);
+      const paint = `fill="${fill}"${opacity < 1 && !mixed ? ` fill-opacity="${number(opacity)}"` : ''}`;
       if (box) {
         const points = outline(x, y, width, height, angle, radius, skew, shape === 4);
         const xs = points.map((p) => p[0]), ys = points.map((p) => p[1]);
@@ -912,7 +916,7 @@
     // Marks are cut to the page, and to a pattern's own frame inside its margin, the same way the views cut them.
     const clip = geometry.clip || [0, 0, width, height];
     const box = [Math.max(0, clip[0]), Math.max(0, clip[1]), Math.min(width, clip[2]), Math.min(height, clip[3])];
-    const layers = svgMarks(geometry, params, { box });
+    const layers = svgMarks(geometry, params, { box, under: options.transparent ? null : colourRGB(params.colour.background) });
     const defs = params.colour.continuous ? `<defs>${gradientDefinition(params)}</defs>\n` : '';
     const groups = names.map((name, layer) => (layers[layer].length ? `<g id="${name}" data-name="${name}">\n${layers[layer].join('\n')}\n</g>` : '')).filter(Boolean).join('\n');
     const background = options.transparent ? '' : `<g id="background" data-name="background"><rect width="${number(width)}" height="${number(height)}" fill="${rgb(colourRGB(params.colour.background))}"/></g>\n`;

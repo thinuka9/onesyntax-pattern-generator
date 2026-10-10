@@ -4261,21 +4261,88 @@ function exportStickerPNG(requested) {
   }, 30);
 }
 
-function exportSVG() {
+async function exportSVG() {
   // On a sticker the pattern is drawn in the scheme's colour with no background of its own (the sticker shows through).
   const sticker = stickerOn(state), st = sticker ? stickerState(state) : state, transparent = sticker || exportOptions.transparent;
-  const geo = geometryFor(st, time);
+  const t = time;
+  if (sticker) {
+    const outlines = await stickerOutlines();
+    download(new Blob([stickerSVG(null, geometryFor(st, t), { still: { st, t }, outlines })], { type: 'image/svg+xml' }), fileBase() + '_sticker.svg');
+    return;
+  }
+  const geo = geometryFor(st, t);
   // Orbit's arcs export as one closed path per dash; everything else as its marks.
-  if (sticker) { download(new Blob([stickerSVG(null, geo, { st, t: time })], { type: 'image/svg+xml' }), fileBase() + '_sticker.svg'); return; }
   const svg = kindOf(st) === 'orbit' && st.values.layout !== 'grid'
-    ? orbitSVG(st, time, { transparent })
+    ? orbitSVG(st, t, { transparent })
     : E.toSVG(geo, geo.params, st, { transparent });
   download(new Blob([svg], { type: 'image/svg+xml' }), fileBase() + '.svg');
 }
 
+// ---------- Sticker outlines ----------
+// Blender and After Effects skip <text>, and fill shapes that touch or overlap as holes (the monogram's braces are
+// rows of touching pixel squares; Geist's "t" crosses its stem). So a sticker SVG draws its type and {OS} from
+// outlines with those merged (outlines.mjs writes them), fetched the first time a sticker SVG is made. Without them
+// (offline from a file) the type stays live text and {OS} the brand file.
+let stickerOutlinesLoading = null;
+function stickerOutlines() {
+  stickerOutlinesLoading ||= Promise.all([
+    fetch('./vendor/fonts/geist-outlines.json').then((r) => { if (!r.ok) throw new Error(r.status); return r.json(); }),
+    fetch('./brand/onesyntax-os-monogram-solid.svg').then((r) => { if (!r.ok) throw new Error(r.status); return r.text(); }),
+  ]).then(([fonts, monogram]) => ({ fonts, monogram }), () => { stickerOutlinesLoading = null; return null; });
+  return stickerOutlinesLoading;
+}
+
+/** Path data (absolute M, L, Q, C, Z, as outlines.mjs writes it) moved and scaled: x → ox + x·sx, y → oy + y·sy.
+ *  Quadratic curves are written as the cubics they equal, which every tool reads. */
+function placedPath(d, ox, oy, sx, sy, n) {
+  const tokens = d.match(/[MLQCZ]|-?\d*\.?\d+(?:e-?\d+)?/g), at = (i) => [ox + Number(tokens[i]) * sx, oy + Number(tokens[i + 1]) * sy];
+  const w = ([x, y]) => `${n(x)} ${n(y)}`;
+  let out = '', i = 0, command = '', pen = [0, 0], start = pen;
+  while (i < tokens.length) {
+    if (/[A-Z]/.test(tokens[i])) command = tokens[i++];
+    if (command === 'M') { pen = start = at(i); i += 2; out += 'M' + w(pen); }
+    else if (command === 'L') { pen = at(i); i += 2; out += 'L' + w(pen); }
+    else if (command === 'Q') {
+      const q = at(i), p = at(i + 2); i += 4;
+      out += `C${w([pen[0] + (q[0] - pen[0]) * 2 / 3, pen[1] + (q[1] - pen[1]) * 2 / 3])} ${w([p[0] + (q[0] - p[0]) * 2 / 3, p[1] + (q[1] - p[1]) * 2 / 3])} ${w(p)}`;
+      pen = p;
+    } else if (command === 'C') { const c1 = at(i), c2 = at(i + 2), p = at(i + 4); i += 6; out += `C${w(c1)} ${w(c2)} ${w(p)}`; pen = p; }
+    else if (command === 'Z') { out += 'Z'; pen = start; }
+    else i++;
+  }
+  return out;
+}
+
+/** A line of type as one path per glyph, set as the canvas sets it: from `x` on the baseline, each glyph's advance
+ *  plus the kerning to the next, plus the tracking. Null when a character has no outline (the line stays text). */
+function typeOutlines(text, font, size, tracking, x, baseline, n) {
+  if (!font.kern) {
+    const left = new Map(), right = new Map(), pairs = new Map();
+    font.kerning.left.forEach((chars, i) => { for (const c of chars) left.set(c, i); });
+    font.kerning.right.forEach((chars, i) => { for (const c of chars) right.set(c, i); });
+    for (const [l, r, v] of font.kerning.pairs) pairs.set(l * 1000 + r, v);
+    font.kern = (a, b) => (left.has(a) && right.has(b) ? pairs.get(left.get(a) * 1000 + right.get(b)) || 0 : 0);
+  }
+  const chars = [...text], k = size / font.unitsPerEm, paths = [];
+  let pen = x;
+  for (let i = 0; i < chars.length; i++) {
+    const glyph = font.glyphs[chars[i]];
+    if (!glyph) return null;
+    if (glyph[1]) paths.push(placedPath(glyph[1], pen, baseline, k, -k, n));
+    pen += (glyph[0] + (i + 1 < chars.length ? font.kern(chars[i], chars[i + 1]) : 0)) * k + tracking;
+  }
+  return paths;
+}
+
+/** A colour seen at `alpha` over `under` (both #RRGGBB), as the one solid colour it shows. */
+function mixHex(colour, under, alpha) {
+  const a = E.colourRGB(colour), b = E.colourRGB(under);
+  return '#' + a.map((c, i) => Math.round(E.clamp(c * alpha + b[i] * (1 - alpha)) * 255).toString(16).padStart(2, '0')).join('').toUpperCase();
+}
+
 /** The pattern's marks for a still sticker, placed into the band and cut to it in the geometry (no nested file, no
  *  clip groups), as named layers: Orbit's arcs as one path per dash grouped by colour, other marks by layer. */
-function stickerMarks(st, t, geo, cover, band) {
+function stickerMarks(st, t, geo, cover, band, under) {
   const place = { k: cover.k, x: cover.x, y: cover.y };
   if (kindOf(st) === 'orbit' && st.values.layout !== 'grid') {
     const outlines = [];
@@ -4286,43 +4353,59 @@ function stickerMarks(st, t, geo, cover, band) {
   }
   // On a sticker every stop is the scheme's one colour, so a screen gradient is that colour: plain fills, no defs.
   const params = { ...geo.params, colour: { ...geo.params.colour, continuous: false } };
-  const layers = E.svgMarks(geo, params, { place, box: band });
+  const layers = E.svgMarks(geo, params, { place, box: band, under: E.colourRGB(under) });
   return ['track', 'fill', 'cap', 'accent'].map((name, i) => (layers[i].length ? `<g id="${name}">\n${layers[i].join('\n')}\n</g>` : '')).filter(Boolean).join('\n');
 }
 
 /**
- * The sticker as a vector file: the outline, the pattern in its band, {OS}, title and subtitle (the text in Geist).
- * A still one (`still` gives its state and moment) carries the pattern's own marks, cut to the band, so it opens
- * cleanly in tools that ignore clipping and nested files (Blender, After Effects). An animated one nests the
- * pattern's animated file, whose motion lives there, cut to the band. Round the outline the file is empty, so the
- * sticker is cut out (the app's grey is only its preview).
+ * The sticker as a vector file: the outline, the pattern in its band, {OS}, title and subtitle, each a named layer.
+ * A still one (`still` gives its state and moment) is made for any tool, Blender and After Effects
+ * included: the pattern's own marks cut to the band, {OS} and the type as merged outlines, every colour solid (the
+ * subtitle's 64% is mixed into its colour on the sticker). An animated one nests the pattern's animated file, whose
+ * motion lives there, clipped to the band. Both set the type from `outlines` when they have loaded, so it shows in
+ * Geist wherever the file is opened. Round the outline the file is empty, so the sticker is cut out (the app's
+ * grey is only its preview).
  */
-function stickerSVG(patternSVG, geo, still = null) {
+function stickerSVG(patternSVG, geo, { still = null, outlines = null } = {}) {
   const s = state.values.sticker, parts = stickerParts(s), { S, scheme } = parts, cover = stickerCover(parts, geo), [bx, by, bw, bh] = parts.band;
-  const n = (x) => String(Math.round(x * 100) / 100);
+  const n = (x) => { const v = String(Math.round(x * 100) / 100); return v === '-0' ? '0' : v; };
   const escape = (text) => text.replace(/[<>&"']/g, (c) => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;', "'": '&apos;' }[c]));
   const inner = still ? '' : patternSVG
     .replace(/^<\?xml[^>]*\?>\s*/, '')  // a declaration may only open a file
     .replace(/<title>[\s\S]*?<\/title>\n?|<desc>[\s\S]*?<\/desc>\n?|<metadata[\s\S]*?<\/metadata>\n?/g, '')
     .replace(/^<svg\b[^>]*>/, `<svg x="${n(cover.x)}" y="${n(cover.y)}" width="${n(geo.width * cover.k)}" height="${n(geo.height * cover.k)}" viewBox="0 0 ${geo.width} ${geo.height}">`);
   const pattern = s.pattern !== 'on' ? ''
-    : still ? `<g id="pattern">\n${stickerMarks(still.st, still.t, geo, cover, [bx, by, bx + bw, by + bh])}\n</g>\n`
+    : still ? `<g id="pattern">\n${stickerMarks(still.st, still.t, geo, cover, [bx, by, bx + bw, by + bh], scheme.fill)}\n</g>\n`
     : `<defs><clipPath id="sticker-band"><rect x="${n(bx)}" y="${n(by)}" width="${n(bw)}" height="${n(bh)}"/></clipPath></defs>\n<g id="pattern" clip-path="url(#sticker-band)">\n${inner}\n</g>\n`;
-  // The type sits exactly where the canvas puts it: measured from the same fonts.
+  // {OS}, placed from its file's own units: the merged outlines baked in place, or the brand file as a group.
+  const markWidth = parts.mark.height * MONOGRAM_ASPECT, mx = parts.mark.right - markWidth, my = parts.mark.top;
+  const sx = markWidth / 633.616, sy = parts.mark.height / 272.482;
+  let mark = '';
+  if (outlines) {
+    const pieces = [...outlines.monogram.matchAll(/<path id="([^"]+)" d="([^"]+)"/g)];
+    mark = `<g id="monogram" fill="${scheme.mark}">\n${pieces.map(([, id, d]) => `<path id="${id}" d="${placedPath(d, mx, my, sx, sy, n)}"/>`).join('\n')}\n</g>\n`;
+  } else if (monogramSVG(scheme.mark)) {
+    mark = `<g id="monogram" transform="translate(${n(mx)} ${n(my)}) scale(${Math.round(sx * 1e6) / 1e6} ${Math.round(sy * 1e6) / 1e6})">\n${monogramSVG(scheme.mark).replace(/^<svg\b[^>]*>\s*/, '').replace(/\s*<\/svg>\s*$/, '')}\n</g>\n`;
+  }
+  // The type sits exactly where the canvas puts it: measured from the same fonts. The subtitle's see-through colour
+  // is written as the solid colour it shows on the sticker.
   const measure = document.createElement('canvas').getContext('2d');
   const baseline = (line, font) => { measure.font = font; return stickerBaseline(measure, line); };
-  const titleY = baseline(parts.title, `500 ${parts.title.size}px Geist, system-ui, sans-serif`);
-  const subtitleY = baseline(parts.subtitle, `400 ${parts.subtitle.size}px "Geist Mono", ui-monospace, monospace`);
-  // {OS} as a plain group, scaled from its file's own units onto its place (no nested file).
-  const markWidth = parts.mark.height * MONOGRAM_ASPECT, monogram = monogramSVG(scheme.mark);
-  const mark = monogram ? `<g id="monogram" transform="translate(${n(parts.mark.right - markWidth)} ${n(parts.mark.top)}) scale(${n(markWidth / 633.616 * 1e4) / 1e4} ${n(parts.mark.height / 272.482 * 1e4) / 1e4})">\n${monogram.replace(/^<svg\b[^>]*>\s*/, '').replace(/\s*<\/svg>\s*$/, '')}\n</g>\n` : '';
+  const type = [
+    { id: 'title', text: s.title, line: parts.title, font: 'Geist 500', css: `500 ${parts.title.size}px Geist, system-ui, sans-serif`, colour: scheme.title,
+      attributes: 'font-family="Geist, system-ui, sans-serif" font-weight="500"' },
+    { id: 'subtitle', text: s.subtitle, line: parts.subtitle, font: 'Geist Mono 400', css: `400 ${parts.subtitle.size}px "Geist Mono", ui-monospace, monospace`,
+      colour: mixHex(scheme.subtitle, scheme.fill, parts.subtitle.alpha), attributes: 'font-family="\'Geist Mono\', ui-monospace, monospace"' },
+  ].map(({ id, text, line, font, css, colour, attributes }) => {
+    const y = baseline(line, css), glyphs = outlines && typeOutlines(text, outlines.fonts[font], line.size, line.tracking, parts.margin, y, n);
+    if (glyphs) return glyphs.length ? `<g id="${id}" fill="${colour}">\n${glyphs.map((d, i) => `<path id="${id}-${i + 1}" d="${d}"/>`).join('\n')}\n</g>` : '';
+    return `<text id="${id}" x="${n(parts.margin)}" y="${n(y)}" fill="${colour}" ${attributes} font-size="${n(line.size)}" letter-spacing="${n(line.tracking)}">${escape(text)}</text>`;
+  }).filter(Boolean).join('\n');
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${S}" height="${S}" viewBox="0 0 ${S} ${S}">
 <title>${escape(s.title)} · OneSyntax sticker</title>
 <metadata id="onesyntax-preset">${escape(JSON.stringify(state))}</metadata>
 <path id="sticker" d="${parts.outline}" fill="${scheme.fill}"/>
-${pattern}${mark}
-<text id="title" x="${n(parts.margin)}" y="${n(titleY)}" fill="${scheme.title}" font-family="Geist, system-ui, sans-serif" font-size="${n(parts.title.size)}" font-weight="500" letter-spacing="${n(parts.title.tracking)}">${escape(s.title)}</text>
-<text id="subtitle" x="${n(parts.margin)}" y="${n(subtitleY)}" fill="${scheme.subtitle}" fill-opacity="${parts.subtitle.alpha}" font-family="'Geist Mono', ui-monospace, monospace" font-size="${n(parts.subtitle.size)}" letter-spacing="${n(parts.subtitle.tracking)}">${escape(s.subtitle)}</text>
+${pattern}${mark}${type}
 </svg>`;
 }
 
@@ -5073,13 +5156,13 @@ function exportAnimatedSVG() {
   if (!animated()) { notify('Nothing is moving yet. Turn up Speed, then export.', { error: true }); return; }
   notify('Building animated SVG…', { stay: true });
   // Let the message paint before the work starts.
-  setTimeout(() => {
+  setTimeout(async () => {
     try {
       // Orbit's arcs animate whole dashes (sliding, swaying, pulsing); everything else is sampled mark by mark.
       const v = state.values, sliding = kindOf(state) === 'orbit' && v.layout !== 'grid';
       const sticker = stickerOn(state), st = sticker ? stickerState(state) : state, transparent = sticker || exportOptions.transparent;
       const result = sliding ? orbitAnimatedSVG(st, { transparent }) : animatedSVG(st, { transparent });
-      if (sticker) result.svg = stickerSVG(result.svg, geometryFor(st, 0));
+      if (sticker) result.svg = stickerSVG(result.svg, geometryFor(st, 0), { outlines: await stickerOutlines() });
       download(new Blob([result.svg], { type: 'image/svg+xml' }), `${fileBase()}${sticker ? '_sticker' : ''}_${result.loop}s-loop.svg`);
       const size = result.svg.length < 1e6 ? `${Math.round(result.svg.length / 1e3)} KB` : `${(result.svg.length / 1e6).toFixed(1)} MB`;
       // Thousands of animated marks play heavily in a browser; past that, video is the smoother web format.
